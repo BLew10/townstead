@@ -1,0 +1,83 @@
+---
+description: Phase 7 Client Portal — self-service dashboard for advertisers
+globs: 
+alwaysApply: false
+---
+
+# Phase 7: Client Self-Service Portal
+
+## Goal
+Give advertisers a self-service portal where they can view their ads, payments, invoices, upload assets, and communicate with admin.
+
+## Architecture
+- Routes under `src/app/portal/`
+- Protected by Clerk middleware — requires `client` role in Clerk organization
+- Clients see ONLY their own data (filter by their contactId linked to their Clerk userId)
+- Read-heavy, limited write access (requests, not direct modifications)
+
+## Build Order
+
+### 1. Client-Contact Linking
+- When admin invites a client, link their Clerk userId to a `contactId` in Convex
+- `convex/clientLinks` table: `{ userId, contactId, orgId }`
+- Portal queries filter by the linked contactId
+
+### 2. Portal Layout
+- `src/app/portal/layout.tsx` — simpler than admin, sidebar with: Dashboard, My Ads, Payments, Invoices, Assets, Messages
+- Header with client company name and Clerk UserButton
+- Branded with tenant branding (same CSS vars as public site)
+
+### 3. Client Dashboard (`/portal`)
+- Summary cards: active ads count, next payment due (date + amount), account balance (outstanding)
+- Upcoming payments list (next 3-5 scheduled payments)
+- Recent activity feed (new invoices, payment confirmations)
+
+### 4. My Ads (`/portal/ads`)
+- List of all ad purchases for this client
+- Each entry: calendar edition, year, ad types, slot assignments, status
+- Browse available slots and submit placement requests (creates a pending request for admin approval)
+
+### 5. Payment History (`/portal/payments`)
+- Full payment history table: date, amount, method, invoice #, status
+- All computed values from billing helpers
+- Filter by year
+
+### 6. Invoices & Statements (`/portal/invoices`)
+- List of all invoices for this client
+- View/download individual invoices (reuse Phase 4 invoice view)
+- Download account statement (reuse Phase 4 statement view)
+
+### 7. Asset Upload (`/portal/assets`)
+- Upload ad artwork (images) for admin review
+- Uses Convex file storage
+- Status tracking: uploaded → under review → approved/rejected
+- `convex/clientAssets` table: `{ contactId, purchaseId, fileId, status, feedback, orgId }`
+
+### 8. Messages (`/portal/messages`)
+- Simple messaging between client and admin
+- `convex/messages` table: `{ contactId, orgId, content, senderRole, createdAt }`
+- Real-time updates via Convex subscriptions
+- Admin sees messages in `/admin/contacts/[id]` messages tab
+
+## Convex Queries for Portal
+All portal queries MUST:
+1. Verify the authenticated user's contactId via `clientLinks`
+2. Only return data belonging to that contactId
+3. Use the same billing computation helpers (never stored state)
+
+```typescript
+export const myPurchases = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    const link = await ctx.db.query("clientLinks")
+      .withIndex("by_userId", q => q.eq("userId", identity.subject))
+      .unique();
+    if (!link) throw new Error("No client link found");
+    return await ctx.db.query("purchases")
+      .withIndex("by_contactId", q => q.eq("contactId", link.contactId))
+      .filter(q => q.neq(q.field("isDeleted"), true))
+      .collect();
+  },
+});
+```

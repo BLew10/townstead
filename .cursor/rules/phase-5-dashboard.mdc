@@ -1,0 +1,67 @@
+---
+description: Phase 5 Dashboard — calendar inventory grid, summary stats, and admin polish
+globs: 
+alwaysApply: false
+---
+
+# Phase 5: Dashboard & Admin Polish
+
+## Goal
+Build the calendar inventory dashboard, add summary statistics, polish the admin UX, and integrate email sending.
+
+## Build Order
+
+### 1. Calendar Inventory Grid (`/admin/dashboard`)
+- Filter bar: calendar edition (select), year (select)
+- 12-column grid (one per month) showing ad slots
+- Each cell in the grid = one ad slot for that month
+- Day-type slots: numbered 1-35, show which contact/company owns each
+- Non-day-type slots: show as a separate section per month
+- Color-coding: assign a unique color per advertiser (contact)
+  - Use a deterministic color from contact ID hash
+  - Legend at bottom showing color → company mapping
+- Click any occupied slot → link to purchase detail page
+- Empty slots clearly indicated for quick visual scanning
+
+### 2. Summary Stats Cards
+- Row of 4 stat cards at top of dashboard:
+  - **Total Revenue:** sum of all purchase `net` values for selected edition+year (computed)
+  - **Collection Rate:** (total amountPaid / total net) × 100, shown as percentage
+  - **Outstanding Balance:** total net - total amountPaid
+  - **Late Payments:** count of scheduled payments where `isScheduledPaymentLate() === true`
+- All values COMPUTED from billing helpers, never stored
+
+### 3. Email Integration
+- Resend API setup in `src/lib/email/resend.ts`
+- React Email templates: clean, professional, branded
+- Invoice email: triggered from purchase detail page "Email Invoice" button
+- Statement email: triggered from contact detail page "Email Statement" button
+- PDF attached as email attachment (generate → attach → send)
+- Success/error toast notifications after send
+
+### 4. Print Optimization
+- Print-specific CSS: `@media print` styles
+- Calendar inventory: full page grid layout for printing
+- Invoices: clean single-page layout
+- Statements: professional multi-page layout
+- Hide navigation, buttons, and chrome in print view
+- `window.print()` trigger from "Print" buttons
+
+### 5. Admin UX Polish
+- **Breadcrumbs:** consistent breadcrumb navigation on all sub-pages
+- **Active nav states:** highlight current section in sidebar
+- **Mobile responsive:** sidebar → Sheet on mobile, tables → card layout on small screens
+- **Loading states:** Skeleton components for every data-loading view
+- **Error boundaries:** at route segment level with retry button
+- **Empty states:** friendly messages + action button when no data exists
+- **Toast notifications:** success/error feedback on all mutations (use shadcn Sonner or Toast)
+- **Keyboard shortcuts:** Escape closes dialogs, Enter submits forms
+- **Consistent spacing:** 6-unit padding, 4-unit gaps throughout
+
+## Validation Checklist
+- [ ] Dashboard shows correct slot occupancy for all months
+- [ ] Stats match manual calculation from billing data
+- [ ] Email sends successfully with PDF attachment
+- [ ] Print view produces clean output without UI chrome
+- [ ] Mobile layout is usable on phone-width screens
+- [ ] All loading/error states display correctly

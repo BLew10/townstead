@@ -1,0 +1,82 @@
+---
+description: Convex backend patterns and conventions for this project
+globs: convex/**/*.ts
+alwaysApply: false
+---
+
+# Convex Patterns
+
+## Schema
+- Schema lives in `convex/schema.ts` — single source of truth
+- Every table has `orgId: v.string()` for multi-tenancy
+- Every content table has `isDeleted: v.optional(v.boolean())`
+- Dates are `v.number()` (Unix timestamps), never strings
+- Use `v.optional()` for nullable fields
+
+## Query Pattern
+```typescript
+export const list = query({
+  args: { orgId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("tableName")
+      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .collect();
+  },
+});
+```
+
+## Mutation Pattern
+```typescript
+export const create = mutation({
+  args: { orgId: v.string(), name: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("tableName", {
+      ...args,
+      isDeleted: false,
+    });
+  },
+});
+```
+
+## Indexes
+- Define indexes for every query filter path in `schema.ts`
+- Name convention: `by_fieldName` or `by_field1_and_field2`
+- Compound indexes for multi-field queries
+
+## Computed Billing State
+Never store these — always compute in query handlers or helper functions:
+```typescript
+function computeNet(terms: PaymentTerms, scheduledPayments: ScheduledPayment[]): number {
+  const lateFees = scheduledPayments
+    .filter(sp => sp.dueDate < Date.now() && !sp.lateFeeWaived && !isFullyPaid(sp))
+    .length * (terms.lateFeeType === "flat" ? terms.lateFeeAmount : /* % calc */);
+  return terms.totalSale
+    - (terms.discount1 ?? 0) - (terms.discount2 ?? 0)
+    + (terms.additionalSale1 ?? 0) + (terms.additionalSale2 ?? 0)
+    - (terms.trade ?? 0)
+    + lateFees;
+}
+```
+
+## File Organization
+```
+convex/
+  schema.ts
+  contacts/
+    queries.ts        # All contact queries
+    mutations.ts      # All contact mutations
+  purchases/
+    queries.ts
+    mutations.ts
+    helpers.ts        # Shared billing computation helpers
+  billing/
+    queries.ts        # Billing view queries (cash flow, this month, etc.)
+    helpers.ts        # Payment allocation, derived state computation
+```
+
+## Auth in Convex
+- Use Clerk's `ctx.auth.getUserIdentity()` to get the authenticated user
+- Extract `orgId` from the user's Clerk organization membership
+- Every query/mutation must validate `orgId` before returning/modifying data

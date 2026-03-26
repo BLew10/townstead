@@ -1,0 +1,113 @@
+---
+description: Phase 2 Admin CRUD — building all core admin management pages
+globs: 
+alwaysApply: false
+---
+
+# Phase 2: Core Admin CRUD Pages
+
+## Goal
+Build all admin management pages for calendars, advertisements, contacts, events, and layouts. Every entity follows the same pattern.
+
+## Build Order (by dependency)
+
+### 1. Address Books (simplest, no deps)
+- `convex/addressBooks/queries.ts` + `mutations.ts`
+- `/admin/address-books` — list + create/edit dialog
+- Simple name field + orgId
+
+### 2. Calendar Editions
+- `convex/calendarEditions/queries.ts` + `mutations.ts`
+- `/admin/calendars` — list with columns: name, code, years active
+- Create/edit dialog: name, code fields
+- Soft-delete with confirmation
+- Year management: add/remove active years
+
+### 3. Advertisement Types
+- `convex/advertisements/queries.ts` + `mutations.ts`
+- `convex/adPricing/queries.ts` + `mutations.ts`
+- `/admin/advertisements` — list with columns: name, type (day/non-day), pricing summary
+- Create dialog: name, isDayType toggle
+- Pricing configuration: per calendar edition per year, 12 monthly price fields
+- Immutable after creation (disable edit on name/type, allow pricing updates)
+
+### 4. Contacts / CRM
+- `convex/contacts/queries.ts` + `mutations.ts`
+- `/admin/contacts` — list with search (company, name, email), address book filter
+- TanStack Table with sorting on all columns
+- Create/edit form (multi-section):
+  - Basic: company, firstName, lastName, email, phone, category, notes
+  - Address: street, city, state, zip (embedded object)
+  - Telecom: phone, fax, mobile (embedded object)
+  - Address Books: multi-select from addressBooks
+- `/admin/contacts/[id]` — detail page with tabs:
+  - Info tab: all contact fields, edit button
+  - Purchases tab: list of purchases (populated in Phase 3)
+  - Payments tab: payment history (populated in Phase 3)
+- Soft-delete: nullify email, set isDeleted, preserve history
+- Full-text search: build Convex search index on company, firstName, lastName, email
+
+### 5. Events
+- `convex/events/queries.ts` + `mutations.ts`
+- `/admin/events` — list with columns: name, date, recurring badge, calendars
+- Create/edit form: name, description, date, endDate (optional), startTime, endTime, isYearly toggle
+- Calendar edition multi-select (associate event with editions)
+- FullCalendar view as alternate to list view
+
+### 6. Layouts & Ad Placements
+- `convex/layouts/queries.ts` + `mutations.ts`
+- `convex/adPlacements/queries.ts` + `mutations.ts`
+- `convex/calendarEditionLayouts/queries.ts` + `mutations.ts`
+- `/admin/layouts` — list of layouts
+- `/admin/layouts/[id]` — layout builder:
+  - Visual canvas showing ad placement positions
+  - Add/edit/remove ad placements (x, y, width, height, position)
+  - Assign layout to calendar edition + year
+
+## CRUD Pattern (follow for every entity)
+
+### Convex Query
+```typescript
+export const list = query({
+  args: { orgId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("tableName")
+      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .collect();
+  },
+});
+```
+
+### Convex Mutation
+```typescript
+export const create = mutation({
+  args: { orgId: v.string(), /* fields */ },
+  handler: async (ctx, args) => {
+    return await ctx.db.insert("tableName", { ...args, isDeleted: false });
+  },
+});
+
+export const softDelete = mutation({
+  args: { id: v.id("tableName") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { isDeleted: true });
+  },
+});
+```
+
+### Page Component Structure
+```
+/admin/[entity]/
+  page.tsx          — server component, renders client list component
+  columns.tsx       — TanStack Table column definitions
+  [entity]-form.tsx — React Hook Form + Zod dialog/sheet form
+```
+
+## Validation
+- [ ] Each entity: create, read, update, soft-delete works
+- [ ] Lists filter by orgId and exclude soft-deleted
+- [ ] Search works on contacts (company, name, email)
+- [ ] Forms validate with Zod before mutation
+- [ ] TanStack Tables sort and paginate correctly

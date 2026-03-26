@@ -1,0 +1,97 @@
+---
+description: Phase 1 Foundation — scaffolding the Next.js + Convex + Clerk project from scratch
+globs: 
+alwaysApply: false
+---
+
+# Phase 1: Project Foundation & Scaffolding
+
+## Goal
+Set up the complete project foundation so subsequent phases only add features, never fight infrastructure.
+
+## Step-by-Step Build Order
+
+### 1. Create Next.js Project
+```bash
+npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"
+```
+- Use Tailwind CSS v4
+- TypeScript strict mode in `tsconfig.json`
+
+### 2. Install Dependencies
+```bash
+# Core
+npm install convex @clerk/nextjs @clerk/clerk-react
+
+# UI
+npx shadcn@latest init
+npx shadcn@latest add button input card dialog table form select tabs badge dropdown-menu sheet tooltip calendar popover command separator skeleton textarea label switch checkbox radio-group avatar scroll-area
+
+# Forms & Validation
+npm install react-hook-form @hookform/resolvers zod
+
+# Tables
+npm install @tanstack/react-table
+
+# Calendar (admin)
+npm install @fullcalendar/react @fullcalendar/daygrid @fullcalendar/timegrid @fullcalendar/interaction
+
+# PDF & Email (Phase 4-5 but install now)
+npm install pdf-lib resend @react-email/components
+
+# State (ephemeral UI only)
+npm install zustand
+
+# Utilities
+npm install date-fns lucide-react
+```
+
+### 3. Set Up Convex
+```bash
+npx convex dev
+```
+Define the FULL schema in `convex/schema.ts` — all Phase 1 tables from @docs/SPEC.md section 5. Include all indexes.
+
+### 4. Set Up Clerk
+- Create `.env.local` with Clerk keys and Convex URL
+- Configure `ClerkProvider` in root layout
+- Set up `ConvexProviderWithClerk` for Convex+Clerk integration
+- Create middleware.ts protecting `/admin/*` and `/portal/*`
+
+### 5. Create Admin Layout Shell
+- Sidebar with navigation links (Calendars, Contacts, Ads, Purchases, Billing, Events, Layouts, Dashboard)
+- Header with Clerk `UserButton` and org name
+- Main content area with `{children}`
+- Mobile-responsive: sidebar collapses to Sheet on small screens
+
+### 6. Create Shared Utilities
+- `src/lib/types.ts` — TypeScript types mirroring Convex schema
+- `src/lib/validators.ts` — Zod schemas for all forms
+- `src/lib/utils.ts` — cn() helper (from shadcn), date formatters, currency formatters
+- `src/lib/file-storage.ts` — `useFileUrl()` / `getFileUrl()` abstraction
+- `src/hooks/use-org.ts` — hook to get current Clerk orgId
+
+### 7. Create Reusable Components
+- `src/components/shared/data-table.tsx` — TanStack Table wrapper
+- `src/components/shared/page-header.tsx` — consistent page headers
+- `src/components/shared/confirm-dialog.tsx` — reusable confirmation modal
+- `src/components/shared/empty-state.tsx` — empty list states
+- `src/components/shared/table-skeleton.tsx` — loading skeleton for tables
+
+## Environment Variables Template
+```
+NEXT_PUBLIC_CONVEX_URL=
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+CONVEX_DEPLOYMENT=
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/auth/login
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/auth/register
+```
+
+## Validation Checklist
+- [ ] `npm run dev` starts without errors
+- [ ] `npx convex dev` connects and schema deploys
+- [ ] Visiting `/admin` redirects to `/auth/login` when logged out
+- [ ] Visiting `/admin` shows sidebar layout when logged in
+- [ ] shadcn components render correctly
+- [ ] TypeScript strict mode passes with no errors

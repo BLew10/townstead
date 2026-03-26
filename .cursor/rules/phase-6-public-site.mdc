@@ -1,0 +1,97 @@
+---
+description: Phase 6 Public Community Site — SEO-optimized public pages for events, directory, coupons, blog
+globs: 
+alwaysApply: false
+---
+
+# Phase 6: Public-Facing Community Site
+
+## Goal
+Build the public community site that replaces the TownPlanner-hosted site. Must be SEO-optimized, fast, and beautiful.
+
+## Architecture
+- Routes under `src/app/(public)/` using route group (no `/public` prefix in URL)
+- ISR with 60-second revalidation on all public pages
+- Lighter calendar component than FullCalendar (custom-built or minimal library)
+- Tenant branding via CSS custom properties from `tenantBranding` table
+- Community accounts via Clerk (separate from admin auth)
+
+## Build Order
+
+### 1. Public Layout & Branding
+- `src/app/(public)/layout.tsx` — public layout with header nav, footer
+- Header: logo, nav links (Events, Directory, Coupons, Blog, Videos), sign in/up
+- Footer: operator info, social links, copyright
+- Load tenant branding from Convex, apply as CSS variables:
+  ```css
+  :root {
+    --brand-primary: var(--tenant-primary, #2563eb);
+    --brand-logo: var(--tenant-logo);
+  }
+  ```
+
+### 2. Homepage (`/`)
+- Hero section with operator branding
+- Featured events (next 3-5 upcoming)
+- Featured businesses (top-tier advertisers)
+- Latest coupons grid
+- Recent blog posts
+- All data fetched server-side with ISR
+
+### 3. Event Calendar (`/events`)
+- Interactive month/week/day calendar view
+- Build with a lightweight approach (date-fns grid + custom components)
+- Event cards on each day
+- `/events/[id]` — event detail: name, description, times, location, associated business
+- Category filter sidebar
+- Search functionality
+- `/events/submit` — event submission form (requires auth, submitted for admin approval)
+
+### 4. Business Directory (`/directory`)
+- Grid/list view of active advertisers
+- Search by name, category
+- Filter by category
+- Sort by featured status (based on ad tier/purchases)
+- `/directory/[slug]` — business detail: contact info, address, map, web link, coupons, events
+- Map integration (Google Maps or Leaflet embed)
+
+### 5. Coupons (`/coupons`)
+- Grid of active coupons (endDate >= today)
+- Each coupon card: image, title, business name, valid dates
+- `/coupons/[id]` — coupon detail: full image, description, terms, download/print
+- Claim button (requires account, tracks in `couponClaims`)
+- Expired coupons auto-filtered out
+
+### 6. Blog (`/blog`)
+- Blog post list with featured image, title, excerpt, date, author
+- Category filter
+- `/blog/[slug]` — full post with SEO: meta title/description, OG image, JSON-LD structured data
+- Blog editor at `/admin/blog/new` using Novel rich text editor
+- Admin approval workflow for client-authored posts
+
+### 7. Videos (`/videos`)
+- Video gallery: grid of video cards
+- YouTube/Vimeo embed support (parse URL, render embed)
+- Category filter
+- Associated business links
+
+### 8. User Accounts
+- `/auth/register` — community member registration
+- `/profile` — user profile, event submissions, claimed coupons, favorites
+- Clerk handles all auth UI components
+
+### 9. SEO
+- `generateMetadata()` on every page for dynamic meta tags
+- OpenGraph images for blog posts and events
+- JSON-LD structured data for events and businesses (LocalBusiness, Event schemas)
+- `sitemap.xml` generation
+- `robots.txt`
+
+## Convex Tables for Phase 6
+Add to schema: `coupons`, `couponClaims`, `blogPosts`, `videos`, `categories`, `tenantBranding`
+Queries for public pages should NOT require auth — they read public data filtered by orgId.
+
+## Performance
+- Images: use `next/image` with proper sizing
+- Bundle: avoid importing FullCalendar on public pages (use lightweight alternative)
+- ISR: 60s revalidation keeps pages fresh without SSR cost

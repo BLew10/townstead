@@ -1,0 +1,67 @@
+---
+description: Master context for Planner App v2 — always loaded to provide project-wide context
+alwaysApply: true
+---
+
+# Planner App v2 — Project Context
+
+## What This Is
+A ground-up rewrite of a calendar ad sales management platform. Three surfaces: admin dashboard (`/admin`), public community site (`/`), and client portal (`/portal`).
+
+## Tech Stack
+- **Framework:** Next.js 15 (App Router, `src/` directory, TypeScript strict)
+- **Backend/DB:** Convex (reactive queries, server functions, file storage)
+- **Auth:** Clerk (organization-based multi-tenancy, role-based access)
+- **UI:** shadcn/ui + Radix + Tailwind CSS v4
+- **Forms:** React Hook Form + Zod
+- **Tables:** TanStack Table v8
+- **State:** Convex reactive queries for server state, Zustand only for ephemeral UI
+
+## Critical Architecture Rules
+
+1. **Multi-tenancy:** Every Convex document has `orgId`. Every query/mutation filters by `orgId` from Clerk. No exceptions.
+2. **Derived state — NEVER store computed values:**
+   - `amountPaid` = sum of payment allocations (computed)
+   - `isPaid` = amountPaid >= net (computed)
+   - `net` = totalSale - discounts + additionalSales - trade + lateFees - earlyDiscount (computed)
+   - Late fees = computed from `dueDate < now && !fullyPaid && !lateFeeWaived` (computed)
+3. **Soft deletes:** Use `isDeleted: true` on content models. All queries filter `isDeleted !== true`.
+4. **Dates:** All dates stored as Unix timestamps (`v.number()`). No date strings.
+
+## Project Structure
+```
+src/
+  app/
+    (public)/          # Public community site routes
+    admin/             # Admin dashboard routes
+    portal/            # Client portal routes
+    auth/              # Shared auth routes
+  components/
+    ui/                # shadcn/ui components
+    admin/             # Admin-specific components
+    public/            # Public site components
+    portal/            # Portal components
+    shared/            # Shared across surfaces
+  lib/
+    types.ts           # Shared TypeScript types
+    utils.ts           # Utility functions
+    validators.ts      # Zod schemas
+  hooks/               # Custom React hooks
+convex/
+  schema.ts            # Convex schema (single source of truth)
+  _generated/          # Auto-generated Convex types
+  [table]/             # One folder per domain (queries, mutations)
+```
+
+## Conventions
+- Components: PascalCase files, named exports
+- Convex functions: camelCase, organized by domain folder
+- All list views use TanStack Table with server-side sort/filter when >100 records
+- Forms use React Hook Form + Zod with validation schemas in `src/lib/validators.ts`
+- Error boundaries at route segment level
+- Loading states with Skeleton components
+
+## Key Files
+- `@docs/SPEC.md` — Full project specification
+- `@docs/PHASES.md` — Phased implementation plan with cursor commands
+- `@convex/schema.ts` — Convex schema (single source of truth for data model)

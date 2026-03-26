@@ -1,0 +1,119 @@
+---
+description: Phase 3 Billing Engine — the most critical phase. Derived state rules are NON-NEGOTIABLE.
+globs: 
+alwaysApply: false
+---
+
+# Phase 3: Purchase Flow & Billing Engine
+
+## CRITICAL RULES — READ BEFORE WRITING ANY CODE
+
+### Rule 1: NEVER store derived state
+These values are ALWAYS computed, NEVER stored as fields:
+- `amountPaid` — sum of paymentAllocation amounts for a purchase
+- `isPaid` — amountPaid >= net
+- `net` — totalSale - discount1 - discount2 + additionalSale1 + additionalSale2 - trade + lateFees - earlyDiscount
+- `lateFees` — count of late scheduled payments × late fee amount (from payment terms)
+- `isLate` (on a scheduled payment) — dueDate < Date.now() AND not fully paid AND not waived
+
+### Rule 2: Late fees are COMPUTED, never mutated
+A scheduled payment is "late" if:
+```typescript
+function isScheduledPaymentLate(sp: ScheduledPayment, allocations: PaymentAllocation[]): boolean {
+  if (sp.lateFeeWaived) return false;
+  const paid = allocations
+    .filter(a => a.scheduledPaymentId === sp._id)
+    .reduce((sum, a) => sum + a.amount, 0);
+  return sp.dueDate < Date.now() && paid < sp.amount;
+}
+```
+No daily mutation. No cron. No stored `isLate` field.
+
+### Rule 3: Payment allocation is ordered
+When recording a payment, allocate to the EARLIEST unpaid scheduled payment first:
+```typescript
+function allocatePayment(amount: number, scheduledPayments: ScheduledPayment[], existingAllocations: PaymentAllocation[]) {
+  const sorted = scheduledPayments.sort((a, b) => a.dueDate - b.dueDate);
+  let remaining = amount;
+  const newAllocations = [];
+  for (const sp of sorted) {
+    if (remaining <= 0) break;
+    const alreadyPaid = existingAllocations
+      .filter(a => a.scheduledPaymentId === sp._id)
+      .reduce((sum, a) => sum + a.amount, 0);
+    const owed = sp.amount - alreadyPaid;
+    if (owed <= 0) continue;
+    const toAllocate = Math.min(remaining, owed);
+    newAllocations.push({ scheduledPaymentId: sp._id, amount: toAllocate });
+    remaining -= toAllocate;
+  }
+  return newAllocations;
+}
+```
+
+## Build Order
+
+### 1. Billing Helper Functions (`convex/billing/helpers.ts`)
+Build and test ALL computation helpers FIRST:
+- `computeNet(terms, scheduledPayments, allocations)` → number
+- `computeAmountPaid(purchaseId, allocations)` → number
+- `computeIsPaid(net, amountPaid)` → boolean
+- `computeLateFees(terms, scheduledPayments, allocations)` → number
+- `isScheduledPaymentLate(sp, allocations)` → boolean
+- `allocatePayment(amount, scheduledPayments, allocations)` → AllocationPlan[]
+- `generateInvoiceNumber(ctx, calendarEditionId, year)` → string (atomic)
+
+### 2. Purchase Creation Flow
+Multi-step form at `/admin/purchases/new`:
+1. **Select Contact** — searchable combobox from contacts list
+2. **Select Edition & Year** — calendar edition dropdown + year picker
+3. **Select Calendars** — checkbox list of calendar editions (can select multiple)
+4. **Select Ad Types** — for each calendar: pick ad types, set quantities
+5. **Assign Slots** — for day-type ads: assign month + slot number (validate 35-cap per month, show availability grid), for non-day-type: quantity only
+6. **Payment Terms** — all payment term fields (see spec 1.6)
+7. **Review & Confirm** — summary of all selections, total, payment schedule preview
+
+Convex mutations:
+- `purchases.create` — creates purchase + paymentTerms + adPurchases + adSlots + scheduledPayments in one transaction
+- Slot availability check inside the mutation (not just UI-side)
+- Invoice number generated atomically
+
+### 3. Slot Availability System
+```typescript
+export const getSlotAvailability = query({
+  args: { calendarEditionId, year, month },
+  handler: async (ctx, args) => {
+    const taken = await ctx.db
+      .query("adSlots")
+      .withIndex("by_calendarEdition_year_month", ...)
+      .collect();
+    // Return which slots (1-35) are taken and by whom
+  },
+});
+```
+
+### 4. Purchase Detail Page (`/admin/purchases/[id]`)
+- Purchase info: contact, edition, year, invoice number
+- Ad placements: table of all ad types, quantities, assigned slots
+- Payment terms: all term fields displayed
+- Scheduled payments: table with dueDate, amount, computed amountPaid, computed isLate, waive late fee toggle
+- Payment history: table of all payments with allocations
+- Actions: record payment, edit purchase, delete purchase
+
+### 5. Payment Recording
+- Form: amount, date, method (select: check/credit card/cash), check number (conditional)
+- On submit: create payment → run allocation engine → create paymentAllocation records
+- UI updates reactively (Convex subscription)
+
+### 6. Purchase Edit & Delete
+- Edit: re-open purchase form with current values, recalculate scheduled payments
+- Delete: cascade delete adPurchases → adSlots → scheduledPayments → payments → paymentAllocations
+
+## Scheduled Payment Auto-Generation
+When payment terms are saved, generate scheduled payments:
+- If `splitEqually`: divide net by number of months, create one per month with `dueDayOfMonth`
+- Otherwise: flexible configuration from the form
+
+## Invoice Number Format
+`YY-NNNN` where YY = last 2 digits of year, NNNN = sequential per edition+year.
+Generated atomically in a Convex mutation to prevent duplicates.

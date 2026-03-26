@@ -1,0 +1,133 @@
+---
+description: Phase 8 Migration — PostgreSQL to Convex data migration scripts and validation
+globs: 
+alwaysApply: false
+---
+
+# Phase 8: Data Migration & Launch
+
+## Goal
+Migrate Joyce's production data from v1 PostgreSQL to v2 Convex with zero data loss, full validation, and a safe cutover plan.
+
+## Pre-Migration Audit Script
+Before migrating, run an audit against v1 PostgreSQL to flag known bugs:
+```
+scripts/audit-v1-data.ts
+```
+Checks:
+- `amountPaid` != sum of payment allocations → flag mismatch
+- `isPaid` incorrect based on actual payments → flag
+- `net` doesn't match computed value (totalSale ± adjustments + lateFees) → flag
+- Orphaned records (FK references to deleted rows) → flag
+- Null/empty required fields → flag
+Log all discrepancies to `migration-audit-report.json`
+
+## Migration Script Structure
+```
+scripts/
+  migrate/
+    index.ts              # Main orchestrator — runs steps in order
+    01-users.ts           # Clerk org + user creation
+    02-address-books.ts
+    03-contacts.ts        # Flatten 4 tables → 1 document
+    04-calendar-editions.ts
+    05-advertisements.ts
+    06-layouts.ts         # layouts + adPlacements + calendarEditionLayouts
+    07-events.ts
+    08-purchases.ts       # Merge PurchaseOverview + PaymentOverview
+    09-ad-purchases.ts    # adPurchases + adSlots
+    10-scheduled-payments.ts  # Strip stored state
+    11-payments.ts
+    12-payment-allocations.ts
+    id-map.ts             # Map<v1UUID, ConvexId> management
+    utils.ts              # Date conversion, null handling
+```
+
+## Migration Rules
+
+### 1. Order Matters
+Tables are migrated in FK dependency order. Each step populates the ID map that subsequent steps use.
+
+### 2. ID Mapping
+```typescript
+const idMap = new Map<string, Id<any>>();
+
+// When inserting a migrated record:
+const convexId = await ctx.db.insert("contacts", { ... });
+idMap.set(v1Contact.id, convexId);
+
+// When referencing a FK:
+const contactId = idMap.get(v1Purchase.contactId);
+```
+
+### 3. Contact Flattening
+v1 has 4 tables: Contact, ContactAddress, ContactTelecom, ContactInfo
+v2 merges into 1 document with embedded objects:
+```typescript
+{
+  company: v1Contact.company,
+  firstName: v1ContactInfo.firstName,
+  lastName: v1ContactInfo.lastName,
+  email: v1ContactInfo.email,
+  address: {
+    street: v1ContactAddress.street,
+    city: v1ContactAddress.city,
+    state: v1ContactAddress.state,
+    zip: v1ContactAddress.zip,
+  },
+  telecom: {
+    phone: v1ContactTelecom.phone,
+    fax: v1ContactTelecom.fax,
+    mobile: v1ContactTelecom.mobile,
+  },
+}
+```
+
+### 4. Date Conversion
+v1 uses mixed date formats (strings and DateTime). v2 uses Unix timestamps.
+```typescript
+function toTimestamp(v1Date: string | Date | null): number | undefined {
+  if (!v1Date) return undefined;
+  return new Date(v1Date).getTime();
+}
+```
+
+### 5. Scheduled Payments — Strip Stored State
+Only migrate: `dueDate`, `amount`, `month`, `year`, `lateFeeWaived`
+DO NOT migrate: `amountPaid`, `isPaid`, `net`, `isLate` — these are computed in v2
+
+### 6. Purchase Merge
+v1 `PurchaseOverview` + `PaymentOverview` → v2 single `purchases` table
+v1 `PaymentOverview` fields like `totalSale`, `discount1`, etc. → v2 `paymentTerms` table
+
+### 7. Idempotency
+Store v1 UUID in a `_migrationId` field on each migrated record.
+Before inserting, check if a record with that `_migrationId` already exists → skip.
+
+## Validation Suite
+```
+scripts/validate-migration.ts
+```
+For every purchase in v2:
+1. Compute `amountPaid` using v2 helpers → compare to v1 stored `amountPaid`
+2. Compute `net` using v2 helpers → compare to v1 stored `net`
+3. Compute `isPaid` using v2 helpers → compare to v1 stored `isPaid`
+4. Log mismatches (expected due to v1 bugs — the v2 computed value is correct)
+
+Count comparisons:
+- Total contacts: v1 count == v2 count
+- Total purchases: v1 count == v2 count
+- Total payments: v1 count == v2 count
+- Total ad slots: v1 count == v2 count
+
+## Cutover Checklist
+- [ ] Pre-migration audit complete, discrepancies documented
+- [ ] Migration script tested against staging copy of v1 database
+- [ ] All validation checks pass (or known v1-bug mismatches documented)
+- [ ] v2 deployed to staging URL
+- [ ] Joyce parallel-tests for 3-5 business days
+- [ ] Delta migration for data entered during parallel testing
+- [ ] DNS switched to v2
+- [ ] v1 set to read-only mode (30-day safety net)
+- [ ] Joyce confirms everything works
+- [ ] v1 decommissioned

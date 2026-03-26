@@ -1,0 +1,78 @@
+---
+description: Phase 4 Billing Views — all reporting, invoice, and statement views
+globs: 
+alwaysApply: false
+---
+
+# Phase 4: Billing Views & Reporting
+
+## Goal
+Build all billing views that Joyce uses daily: payment lists, monthly summaries, cash flow reports, invoices, statements, and PDF exports.
+
+## Build Order
+
+### 1. All Payments View (`/admin/billing/payments`)
+- TanStack Table with columns: date, contact (company), amount, method, check #, purchase (invoice #)
+- Filters: year (select), search (contact name/company)
+- Sorting: date (default desc), amount, contact
+- Pagination: 25 per page
+- Query: join payments → purchases → contacts to display contact info
+
+### 2. This Month View (`/admin/billing/this-month`)
+- Table of scheduled payments due this month (or overdue from past months)
+- Columns: contact, invoice #, due date, amount due, amount paid (computed), status (paid/partial/overdue/upcoming)
+- Late indicator: red badge if `isScheduledPaymentLate()` returns true
+- Year filter dropdown
+- Quick action: record payment directly from this view
+- Query uses the billing helpers from Phase 3 — never stores status
+
+### 3. Cash Flow Report (`/admin/billing/cash-flow`)
+- Grid layout: rows = contacts, columns = months (Jan-Dec) + Year Total
+- Each cell shows: projected (scheduled payment amount) vs actual (sum of allocations for that month)
+- Color coding: green (paid in full), yellow (partial), red (unpaid/overdue), gray (no payment due)
+- Scoped by calendar edition year (dropdown filter) — this fixes the v1 bug where it mixed years
+- Summary row at bottom: totals per month
+- PDF export button
+
+### 4. Invoice View (`/admin/purchases/[id]/invoice`)
+- Printable layout (full page, clean formatting)
+- Header: operator business info, logo
+- Bill To: contact info (company, name, address)
+- Invoice #: from purchase
+- Line items: each ad purchase with calendar, ad type, quantity, unit price, total
+- Subtotals: total sale, discounts, additional sales, trade
+- Net amount
+- Payment terms: due day, early discount info, late fee info
+- Custom messages: invoice message from payment terms
+- Print button + Download PDF button
+
+### 5. Statement View (`/admin/contacts/[id]/statement`)
+- Contact info header
+- Table of all purchases across editions with:
+  - Invoice #, edition, year, net amount, amount paid (computed), balance (computed)
+- Payment history table: all payments with date, amount, method, which purchase
+- Overall balance: sum of all unpaid amounts
+- Custom statement message from payment terms
+- Print + PDF download
+
+### 6. PDF Generation (`src/lib/pdf/`)
+Create reusable PDF generator using pdf-lib:
+- `generateInvoicePdf(purchase, contact, paymentTerms, adPurchases)` → Uint8Array
+- `generateCashFlowPdf(report, edition, year)` → Uint8Array
+- `generateStatementPdf(contact, purchases, payments)` → Uint8Array
+- Serve via Next.js API route that returns PDF as download
+
+### 7. Email Integration (Resend)
+- `src/lib/email/send-invoice.ts` — send invoice email with PDF attachment
+- `src/lib/email/send-statement.ts` — send statement email
+- React Email templates in `src/emails/`:
+  - `invoice-email.tsx` — clean invoice email template
+  - `statement-email.tsx` — statement email template
+- Trigger from UI: "Email Invoice" button on purchase detail, "Email Statement" on contact detail
+
+## Important Rules
+- ALL financial figures come from the Phase 3 computed helpers — never raw database fields
+- Cash flow report must be scoped by edition year — this was a critical v1 bug
+- PDF generation happens server-side (API route or Convex action)
+- Currency formatting: use consistent `formatCurrency()` utility from `src/lib/utils.ts`
+- Date formatting: use consistent `formatDate()` utility
