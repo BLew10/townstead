@@ -1,0 +1,419 @@
+"use client";
+
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
+import { useOrg } from "@/hooks/use-org";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useEffect } from "react";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+
+const orgSettingsSchema = z.object({
+  businessName: z.string().min(1, "Business name is required"),
+  address: z.object({
+    street: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zip: z.string().optional(),
+  }),
+  phone: z.string().optional(),
+  email: z.string().email("Invalid email").optional().or(z.literal("")),
+  publisherName: z.string().optional(),
+  remitToName: z.string().optional(),
+  remitToAddress: z.object({
+    street: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zip: z.string().optional(),
+  }),
+  showCreditCardSection: z.boolean(),
+  nsfFeeAmount: z.coerce.number().int().min(0).optional(),
+});
+
+type OrgSettingsFormValues = z.infer<typeof orgSettingsSchema>;
+
+const defaultValues: OrgSettingsFormValues = {
+  businessName: "",
+  address: { street: "", city: "", state: "", zip: "" },
+  phone: "",
+  email: "",
+  publisherName: "",
+  remitToName: "",
+  remitToAddress: { street: "", city: "", state: "", zip: "" },
+  showCreditCardSection: true,
+  nsfFeeAmount: 2500,
+};
+
+export default function SettingsPage() {
+  const { orgId, isReady } = useOrg();
+  const settings = useQuery(
+    api.settings.queries.getOrgSettings,
+    isReady ? { orgId: orgId! } : "skip"
+  );
+  const upsert = useMutation(api.settings.mutations.upsertOrgSettings);
+
+  const form = useForm<OrgSettingsFormValues>({
+    resolver: zodResolver(orgSettingsSchema),
+    defaultValues,
+  });
+
+  useEffect(() => {
+    if (settings) {
+      form.reset({
+        businessName: settings.businessName,
+        address: {
+          street: settings.address?.street ?? "",
+          city: settings.address?.city ?? "",
+          state: settings.address?.state ?? "",
+          zip: settings.address?.zip ?? "",
+        },
+        phone: settings.phone ?? "",
+        email: settings.email ?? "",
+        publisherName: settings.publisherName ?? "",
+        remitToName: settings.remitToName ?? "",
+        remitToAddress: {
+          street: settings.remitToAddress?.street ?? "",
+          city: settings.remitToAddress?.city ?? "",
+          state: settings.remitToAddress?.state ?? "",
+          zip: settings.remitToAddress?.zip ?? "",
+        },
+        showCreditCardSection: settings.showCreditCardSection ?? true,
+        nsfFeeAmount: settings.nsfFeeAmount ?? 2500,
+      });
+    }
+  }, [settings, form]);
+
+  if (!isReady || settings === undefined) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+          <p className="text-muted-foreground">
+            Manage your organization&apos;s invoice and billing settings.
+          </p>
+        </div>
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
+  }
+
+  const onSubmit = async (values: OrgSettingsFormValues) => {
+    try {
+      const addr = values.address;
+      const hasAddress = addr.street || addr.city || addr.state || addr.zip;
+      const remit = values.remitToAddress;
+      const hasRemit = remit.street || remit.city || remit.state || remit.zip;
+
+      await upsert({
+        orgId: orgId!,
+        businessName: values.businessName,
+        address: hasAddress ? addr : undefined,
+        phone: values.phone || undefined,
+        email: values.email || undefined,
+        publisherName: values.publisherName || undefined,
+        remitToName: values.remitToName || undefined,
+        remitToAddress: hasRemit ? remit : undefined,
+        showCreditCardSection: values.showCreditCardSection,
+        nsfFeeAmount: values.nsfFeeAmount,
+      });
+      toast.success("Settings saved.");
+    } catch {
+      toast.error("Failed to save settings.");
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+        <p className="text-muted-foreground">
+          Manage your organization&apos;s invoice and billing settings.
+        </p>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Business Information</CardTitle>
+              <CardDescription>
+                Appears in the header of invoices and statements.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="businessName"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Business Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Publishing Concepts LLC" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="publisherName"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Publisher Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Joyce Nazabal" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Shown on invoices as &quot;Publisher: ...&quot;
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="address.street"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Street Address</FormLabel>
+                    <FormControl>
+                      <Input placeholder="P.O. Box 188" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="address.city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>City</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Elk Grove" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="address.state"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>State</FormLabel>
+                      <FormControl>
+                        <Input placeholder="CA" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="address.zip"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ZIP</FormLabel>
+                      <FormControl>
+                        <Input placeholder="95759" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone</FormLabel>
+                    <FormControl>
+                      <Input placeholder="916-217-0106" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="joyce@metrocalendars.com"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Remit-To Address</CardTitle>
+              <CardDescription>
+                Printed on the tear-off section of invoices and statements.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="remitToName"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Payable To</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Town Planner" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="remitToAddress.street"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Street</FormLabel>
+                    <FormControl>
+                      <Input placeholder="P.O. Box 188" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="remitToAddress.city"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>City</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Elk Grove" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="remitToAddress.state"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>State</FormLabel>
+                      <FormControl>
+                        <Input placeholder="CA" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="remitToAddress.zip"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ZIP</FormLabel>
+                      <FormControl>
+                        <Input placeholder="95759" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Invoice Options</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="showCreditCardSection"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">
+                        Credit Card Section
+                      </FormLabel>
+                      <FormDescription>
+                        Show blank credit card payment fields on the tear-off.
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="nsfFeeAmount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>NSF Fee (in cents)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="2500"
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Default: 2500 ($25.00). Mentioned in the invoice footer.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end">
+            <Button type="submit" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? "Saving..." : "Save Settings"}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
+  );
+}

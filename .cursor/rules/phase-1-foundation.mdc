@@ -56,7 +56,7 @@ Define the FULL schema in `convex/schema.ts` — all Phase 1 tables from @docs/S
 - Create `.env.local` with Clerk keys and Convex URL
 - Configure `ClerkProvider` in root layout
 - Set up `ConvexProviderWithClerk` for Convex+Clerk integration
-- Create middleware.ts protecting `/admin/*` and `/portal/*`
+- Create proxy.ts protecting `/admin/*` and `/portal/*` (Next.js 16 uses `proxy` instead of `middleware`)
 
 ### 5. Create Admin Layout Shell
 - Sidebar with navigation links (Calendars, Contacts, Ads, Purchases, Billing, Events, Layouts, Dashboard)

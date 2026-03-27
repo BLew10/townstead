@@ -1,0 +1,97 @@
+import { mutation } from "../_generated/server";
+import { v } from "convex/values";
+
+export const create = mutation({
+  args: {
+    title: v.string(),
+    slug: v.string(),
+    content: v.string(),
+    excerpt: v.optional(v.string()),
+    featuredImageFileId: v.optional(v.id("_storage")),
+    authorId: v.optional(v.string()),
+    categoryIds: v.optional(v.array(v.id("categories"))),
+    communityIds: v.optional(v.array(v.id("communities"))),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("pending"),
+      v.literal("published")
+    ),
+    publishedAt: v.optional(v.number()),
+    seoTitle: v.optional(v.string()),
+    seoDescription: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const orgId = identity.orgId as string;
+    if (!orgId) throw new Error("No organization selected");
+
+    return await ctx.db.insert("blogPosts", {
+      ...args,
+      orgId,
+      isDeleted: false,
+    });
+  },
+});
+
+export const update = mutation({
+  args: {
+    id: v.id("blogPosts"),
+    title: v.optional(v.string()),
+    slug: v.optional(v.string()),
+    content: v.optional(v.string()),
+    excerpt: v.optional(v.string()),
+    featuredImageFileId: v.optional(v.id("_storage")),
+    authorId: v.optional(v.string()),
+    categoryIds: v.optional(v.array(v.id("categories"))),
+    communityIds: v.optional(v.array(v.id("communities"))),
+    status: v.optional(
+      v.union(
+        v.literal("draft"),
+        v.literal("pending"),
+        v.literal("published")
+      )
+    ),
+    publishedAt: v.optional(v.number()),
+    seoTitle: v.optional(v.string()),
+    seoDescription: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const orgId = identity.orgId as string;
+    if (!orgId) throw new Error("No organization selected");
+
+    const doc = await ctx.db.get(args.id);
+    if (!doc || doc.orgId !== orgId) throw new Error("Not found");
+
+    const { id, ...fields } = args;
+    const updates: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(fields)) {
+      if (value !== undefined) updates[key] = value;
+    }
+    await ctx.db.patch(id, updates);
+  },
+});
+
+export const softDelete = mutation({
+  args: { id: v.id("blogPosts") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const orgId = identity.orgId as string;
+    if (!orgId) throw new Error("No organization selected");
+
+    const doc = await ctx.db.get(args.id);
+    if (!doc || doc.orgId !== orgId) throw new Error("Not found");
+
+    await ctx.db.patch(args.id, { isDeleted: true });
+  },
+});
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});

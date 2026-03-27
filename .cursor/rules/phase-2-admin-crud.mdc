@@ -45,7 +45,7 @@ Build all admin management pages for calendars, advertisements, contacts, events
   - Purchases tab: list of purchases (populated in Phase 3)
   - Payments tab: payment history (populated in Phase 3)
 - Soft-delete: nullify email, set isDeleted, preserve history
-- Full-text search: build Convex search index on company, firstName, lastName, email
+- Full-text search via `searchText` field: create/update mutations must rebuild `searchText` as `[company, firstName, lastName, email].filter(Boolean).join(" ")`. Search index targets `searchText` (Convex only supports one searchField).
 
 ### 5. Events
 - `convex/events/queries.ts` + `mutations.ts`
@@ -66,32 +66,49 @@ Build all admin management pages for calendars, advertisements, contacts, events
 
 ## CRUD Pattern (follow for every entity)
 
-### Convex Query
+### Convex Query — orgId from auth, NEVER from args
 ```typescript
 export const list = query({
-  args: { orgId: v.string() },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const orgId = identity.orgId as string;
+    if (!orgId) throw new Error("No organization selected");
+
     return await ctx.db
       .query("tableName")
-      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
       .filter((q) => q.neq(q.field("isDeleted"), true))
       .collect();
   },
 });
 ```
 
-### Convex Mutation
+### Convex Mutation — orgId from auth, NEVER from args
 ```typescript
 export const create = mutation({
-  args: { orgId: v.string(), /* fields */ },
+  args: { /* fields only, no orgId */ },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("tableName", { ...args, isDeleted: false });
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const orgId = identity.orgId as string;
+    if (!orgId) throw new Error("No organization selected");
+
+    return await ctx.db.insert("tableName", { ...args, orgId, isDeleted: false });
   },
 });
 
 export const softDelete = mutation({
   args: { id: v.id("tableName") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const orgId = identity.orgId as string;
+
+    const doc = await ctx.db.get(args.id);
+    if (!doc || doc.orgId !== orgId) throw new Error("Not found");
+
     await ctx.db.patch(args.id, { isDeleted: true });
   },
 });

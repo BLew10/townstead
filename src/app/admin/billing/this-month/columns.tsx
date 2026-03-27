@@ -1,0 +1,118 @@
+"use client";
+
+import { type ColumnDef } from "@tanstack/react-table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { DataTableColumnHeader } from "@/components/shared/data-table-column-header";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import Link from "next/link";
+import { DollarSign } from "lucide-react";
+
+export interface ThisMonthRow {
+  _id: string;
+  purchaseId: string;
+  dueDate: number;
+  amount: number;
+  paidAmount: number;
+  status: "paid" | "partial" | "overdue" | "upcoming";
+  invoiceNumber: string | null;
+  contactName: string;
+  company: string;
+  contactId: string;
+  contactEmail: string | null;
+}
+
+const statusConfig = {
+  paid: { label: "Paid", className: "bg-green-100 text-green-800 hover:bg-green-100" },
+  partial: { label: "Partial", className: "bg-yellow-100 text-yellow-800 hover:bg-yellow-100" },
+  overdue: { label: "Overdue", variant: "destructive" as const },
+  upcoming: { label: "Upcoming", variant: "secondary" as const },
+} as const;
+
+export const thisMonthColumns: ColumnDef<ThisMonthRow>[] = [
+  {
+    accessorKey: "contactName",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Contact" />
+    ),
+    cell: ({ row }) => (
+      <div>
+        <p className="font-medium">
+          {row.original.company || row.original.contactName}
+        </p>
+        {row.original.company && (
+          <p className="text-xs text-muted-foreground">
+            {row.original.contactName}
+          </p>
+        )}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "invoiceNumber",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Invoice #" />
+    ),
+    cell: ({ row }) =>
+      row.original.invoiceNumber ? (
+        <Link
+          href={`/admin/purchases/${row.original.purchaseId}`}
+          className="text-primary hover:underline"
+        >
+          {row.original.invoiceNumber}
+        </Link>
+      ) : (
+        "—"
+      ),
+  },
+  {
+    accessorKey: "dueDate",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Due Date" />
+    ),
+    cell: ({ row }) => formatDate(row.original.dueDate),
+    sortingFn: "basic",
+  },
+  {
+    accessorKey: "amount",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Amount Due" />
+    ),
+    cell: ({ row }) => formatCurrency(row.original.amount),
+  },
+  {
+    id: "paidAmount",
+    accessorFn: (row) => row.paidAmount,
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Amount Paid" />
+    ),
+    cell: ({ row }) => formatCurrency(row.original.paidAmount),
+  },
+  {
+    accessorKey: "status",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Status" />
+    ),
+    cell: ({ row }) => {
+      const config = statusConfig[row.original.status];
+      if ("variant" in config) {
+        return <Badge variant={config.variant}>{config.label}</Badge>;
+      }
+      return <Badge className={config.className}>{config.label}</Badge>;
+    },
+  },
+  {
+    id: "actions",
+    cell: ({ row }) => {
+      if (row.original.status === "paid") return null;
+      return (
+        <Link href={`/admin/purchases/${row.original.purchaseId}`}>
+          <Button variant="outline" size="sm">
+            <DollarSign className="mr-1.5 h-3.5 w-3.5" />
+            Record Payment
+          </Button>
+        </Link>
+      );
+    },
+  },
+];

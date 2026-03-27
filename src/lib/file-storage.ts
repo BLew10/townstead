@@ -13,7 +13,7 @@
 //   storageId: Id<"_storage"> | undefined | null
 // ): string | undefined | null {
 //   const url = useQuery(
-//     api.files.getUrl,
+//     api.storage.getUrl,
 //     storageId ? { storageId } : "skip"
 //   );
 //   if (!storageId) return null;

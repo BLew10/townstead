@@ -1,0 +1,117 @@
+"use client";
+
+import { type ColumnDef } from "@tanstack/react-table";
+import type { Doc } from "../../../../convex/_generated/dataModel";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MoreHorizontal, DollarSign, Trash2 } from "lucide-react";
+import { useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
+import { useState } from "react";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { DataTableColumnHeader } from "@/components/shared/data-table-column-header";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+
+type Advertisement = Doc<"advertisements">;
+
+function ActionsCell({
+  row,
+  onPricing,
+}: {
+  row: { original: Advertisement };
+  onPricing: (ad: Advertisement) => void;
+}) {
+  const softDelete = useMutation(api.advertisements.mutations.softDelete);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleDelete = async () => {
+    setLoading(true);
+    try {
+      await softDelete({ id: row.original._id });
+      toast.success("Advertisement deleted");
+    } catch {
+      toast.error("Failed to delete advertisement");
+    } finally {
+      setLoading(false);
+      setConfirmOpen(false);
+    }
+  };
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => onPricing(row.original)}>
+            <DollarSign className="mr-2 h-4 w-4" />
+            Set Pricing
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => setConfirmOpen(true)}
+            className="text-destructive"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete Advertisement"
+        description={`Are you sure you want to delete "${row.original.name}"? This action cannot be undone.`}
+        onConfirm={handleDelete}
+        confirmLabel="Delete"
+        variant="destructive"
+        loading={loading}
+      />
+    </>
+  );
+}
+
+export function columns({
+  onPricing,
+}: {
+  onPricing: (ad: Advertisement) => void;
+}): ColumnDef<Advertisement>[] {
+  return [
+    {
+      accessorKey: "name",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Name" />
+      ),
+    },
+    {
+      accessorKey: "isDayType",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Type" />
+      ),
+      cell: ({ row }) => (
+        <Badge variant={row.original.isDayType ? "default" : "secondary"}>
+          {row.original.isDayType ? "Day Type" : "Non-Day Type"}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "slotsPerMonth",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Slots/Month" />
+      ),
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => <ActionsCell row={row} onPricing={onPricing} />,
+    },
+  ];
+}

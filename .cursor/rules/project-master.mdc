@@ -19,14 +19,16 @@ A ground-up rewrite of a calendar ad sales management platform. Three surfaces: 
 
 ## Critical Architecture Rules
 
-1. **Multi-tenancy:** Every Convex document has `orgId`. Every query/mutation filters by `orgId` from Clerk. No exceptions.
+1. **Multi-tenancy:** Every Convex document has `orgId`. Every query/mutation extracts `orgId` from `ctx.auth.getUserIdentity()` server-side — never from client args. No exceptions.
 2. **Derived state — NEVER store computed values:**
    - `amountPaid` = sum of payment allocations (computed)
    - `isPaid` = amountPaid >= net (computed)
    - `net` = totalSale - discounts + additionalSales - trade + lateFees - earlyDiscount (computed)
+   - `earlyDiscount` = upfront line-item subtraction, always applied when present (computed)
    - Late fees = computed from `dueDate < now && !fullyPaid && !lateFeeWaived` (computed)
-3. **Soft deletes:** Use `isDeleted: true` on content models. All queries filter `isDeleted !== true`.
+3. **Soft deletes:** Use `isDeleted: true` on content models. All queries filter `isDeleted !== true`. Purchases use soft-delete only — never cascade hard-delete.
 4. **Dates:** All dates stored as Unix timestamps (`v.number()`). No date strings.
+5. **Money:** All monetary values stored as **integer cents** (e.g., $150.00 = 15000). `formatCurrency(cents)` divides by 100 for display.
 
 ## Project Structure
 ```

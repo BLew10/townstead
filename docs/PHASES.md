@@ -20,7 +20,7 @@
 ### Key Deliverables
 - [ ] `npx create-next-app` with App Router, TypeScript, Tailwind v4, `src/`
 - [ ] `npx convex dev` with full schema defined (all Phase 1 tables)
-- [ ] Clerk provider + middleware protecting `/admin/*`
+- [ ] Clerk provider + proxy (Next.js 16) protecting `/admin/*`
 - [ ] Admin layout: sidebar nav, header with user button, main content area
 - [ ] shadcn/ui installed with: Button, Input, Card, Dialog, Table, Form, Select, Tabs, Badge, DropdownMenu, Sheet, Tooltip, Calendar, Popover, Command, Separator, Skeleton
 - [ ] Zod validation schemas mirroring Convex schema
@@ -53,7 +53,7 @@ Next.js 15 + Convex + Clerk project from scratch.
 - [ ] `/admin/contacts/[id]` — Contact detail: info, purchase history, payment history
 - [ ] `/admin/events` — Events list, create/edit with multi-day and recurring support
 - [ ] `/admin/layouts` — Layout list, layout builder with ad placement positioning
-- [ ] All Convex queries/mutations for CRUD operations with orgId tenant isolation
+- [ ] All Convex queries/mutations for CRUD operations with server-side orgId from `ctx.auth.getUserIdentity()` (never client args)
 - [ ] TanStack Table integration for all list views (sort, filter, paginate)
 - [ ] Full-text search on contacts (company, name, email)
 
@@ -78,7 +78,7 @@ is already in place — extend it with the admin CRUD pages.
 - Invoice number generation
 
 ### Key Deliverables
-- [ ] `/admin/purchases/new` — Multi-step purchase flow: contact → edition/year → calendars → ad types → slots → pricing → payment terms
+- [ ] `/admin/purchases/new` — Multi-step purchase flow: contact → year → calendar editions (multi-select) → ad types → slots → pricing → payment terms (with scheduledMonths selection)
 - [ ] Slot availability checking with real-time conflict detection
 - [ ] Day-type slot assignment with 35-slot cap validation
 - [ ] Payment terms form with all fields (discounts, additional sales, trade, early discount, late fee, due day, split equally, delivery method, messages)
@@ -87,8 +87,8 @@ is already in place — extend it with the admin CRUD pages.
 - [ ] Payment recording form (amount, date, method, check number)
 - [ ] Payment allocation engine: auto-allocate to earliest unpaid scheduled payments
 - [ ] Computed helpers: `getAmountPaid()`, `getIsPaid()`, `getNet()`, `getLateFees()`
-- [ ] Invoice number generation (atomic, `YY-NNNN` format)
-- [ ] Purchase edit/delete with cascading cleanup
+- [ ] Invoice number generation (atomic, `YY-NNNN` format, sequential per org per year)
+- [ ] Purchase edit with recalculation, soft-delete only (no cascade hard-delete)
 - [ ] Late fee waiver toggle on scheduled payments
 
 ### Cursor Command to Start Phase 3

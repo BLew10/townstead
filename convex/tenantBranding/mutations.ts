@@ -1,0 +1,59 @@
+import { mutation } from "../_generated/server";
+import { v } from "convex/values";
+
+export const upsert = mutation({
+  args: {
+    orgId: v.string(),
+    orgSlug: v.string(),
+    logo: v.optional(v.id("_storage")),
+    primaryColor: v.optional(v.string()),
+    siteName: v.optional(v.string()),
+    tagline: v.optional(v.string()),
+    socialLinks: v.optional(
+      v.object({
+        facebook: v.optional(v.string()),
+        instagram: v.optional(v.string()),
+        twitter: v.optional(v.string()),
+        youtube: v.optional(v.string()),
+      })
+    ),
+    footerText: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("tenantBranding")
+      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .unique();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        orgSlug: args.orgSlug,
+        logo: args.logo,
+        primaryColor: args.primaryColor,
+        siteName: args.siteName,
+        tagline: args.tagline,
+        socialLinks: args.socialLinks,
+        footerText: args.footerText,
+      });
+      return existing._id;
+    }
+
+    return await ctx.db.insert("tenantBranding", {
+      orgId: args.orgId,
+      orgSlug: args.orgSlug,
+      logo: args.logo,
+      primaryColor: args.primaryColor,
+      siteName: args.siteName,
+      tagline: args.tagline,
+      socialLinks: args.socialLinks,
+      footerText: args.footerText,
+    });
+  },
+});
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});

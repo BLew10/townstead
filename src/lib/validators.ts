@@ -8,6 +8,7 @@ export const calendarEditionSchema = z.object({
 export const advertisementSchema = z.object({
   name: z.string().min(1, "Name is required"),
   isDayType: z.boolean(),
+  slotsPerMonth: z.number().int().min(0, "Must be 0 or more"),
 });
 
 export const monthlyPricesSchema = z.object({
@@ -34,27 +35,36 @@ export const adPricingSchema = z.object({
 
 export const addressSchema = z.object({
   street: z.string().optional(),
+  street2: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
   zip: z.string().optional(),
+  country: z.string().optional(),
 });
 
 export const contactSchema = z.object({
-  company: z.string().optional(),
+  company: z.string().min(1, "Company is required"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
+  salutation: z.string().optional(),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
   phone: z.string().optional(),
+  cellPhone: z.string().optional(),
+  fax: z.string().optional(),
+  altPhone: z.string().optional(),
+  altContactFirstName: z.string().optional(),
+  altContactLastName: z.string().optional(),
   address: addressSchema.optional(),
   website: z.string().url("Invalid URL").optional().or(z.literal("")),
   category: z.string().optional(),
   notes: z.string().optional(),
+  customerSince: z.number().optional(),
   addressBookIds: z.array(z.string()).optional(),
 });
 
 export const purchaseSchema = z.object({
   contactId: z.string().min(1, "Contact is required"),
-  calendarEditionId: z.string().min(1, "Calendar edition is required"),
+  calendarEditionIds: z.array(z.string()).min(1, "At least one calendar edition is required"),
   year: z.number().int().min(2000).max(2100),
 });
 
@@ -75,6 +85,19 @@ export const paymentTermsSchema = z.object({
   lateFeeAmount: z.number().min(0).optional(),
   dueDayOfMonth: z.number().int().min(1).max(31).optional(),
   splitEqually: z.boolean().optional(),
+  scheduleStartMonth: z.number().int().min(1).max(12).optional(),
+  scheduleStartYear: z.number().int().min(2000).max(2100).optional(),
+  scheduleEndMonth: z.number().int().min(1).max(12).optional(),
+  scheduleEndYear: z.number().int().min(2000).max(2100).optional(),
+  customSchedule: z
+    .array(
+      z.object({
+        month: z.number().int().min(1).max(12),
+        year: z.number().int().min(2000).max(2100),
+        amount: z.number().min(0),
+      })
+    )
+    .optional(),
   deliveryMethod: z.string().optional(),
   invoiceMessage: z.string().optional(),
   statementMessage: z.string().optional(),
@@ -104,6 +127,18 @@ export const layoutSchema = z.object({
   name: z.string().min(1, "Name is required"),
 });
 
+export const addressBookSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  displayLevel: z.string().optional(),
+});
+
+export const categorySchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  type: z.enum(["event", "blog", "video", "business"] as const, {
+    message: "Type is required",
+  }),
+});
+
 export const adPlacementSchema = z.object({
   layoutId: z.string().min(1, "Layout is required"),
   advertisementId: z.string().min(1, "Advertisement is required"),
@@ -123,4 +158,6 @@ export type PaymentTermsFormValues = z.infer<typeof paymentTermsSchema>;
 export type PaymentFormValues = z.infer<typeof paymentSchema>;
 export type EventFormValues = z.infer<typeof eventSchema>;
 export type LayoutFormValues = z.infer<typeof layoutSchema>;
+export type AddressBookFormValues = z.infer<typeof addressBookSchema>;
+export type CategoryFormValues = z.infer<typeof categorySchema>;
 export type AdPlacementFormValues = z.infer<typeof adPlacementSchema>;

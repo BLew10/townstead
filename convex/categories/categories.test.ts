@@ -1,0 +1,108 @@
+import { convexTest } from "convex-test";
+import { describe, it, expect } from "vitest";
+import { api } from "../_generated/api";
+import schema from "../schema";
+import { modules } from "../test.setup";
+
+describe("categories", () => {
+  it("tenant isolation — org_a cannot see org_b categories", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("categories", {
+        name: "Sports",
+        type: "event",
+        orgId: "org_b",
+        isDeleted: false,
+      });
+    });
+
+    const results = await t.query(api.categories.queries.list, {
+      orgId: "org_a",
+    });
+    expect(results).toHaveLength(0);
+  });
+
+  it("soft-deleted categories are excluded from list", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("categories", {
+        name: "Active",
+        type: "event",
+        orgId: "org_1",
+        isDeleted: false,
+      });
+      await ctx.db.insert("categories", {
+        name: "Deleted",
+        type: "event",
+        orgId: "org_1",
+        isDeleted: true,
+      });
+    });
+
+    const results = await t.query(api.categories.queries.list, {
+      orgId: "org_1",
+    });
+    expect(results).toHaveLength(1);
+    expect(results[0].name).toBe("Active");
+  });
+
+  it("CRUD — create, read, update, softDelete", async () => {
+    const t = convexTest(schema, modules);
+
+    const id = await t.mutation(api.categories.mutations.create, {
+      orgId: "org_1",
+      name: "Music",
+      type: "event",
+    });
+    expect(id).toBeTruthy();
+
+    const fetched = await t.query(api.categories.queries.getById, { id });
+    expect(fetched).not.toBeNull();
+    expect(fetched!.name).toBe("Music");
+    expect(fetched!.type).toBe("event");
+
+    await t.mutation(api.categories.mutations.update, {
+      id,
+      name: "Live Music",
+    });
+    const updated = await t.query(api.categories.queries.getById, { id });
+    expect(updated!.name).toBe("Live Music");
+
+    await t.mutation(api.categories.mutations.softDelete, { id });
+    const afterDelete = await t.query(api.categories.queries.getById, { id });
+    expect(afterDelete!.isDeleted).toBe(true);
+  });
+
+  it("list filters by type when type argument is provided", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("categories", {
+        name: "Tech Blog",
+        type: "blog",
+        orgId: "org_1",
+        isDeleted: false,
+      });
+      await ctx.db.insert("categories", {
+        name: "Community Event",
+        type: "event",
+        orgId: "org_1",
+        isDeleted: false,
+      });
+    });
+
+    const blogOnly = await t.query(api.categories.queries.list, {
+      orgId: "org_1",
+      type: "blog",
+    });
+    expect(blogOnly).toHaveLength(1);
+    expect(blogOnly[0].name).toBe("Tech Blog");
+
+    const all = await t.query(api.categories.queries.list, {
+      orgId: "org_1",
+    });
+    expect(all).toHaveLength(2);
+  });
+});

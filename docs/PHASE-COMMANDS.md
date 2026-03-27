@@ -19,7 +19,7 @@ What to build:
 2. Install ALL dependencies (Convex, Clerk, shadcn/ui, React Hook Form, Zod, TanStack Table, FullCalendar, pdf-lib, Resend, React Email, Zustand, date-fns, lucide-react)
 3. Initialize Convex and define the FULL schema in convex/schema.ts — all tables from the spec with all indexes. Every table gets orgId for multi-tenancy. Every content table gets isDeleted.
 4. Set up Clerk authentication with ConvexProviderWithClerk integration in root layout
-5. Create middleware.ts protecting /admin/* and /portal/* routes
+5. Create proxy.ts (Next.js 16 uses proxy instead of middleware) protecting /admin/* and /portal/* routes
 6. Build admin layout shell: sidebar navigation (Calendars, Contacts, Advertisements, Purchases, Billing, Events, Layouts, Dashboard), header with Clerk UserButton, main content area
 7. Install shadcn/ui components: Button, Input, Card, Dialog, Table, Form, Select, Tabs, Badge, DropdownMenu, Sheet, Tooltip, Calendar, Popover, Command, Separator, Skeleton, Textarea, Label, Switch, Checkbox, RadioGroup, Avatar, ScrollArea
 8. Create shared utilities: src/lib/types.ts, src/lib/validators.ts (Zod schemas), src/lib/utils.ts (cn, date/currency formatters), src/lib/file-storage.ts
@@ -28,7 +28,8 @@ What to build:
 
 Critical rules:
 - All dates stored as Unix timestamps (v.number()), never strings
-- Every Convex document has orgId for tenant isolation
+- All monetary values stored as integer cents (e.g., $150.00 = 15000)
+- Every Convex document has orgId — extracted server-side from ctx.auth.getUserIdentity(), NEVER passed as a client argument
 - Derived billing state (amountPaid, isPaid, net) is NEVER stored — computed at query time
 - Soft deletes use isDeleted boolean, all queries filter isDeleted !== true
 ```
@@ -59,8 +60,9 @@ What to build (in dependency order):
 6. Layouts & Ad Placements — convex/layouts/ + convex/adPlacements/ + convex/calendarEditionLayouts/ queries + mutations, /admin/layouts page with list, /admin/layouts/[id] layout builder with visual ad placement positioning (x, y, width, height, position), layout-to-edition+year assignment
 
 Every entity follows the same pattern:
+- Convex queries extract orgId server-side from ctx.auth.getUserIdentity() — never accept orgId as a client argument
 - Convex queries filter by orgId + isDeleted !== true
-- Convex mutations include orgId from Clerk
+- Contacts: create/update mutations must rebuild searchText as [company, firstName, lastName, email].filter(Boolean).join(" ")
 - Page has list view with TanStack Table (sort, filter, paginate)
 - Create/edit via Dialog or Sheet with React Hook Form + Zod validation
 - Soft-delete with confirmation dialog
@@ -78,11 +80,15 @@ Reference these files for full context:
 - @.cursor/rules/phase-3-billing.mdc — NON-NEGOTIABLE billing rules, computation helpers, allocation engine, and build order
 
 CRITICAL RULES (violating any of these creates the exact bugs we're rebuilding to fix):
+- All monetary values stored as integer cents (e.g., $150.00 = 15000). formatCurrency(cents) divides by 100 for display.
+- orgId extracted server-side from ctx.auth.getUserIdentity() — NEVER passed as a client argument.
 - amountPaid = COMPUTED by summing payment allocations. NEVER stored.
 - isPaid = COMPUTED by comparing amountPaid to net. NEVER stored.
 - net = COMPUTED from totalSale - discounts + additionalSales - trade + lateFees - earlyDiscount. NEVER stored.
+- earlyDiscount = upfront line-item subtraction, always applied when present (NOT conditional on payment timing).
 - Late fees = COMPUTED from dueDate < now AND not fully paid AND not waived. NO daily mutation. NO cron job. NO stored isLate field.
 - Payment allocation = auto-allocate to EARLIEST unpaid scheduled payment first, in order.
+- Purchase deletion = soft-delete only (isDeleted: true). NEVER cascade hard-delete payments/allocations.
 
 What to build:
 
@@ -90,21 +96,21 @@ What to build:
 
 2. Purchase Creation Flow (/admin/purchases/new) — multi-step form:
    Step 1: Select Contact (searchable combobox)
-   Step 2: Select Calendar Edition + Year
-   Step 3: Select Ad Types + quantities per calendar
+   Step 2: Select Year + Calendar Editions (multi-select — one purchase can span multiple editions, stored as calendarEditionIds array)
+   Step 3: Select Ad Types + quantities per calendar edition
    Step 4: Assign Slots — day-type: month + slot number with 35-cap validation and real-time availability grid; non-day-type: quantity only
-   Step 5: Payment Terms — totalSale, discount1, discount2, additionalSale1, additionalSale2, trade, earlyDiscountType/amount, lateFeeType/amount, dueDayOfMonth, splitEqually, deliveryMethod, invoiceMessage, statementMessage
+   Step 5: Payment Terms — totalSale, discount1, discount2, additionalSale1, additionalSale2, trade, earlyDiscountType/amount, lateFeeType/amount, dueDayOfMonth, splitEqually, scheduledMonths (default all 12, user can deselect), deliveryMethod, invoiceMessage, statementMessage
    Step 6: Review & Confirm — summary with payment schedule preview
 
 3. Slot Availability System — Convex query returning which slots (1-35) are taken per month, with real-time updates. Validate inside the mutation too, not just UI-side.
 
-4. Purchase Creation Mutation — atomic: creates purchase + paymentTerms + adPurchases + adSlots + auto-generated scheduledPayments + invoice number (YY-NNNN format, sequential per edition+year)
+4. Purchase Creation Mutation — atomic: creates purchase (with calendarEditionIds array) + paymentTerms (with scheduledMonths) + adPurchases + adSlots + auto-generated scheduledPayments (divided equally among selected months) + invoice number (YY-NNNN format, sequential per org per year)
 
 5. Purchase Detail Page (/admin/purchases/[id]) — purchase info, ad placements table, payment terms display, scheduled payments table (with COMPUTED amountPaid, isLate, status), payment history table, actions (record payment, edit, delete)
 
 6. Payment Recording — form (amount, date, method select, conditional check number), on submit: create payment + run allocation engine + create paymentAllocation records, UI updates reactively via Convex
 
-7. Purchase Edit & Delete — edit reopens form with current values and recalculates scheduled payments, delete cascades: adPurchases → adSlots → scheduledPayments → payments → paymentAllocations
+7. Purchase Edit & Delete — edit reopens form with current values and recalculates scheduled payments, delete is soft-delete only (isDeleted: true) — payment records, allocations, and scheduled payments are preserved for audit
 
 8. Late Fee Waiver — toggle on individual scheduled payments, excluded from net computation when waived
 ```

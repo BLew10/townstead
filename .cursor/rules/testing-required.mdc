@@ -1,0 +1,45 @@
+---
+description: Mandates tests-first for all new features, queries, components, and bug fixes
+globs: 
+alwaysApply: true
+---
+
+# Testing Required — Tests-First Mandate
+
+**Before writing any new feature, Convex query/mutation, custom component, or bug fix**, you MUST write or update a colocated unit test file first.
+
+## When This Rule Applies
+
+- Adding a new Convex query or mutation
+- Creating a new custom React component (not shadcn/ui)
+- Adding a new lib/helper function
+- Fixing a bug in any of the above
+
+## Minimum Test Coverage Per Change
+
+### New Convex query/mutation
+1. **Tenant isolation** — seed data for org_a, query as org_b, expect empty
+2. **Soft-delete filtering** — seed active + deleted, list returns only active (skip if table has no `isDeleted`)
+3. **Happy path** — CRUD correctness
+4. **Error path** — invalid input, missing records
+
+### New custom component
+1. **Renders without crashing** — basic render with minimal required props
+2. **Displays props** — key text/labels appear in the DOM
+3. **Handles interactions** — click/submit/toggle callbacks fire (if interactive)
+
+### New lib/helper function
+1. **All branch paths** — every if/else/switch
+2. **Edge cases** — zero, empty array, boundary values
+3. **Error paths** — invalid input handling
+
+### Bug fix
+1. **Regression test** — write a test that reproduces the bug (fails before fix, passes after)
+
+## Test Patterns
+
+Follow the patterns defined in the unit-testing skill (`.cursor/skills/unit-testing/SKILL.md`).
+
+## Completion Gate
+
+Tests MUST pass (`npm run test:once`) before the implementation is considered complete. Do not mark work as done until all tests are green.

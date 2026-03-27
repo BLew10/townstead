@@ -1,6 +1,6 @@
 ---
 description: Phase 3 Billing Engine — the most critical phase. Derived state rules are NON-NEGOTIABLE.
-globs: 
+globs:
 alwaysApply: false
 ---
 
@@ -8,38 +8,57 @@ alwaysApply: false
 
 ## CRITICAL RULES — READ BEFORE WRITING ANY CODE
 
+### Rule 0: Money is in integer cents
+
+All monetary values are stored as **integer cents** (e.g., $150.00 = 15000). This avoids floating-point rounding errors. Use `formatCurrency(cents)` (divides by 100) for display only.
+
 ### Rule 1: NEVER store derived state
+
 These values are ALWAYS computed, NEVER stored as fields:
+
 - `amountPaid` — sum of paymentAllocation amounts for a purchase
 - `isPaid` — amountPaid >= net
 - `net` — totalSale - discount1 - discount2 + additionalSale1 + additionalSale2 - trade + lateFees - earlyDiscount
+- `earlyDiscount` — an **upfront line-item subtraction** from the net, not conditional on payment timing. Always applied when present, similar to a regular discount.
 - `lateFees` — count of late scheduled payments × late fee amount (from payment terms)
 - `isLate` (on a scheduled payment) — dueDate < Date.now() AND not fully paid AND not waived
 
 ### Rule 2: Late fees are COMPUTED, never mutated
+
 A scheduled payment is "late" if:
+
 ```typescript
-function isScheduledPaymentLate(sp: ScheduledPayment, allocations: PaymentAllocation[]): boolean {
+function isScheduledPaymentLate(
+  sp: ScheduledPayment,
+  allocations: PaymentAllocation[]
+): boolean {
   if (sp.lateFeeWaived) return false;
   const paid = allocations
-    .filter(a => a.scheduledPaymentId === sp._id)
+    .filter((a) => a.scheduledPaymentId === sp._id)
     .reduce((sum, a) => sum + a.amount, 0);
   return sp.dueDate < Date.now() && paid < sp.amount;
 }
 ```
+
 No daily mutation. No cron. No stored `isLate` field.
 
 ### Rule 3: Payment allocation is ordered
+
 When recording a payment, allocate to the EARLIEST unpaid scheduled payment first:
+
 ```typescript
-function allocatePayment(amount: number, scheduledPayments: ScheduledPayment[], existingAllocations: PaymentAllocation[]) {
+function allocatePayment(
+  amount: number,
+  scheduledPayments: ScheduledPayment[],
+  existingAllocations: PaymentAllocation[]
+) {
   const sorted = scheduledPayments.sort((a, b) => a.dueDate - b.dueDate);
   let remaining = amount;
   const newAllocations = [];
   for (const sp of sorted) {
     if (remaining <= 0) break;
     const alreadyPaid = existingAllocations
-      .filter(a => a.scheduledPaymentId === sp._id)
+      .filter((a) => a.scheduledPaymentId === sp._id)
       .reduce((sum, a) => sum + a.amount, 0);
     const owed = sp.amount - alreadyPaid;
     if (owed <= 0) continue;
@@ -54,17 +73,21 @@ function allocatePayment(amount: number, scheduledPayments: ScheduledPayment[], 
 ## Build Order
 
 ### 1. Billing Helper Functions (`convex/billing/helpers.ts`)
+
 Build and test ALL computation helpers FIRST:
+
 - `computeNet(terms, scheduledPayments, allocations)` → number
 - `computeAmountPaid(purchaseId, allocations)` → number
 - `computeIsPaid(net, amountPaid)` → boolean
 - `computeLateFees(terms, scheduledPayments, allocations)` → number
 - `isScheduledPaymentLate(sp, allocations)` → boolean
 - `allocatePayment(amount, scheduledPayments, allocations)` → AllocationPlan[]
-- `generateInvoiceNumber(ctx, calendarEditionId, year)` → string (atomic)
+- `generateInvoiceNumber(ctx, orgId, year)` → string (atomic, per-org-per-year scope)
 
 ### 2. Purchase Creation Flow
+
 Multi-step form at `/admin/purchases/new`:
+
 1. **Select Contact** — searchable combobox from contacts list
 2. **Select Edition & Year** — calendar edition dropdown + year picker
 3. **Select Calendars** — checkbox list of calendar editions (can select multiple)
@@ -74,11 +97,13 @@ Multi-step form at `/admin/purchases/new`:
 7. **Review & Confirm** — summary of all selections, total, payment schedule preview
 
 Convex mutations:
+
 - `purchases.create` — creates purchase + paymentTerms + adPurchases + adSlots + scheduledPayments in one transaction
 - Slot availability check inside the mutation (not just UI-side)
 - Invoice number generated atomically
 
 ### 3. Slot Availability System
+
 ```typescript
 export const getSlotAvailability = query({
   args: { calendarEditionId, year, month },
@@ -93,6 +118,7 @@ export const getSlotAvailability = query({
 ```
 
 ### 4. Purchase Detail Page (`/admin/purchases/[id]`)
+
 - Purchase info: contact, edition, year, invoice number
 - Ad placements: table of all ad types, quantities, assigned slots
 - Payment terms: all term fields displayed
@@ -101,19 +127,25 @@ export const getSlotAvailability = query({
 - Actions: record payment, edit purchase, delete purchase
 
 ### 5. Payment Recording
+
 - Form: amount, date, method (select: check/credit card/cash), check number (conditional)
 - On submit: create payment → run allocation engine → create paymentAllocation records
 - UI updates reactively (Convex subscription)
 
 ### 6. Purchase Edit & Delete
+
 - Edit: re-open purchase form with current values, recalculate scheduled payments
-- Delete: cascade delete adPurchases → adSlots → scheduledPayments → payments → paymentAllocations
+- Delete: **soft-delete only** (`isDeleted: true`). Payment records, allocations, and scheduled payments are preserved for audit purposes. Soft-deleted purchases are excluded from all queries and reports.
 
 ## Scheduled Payment Auto-Generation
+
 When payment terms are saved, generate scheduled payments:
-- If `splitEqually`: divide net by number of months, create one per month with `dueDayOfMonth`
+
+- If `splitEqually`: divide net equally among the selected months, create one per month with `dueDayOfMonth`
+- `paymentTerms.scheduledMonths` stores the selected month numbers (1-12). Defaults to all 12 months (Jan-Dec) when not specified. The user can deselect months in the form.
 - Otherwise: flexible configuration from the form
 
 ## Invoice Number Format
-`YY-NNNN` where YY = last 2 digits of year, NNNN = sequential per edition+year.
-Generated atomically in a Convex mutation to prevent duplicates.
+
+`YY-NNNN` where YY = last 2 digits of year, NNNN = sequential **per org per year**.
+Generated atomically in a Convex mutation using the `by_orgId_and_invoiceNumber` index to prevent duplicates.

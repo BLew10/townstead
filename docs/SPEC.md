@@ -34,9 +34,13 @@ Core domain logic: calendar editions, ad types (day/non-day), ad slot purchasing
 - Single Next.js App Router codebase: `/` (public), `/admin` (operators), `/portal` (clients), `/auth` (shared)
 - Convex as backend — reactive queries, server functions, file storage, no separate API layer
 - Clerk for auth with organization-based multi-tenancy (each operator = one Clerk org)
+- **Multi-tenancy enforcement:** Every Convex query and mutation extracts `orgId` from `ctx.auth.getUserIdentity()` server-side. The client never passes `orgId` as an argument. This prevents cross-tenant data access.
 - Derived state (`amountPaid`, `isPaid`, `net` with late fees) computed at query time, never stored
+- **Money:** All monetary values are stored as **integer cents** (e.g., $150.00 = 15000). This avoids floating-point rounding errors in billing computations. `formatCurrency(cents)` divides by 100 for display.
+- **Timestamps:** Convex provides `_creationTime` automatically on every document. For tables requiring modification tracking (`purchases`, `contacts`, `paymentTerms`), an explicit `updatedAt` field (Unix timestamp) is maintained by mutations.
 - Cloudflare R2 for media storage via Convex file storage or direct R2 integration
 - Vercel for hosting (free tier)
+- **Future:** A lightweight `auditLog` table will be considered for tracking payment recordings, late fee waivers, and purchase modifications. Not required for initial launch.
 
 ---
 
@@ -78,23 +82,27 @@ Core domain logic: calendar editions, ad types (day/non-day), ad slot purchasing
 ### 1.5 Purchases (Ad Sales)
 
 - Purchase flow: select contact → edition year → calendars → ad types → assign slots → pricing → payment terms
+- A single purchase can span multiple calendar editions. `purchases.calendarEditionIds` is an array. Individual ad slots track which edition they belong to via `adSlots.calendarEditionId`.
 - Real-time slot availability with conflict detection (Convex reactive queries)
 - Day-type slot assignment: month + slot number + optional date, validated against 35-slot cap
 - Non-day-type: quantity-based, no slot assignment
 - Purchase overview showing all placements
-- Edit/delete with cascading cleanup
+- Purchase deletion is **soft-delete only** (`isDeleted: true`). Payment records, allocations, and scheduled payments are preserved for audit purposes. Soft-deleted purchases are excluded from all queries and reports but remain in the database.
 
 ### 1.6 Payment & Billing (Rebuilt from Scratch)
 
 **Payment Terms** (per purchase):
 - Total sale, discounts (2 slots), additional sales (2 slots), trade
-- Early payment discount (flat or %), late fee (flat or %)
+- Early payment discount (flat or %): an **upfront line-item subtraction** from the net, not conditional on payment timing. Always applied when present, similar to a discount.
+- Late fee (flat or %): computed at query time when a scheduled payment is past due and not waived
+- `net = totalSale - discount1 - discount2 + additionalSale1 + additionalSale2 - trade + lateFees - earlyDiscount`
 - Payment due day of month, split equally option
 - Delivery method, invoice/statement messages
 
 **Scheduled Payments:**
 - Auto-generated from payment terms
 - Each has: due date, amount, month, year
+- When generating scheduled payments, all 12 months (Jan-Dec) are selected by default. The user can deselect months in the form. The net is divided equally among the selected months. `paymentTerms.scheduledMonths` stores the selected month numbers (1-12).
 
 **Payments:**
 - Manual recording (check, credit card, cash)
@@ -111,7 +119,7 @@ Core domain logic: calendar editions, ad types (day/non-day), ad slot purchasing
 - `net` = COMPUTED (totalSale + adjustments + applicable late fees)
 - Late fees computed at query time (no daily mutation, no race conditions)
 - Late fee waiver = boolean on scheduled payment
-- Invoice numbers: sequential per edition year, format `YY-NNNN`, atomic Convex mutation
+- Invoice numbers: sequential **per org per year**, format `YY-NNNN` (YY = last 2 digits of year, NNNN = next sequential number for that org in that year), generated atomically in a Convex mutation
 - Prepaid payments: regular payment with `prepaid` flag
 
 ### 1.7 Billing Views
@@ -243,10 +251,10 @@ All tables include `orgId` (Clerk organization ID) for tenant isolation.
 | `calendarEditions` | name, code, orgId, isDeleted |
 | `advertisements` | name, isDayType, orgId, isDeleted |
 | `adPricing` | advertisementId, calendarEditionId, year, monthlyPrices (object with jan-dec) |
-| `contacts` | company, firstName, lastName, email, phone, address (embedded), addressBookIds[], orgId, isDeleted |
+| `contacts` | company, firstName, lastName, email, phone, address (embedded), addressBookIds[], searchText, orgId, isDeleted |
 | `addressBooks` | name, orgId |
-| `purchases` | contactId, calendarEditionId, year, invoiceNumber, orgId, isDeleted |
-| `paymentTerms` | purchaseId, totalSale, discount1/2, additionalSale1/2, trade, earlyDiscountType/amount, lateFeeType/amount, dueDayOfMonth, splitEqually, deliveryMethod, invoiceMessage, statementMessage |
+| `purchases` | contactId, calendarEditionIds[], year, invoiceNumber, orgId, isDeleted |
+| `paymentTerms` | purchaseId, totalSale, discount1/2, additionalSale1/2, trade, earlyDiscountType/amount, lateFeeType/amount, dueDayOfMonth, splitEqually, scheduledMonths[], deliveryMethod, invoiceMessage, statementMessage |
 | `adPurchases` | purchaseId, advertisementId, quantity |
 | `adSlots` | adPurchaseId, month, slotNumber, date |
 | `scheduledPayments` | purchaseId, dueDate, amount, month, year, lateFeeWaived |
@@ -272,7 +280,7 @@ All tables include `orgId` (Clerk organization ID) for tenant isolation.
 
 Every query filter path gets an explicit Convex index:
 - `by_orgId` on all tables
-- `by_orgId_and_calendarEditionId` on purchases, adPricing, events
+- `by_orgId_and_calendarEditionId` on adPricing
 - `by_purchaseId` on paymentTerms, adPurchases, scheduledPayments, payments
 - `by_paymentId` on paymentAllocations
 - `by_email` on contacts

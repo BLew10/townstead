@@ -14,6 +14,7 @@ export default defineSchema({
   advertisements: defineTable({
     name: v.string(),
     isDayType: v.boolean(),
+    slotsPerMonth: v.number(),
     orgId: v.string(),
     isDeleted: v.optional(v.boolean()),
   }).index("by_orgId", ["orgId"]),
@@ -48,49 +49,68 @@ export default defineSchema({
     ]),
 
   contacts: defineTable({
-    company: v.optional(v.string()),
+    company: v.string(),
     firstName: v.string(),
     lastName: v.string(),
+    salutation: v.optional(v.string()),
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
+    cellPhone: v.optional(v.string()),
+    fax: v.optional(v.string()),
+    altPhone: v.optional(v.string()),
+    altContactFirstName: v.optional(v.string()),
+    altContactLastName: v.optional(v.string()),
     address: v.optional(
       v.object({
         street: v.optional(v.string()),
+        street2: v.optional(v.string()),
         city: v.optional(v.string()),
         state: v.optional(v.string()),
         zip: v.optional(v.string()),
+        country: v.optional(v.string()),
       })
     ),
     website: v.optional(v.string()),
     category: v.optional(v.string()),
     notes: v.optional(v.string()),
+    customerSince: v.optional(v.number()),
     addressBookIds: v.optional(v.array(v.id("addressBooks"))),
+    searchText: v.optional(v.string()),
+    slug: v.optional(v.string()),
+    description: v.optional(v.string()),
+    logoFileId: v.optional(v.id("_storage")),
+    featured: v.optional(v.boolean()),
+    lat: v.optional(v.number()),
+    lng: v.optional(v.number()),
     orgId: v.string(),
     isDeleted: v.optional(v.boolean()),
+    updatedAt: v.optional(v.number()),
   })
     .index("by_orgId", ["orgId"])
     .index("by_orgId_and_email", ["orgId", "email"])
+    .index("by_orgId_and_slug", ["orgId", "slug"])
     .searchIndex("search_contacts", {
-      searchField: "company",
+      searchField: "searchText",
       filterFields: ["orgId", "isDeleted"],
     }),
 
   addressBooks: defineTable({
     name: v.string(),
+    displayLevel: v.optional(v.string()),
     orgId: v.string(),
   }).index("by_orgId", ["orgId"]),
 
   purchases: defineTable({
     contactId: v.id("contacts"),
-    calendarEditionId: v.id("calendarEditions"),
+    calendarEditionIds: v.array(v.id("calendarEditions")),
     year: v.number(),
     invoiceNumber: v.optional(v.string()),
     orgId: v.string(),
     isDeleted: v.optional(v.boolean()),
+    updatedAt: v.optional(v.number()),
   })
     .index("by_orgId", ["orgId"])
     .index("by_orgId_and_year", ["orgId", "year"])
-    .index("by_orgId_and_calendarEditionId", ["orgId", "calendarEditionId"])
     .index("by_contactId", ["contactId"])
     .index("by_orgId_and_invoiceNumber", ["orgId", "invoiceNumber"]),
 
@@ -112,10 +132,24 @@ export default defineSchema({
     lateFeeAmount: v.optional(v.number()),
     dueDayOfMonth: v.optional(v.number()),
     splitEqually: v.optional(v.boolean()),
+    scheduleStartMonth: v.optional(v.number()),
+    scheduleStartYear: v.optional(v.number()),
+    scheduleEndMonth: v.optional(v.number()),
+    scheduleEndYear: v.optional(v.number()),
+    customSchedule: v.optional(
+      v.array(
+        v.object({
+          month: v.number(),
+          year: v.number(),
+          amount: v.number(),
+        })
+      )
+    ),
     deliveryMethod: v.optional(v.string()),
     invoiceMessage: v.optional(v.string()),
     statementMessage: v.optional(v.string()),
     orgId: v.string(),
+    updatedAt: v.optional(v.number()),
   })
     .index("by_orgId", ["orgId"])
     .index("by_purchaseId", ["purchaseId"]),
@@ -123,22 +157,39 @@ export default defineSchema({
   adPurchases: defineTable({
     purchaseId: v.id("purchases"),
     advertisementId: v.id("advertisements"),
+    calendarEditionId: v.id("calendarEditions"),
     quantity: v.number(),
+    charge: v.optional(v.number()),
     orgId: v.string(),
   })
     .index("by_orgId", ["orgId"])
     .index("by_purchaseId", ["purchaseId"])
-    .index("by_advertisementId", ["advertisementId"]),
+    .index("by_advertisementId", ["advertisementId"])
+    .index("by_purchaseId_and_calendarEditionId", ["purchaseId", "calendarEditionId"]),
 
   adSlots: defineTable({
     adPurchaseId: v.id("adPurchases"),
+    advertisementId: v.id("advertisements"),
+    calendarEditionId: v.id("calendarEditions"),
+    year: v.number(),
     month: v.number(),
     slotNumber: v.optional(v.number()),
     date: v.optional(v.number()),
     orgId: v.string(),
   })
     .index("by_orgId", ["orgId"])
-    .index("by_adPurchaseId", ["adPurchaseId"]),
+    .index("by_adPurchaseId", ["adPurchaseId"])
+    .index("by_calendarEdition_year_month", [
+      "calendarEditionId",
+      "year",
+      "month",
+    ])
+    .index("by_calendarEdition_year_month_advertisement", [
+      "calendarEditionId",
+      "year",
+      "month",
+      "advertisementId",
+    ]),
 
   scheduledPayments: defineTable({
     purchaseId: v.id("purchases"),
@@ -205,6 +256,18 @@ export default defineSchema({
     .index("by_orgId", ["orgId"])
     .index("by_calendarEditionId_and_year", ["calendarEditionId", "year"]),
 
+  communities: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    description: v.optional(v.string()),
+    imageFileId: v.optional(v.id("_storage")),
+    calendarEditionIds: v.array(v.id("calendarEditions")),
+    orgId: v.string(),
+    isDeleted: v.optional(v.boolean()),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_orgId_and_slug", ["orgId", "slug"]),
+
   events: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
@@ -214,9 +277,180 @@ export default defineSchema({
     endTime: v.optional(v.string()),
     isYearly: v.optional(v.boolean()),
     calendarEditionIds: v.optional(v.array(v.id("calendarEditions"))),
+    communityIds: v.optional(v.array(v.id("communities"))),
+    location: v.optional(v.string()),
+    contactId: v.optional(v.id("contacts")),
+    categoryId: v.optional(v.id("categories")),
+    imageFileId: v.optional(v.id("_storage")),
+    isApproved: v.optional(v.boolean()),
+    submittedBy: v.optional(v.string()),
     orgId: v.string(),
     isDeleted: v.optional(v.boolean()),
   })
     .index("by_orgId", ["orgId"])
     .index("by_orgId_and_date", ["orgId", "date"]),
+
+  tenantBranding: defineTable({
+    orgId: v.string(),
+    orgSlug: v.string(),
+    logo: v.optional(v.id("_storage")),
+    primaryColor: v.optional(v.string()),
+    siteName: v.optional(v.string()),
+    tagline: v.optional(v.string()),
+    socialLinks: v.optional(
+      v.object({
+        facebook: v.optional(v.string()),
+        instagram: v.optional(v.string()),
+        twitter: v.optional(v.string()),
+        youtube: v.optional(v.string()),
+      })
+    ),
+    footerText: v.optional(v.string()),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_orgSlug", ["orgSlug"]),
+
+  categories: defineTable({
+    name: v.string(),
+    type: v.union(
+      v.literal("event"),
+      v.literal("blog"),
+      v.literal("video"),
+      v.literal("business")
+    ),
+    orgId: v.string(),
+    isDeleted: v.optional(v.boolean()),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_orgId_and_type", ["orgId", "type"]),
+
+  coupons: defineTable({
+    businessContactId: v.id("contacts"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    imageFileId: v.optional(v.id("_storage")),
+    startDate: v.number(),
+    endDate: v.number(),
+    quantityLimit: v.optional(v.number()),
+    terms: v.optional(v.string()),
+    communityIds: v.optional(v.array(v.id("communities"))),
+    orgId: v.string(),
+    isDeleted: v.optional(v.boolean()),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_businessContactId", ["businessContactId"]),
+
+  couponClaims: defineTable({
+    couponId: v.id("coupons"),
+    userId: v.string(),
+    claimedAt: v.number(),
+  })
+    .index("by_couponId", ["couponId"])
+    .index("by_userId", ["userId"]),
+
+  blogPosts: defineTable({
+    title: v.string(),
+    slug: v.string(),
+    content: v.string(),
+    excerpt: v.optional(v.string()),
+    featuredImageFileId: v.optional(v.id("_storage")),
+    authorId: v.optional(v.string()),
+    categoryIds: v.optional(v.array(v.id("categories"))),
+    communityIds: v.optional(v.array(v.id("communities"))),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("pending"),
+      v.literal("published")
+    ),
+    publishedAt: v.optional(v.number()),
+    seoTitle: v.optional(v.string()),
+    seoDescription: v.optional(v.string()),
+    orgId: v.string(),
+    isDeleted: v.optional(v.boolean()),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_orgId_and_slug", ["orgId", "slug"])
+    .index("by_orgId_and_status", ["orgId", "status"])
+    .searchIndex("search_blog", {
+      searchField: "title",
+      filterFields: ["orgId", "status"],
+    }),
+
+  videos: defineTable({
+    title: v.string(),
+    description: v.optional(v.string()),
+    url: v.optional(v.string()),
+    fileId: v.optional(v.id("_storage")),
+    businessContactId: v.optional(v.id("contacts")),
+    categoryId: v.optional(v.id("categories")),
+    communityIds: v.optional(v.array(v.id("communities"))),
+    orgId: v.string(),
+    isDeleted: v.optional(v.boolean()),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_businessContactId", ["businessContactId"]),
+
+  clientLinks: defineTable({
+    userId: v.string(),
+    contactId: v.id("contacts"),
+    orgId: v.string(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_contactId", ["contactId"])
+    .index("by_orgId", ["orgId"]),
+
+  clientAssets: defineTable({
+    contactId: v.id("contacts"),
+    purchaseId: v.optional(v.id("purchases")),
+    fileId: v.id("_storage"),
+    fileName: v.string(),
+    status: v.union(
+      v.literal("uploaded"),
+      v.literal("under_review"),
+      v.literal("approved"),
+      v.literal("rejected")
+    ),
+    feedback: v.optional(v.string()),
+    orgId: v.string(),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_contactId", ["contactId"]),
+
+  orgSettings: defineTable({
+    businessName: v.string(),
+    address: v.optional(
+      v.object({
+        street: v.optional(v.string()),
+        city: v.optional(v.string()),
+        state: v.optional(v.string()),
+        zip: v.optional(v.string()),
+      })
+    ),
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+    publisherName: v.optional(v.string()),
+    remitToName: v.optional(v.string()),
+    remitToAddress: v.optional(
+      v.object({
+        street: v.optional(v.string()),
+        city: v.optional(v.string()),
+        state: v.optional(v.string()),
+        zip: v.optional(v.string()),
+      })
+    ),
+    showCreditCardSection: v.optional(v.boolean()),
+    nsfFeeAmount: v.optional(v.number()),
+    orgId: v.string(),
+  }).index("by_orgId", ["orgId"]),
+
+  messages: defineTable({
+    contactId: v.id("contacts"),
+    content: v.string(),
+    senderRole: v.union(v.literal("admin"), v.literal("client")),
+    orgId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_orgId", ["orgId"])
+    .index("by_contactId", ["contactId"])
+    .index("by_contactId_and_createdAt", ["contactId", "createdAt"]),
 });

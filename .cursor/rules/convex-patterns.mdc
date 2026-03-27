@@ -12,15 +12,26 @@ alwaysApply: false
 - Every content table has `isDeleted: v.optional(v.boolean())`
 - Dates are `v.number()` (Unix timestamps), never strings
 - Use `v.optional()` for nullable fields
+- **Money:** All monetary values stored as **integer cents** (e.g., $150.00 = 15000)
+
+## Auth & Multi-Tenancy (NON-NEGOTIABLE)
+- **Never** accept `orgId` as a client argument — always extract it server-side
+- Use `ctx.auth.getUserIdentity()` → `identity.orgId` from the Clerk JWT
+- Every query/mutation must validate authentication and extract `orgId` before any data access
 
 ## Query Pattern
 ```typescript
 export const list = query({
-  args: { orgId: v.string() },
-  handler: async (ctx, args) => {
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const orgId = identity.orgId as string;
+    if (!orgId) throw new Error("No organization selected");
+
     return await ctx.db
       .query("tableName")
-      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
       .filter((q) => q.neq(q.field("isDeleted"), true))
       .collect();
   },
@@ -30,12 +41,65 @@ export const list = query({
 ## Mutation Pattern
 ```typescript
 export const create = mutation({
-  args: { orgId: v.string(), name: v.string() },
+  args: { name: v.string() },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const orgId = identity.orgId as string;
+    if (!orgId) throw new Error("No organization selected");
+
     return await ctx.db.insert("tableName", {
-      ...args,
+      name: args.name,
+      orgId,
       isDeleted: false,
     });
+  },
+});
+```
+
+## Soft Delete Pattern
+```typescript
+export const remove = mutation({
+  args: { id: v.id("tableName") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const orgId = identity.orgId as string;
+
+    const doc = await ctx.db.get(args.id);
+    if (!doc || doc.orgId !== orgId) throw new Error("Not found");
+
+    await ctx.db.patch(args.id, { isDeleted: true });
+  },
+});
+```
+
+## Contact Search Pattern
+Convex search indexes only support a single `searchField`. Contacts use a denormalized `searchText` field that concatenates searchable fields:
+
+```typescript
+// In create/update mutations, rebuild searchText:
+const searchText = [company, firstName, lastName, email]
+  .filter(Boolean)
+  .join(" ");
+
+await ctx.db.insert("contacts", { ...fields, searchText });
+
+// In search queries:
+export const search = query({
+  args: { query: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+    const orgId = identity.orgId as string;
+
+    return await ctx.db
+      .query("contacts")
+      .withSearchIndex("search_contacts", (q) =>
+        q.search("searchText", args.query).eq("orgId", orgId)
+      )
+      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .collect();
   },
 });
 ```
@@ -51,12 +115,18 @@ Never store these — always compute in query handlers or helper functions:
 function computeNet(terms: PaymentTerms, scheduledPayments: ScheduledPayment[]): number {
   const lateFees = scheduledPayments
     .filter(sp => sp.dueDate < Date.now() && !sp.lateFeeWaived && !isFullyPaid(sp))
-    .length * (terms.lateFeeType === "flat" ? terms.lateFeeAmount : /* % calc */);
+    .length * (terms.lateFeeType === "flat" ? (terms.lateFeeAmount ?? 0) : /* % calc */);
+
+  const earlyDiscount = terms.earlyDiscountType === "flat"
+    ? (terms.earlyDiscountAmount ?? 0)
+    : Math.round(/* base * percent / 100 */);
+
   return terms.totalSale
     - (terms.discount1 ?? 0) - (terms.discount2 ?? 0)
     + (terms.additionalSale1 ?? 0) + (terms.additionalSale2 ?? 0)
     - (terms.trade ?? 0)
-    + lateFees;
+    + lateFees
+    - earlyDiscount;
 }
 ```
 
@@ -75,8 +145,3 @@ convex/
     queries.ts        # Billing view queries (cash flow, this month, etc.)
     helpers.ts        # Payment allocation, derived state computation
 ```
-
-## Auth in Convex
-- Use Clerk's `ctx.auth.getUserIdentity()` to get the authenticated user
-- Extract `orgId` from the user's Clerk organization membership
-- Every query/mutation must validate `orgId` before returning/modifying data

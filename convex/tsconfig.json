@@ -6,10 +6,11 @@
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "strict": true,
+    "noEmit": true,
     "noImplicitReturns": true,
     "isolatedModules": true,
     "skipLibCheck": true
   },
   "include": ["./**/*"],
-  "exclude": ["./node_modules"]
+  "exclude": ["./node_modules", "./_generated"]
 }

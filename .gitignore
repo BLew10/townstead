@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# migration artifacts (environment-specific)
+scripts/migrate/id-map-state.json
+scripts/migration-audit-report.json
+scripts/migration-validation-report.json
+scripts/migrate/dedup-conflicts.txt

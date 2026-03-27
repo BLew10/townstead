@@ -1,5 +1,6 @@
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { AdminHeader } from "@/components/admin/header";
+import { AdminBreadcrumbs } from "@/components/admin/breadcrumbs";
 
 export default function AdminLayout({
   children,
@@ -11,7 +12,10 @@ export default function AdminLayout({
       <AdminSidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <AdminHeader />
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-6">
+          <AdminBreadcrumbs />
+          {children}
+        </main>
       </div>
     </div>
   );
