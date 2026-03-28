@@ -404,3 +404,92 @@ export const repairAllPaymentAllocations = mutation({
     return { purchasesFixed, paymentsRepaired: totalRepaired };
   },
 });
+
+/**
+ * Deletes ALL existing payment allocations for an org and recomputes them
+ * from scratch using the v2 allocatePayment logic (earliest-due-first).
+ *
+ * This fixes data migrated from v1 where allocations may have been
+ * assigned to the wrong installment due to a month-only matching bug.
+ *
+ * Safe to run multiple times — idempotent by design.
+ */
+export const reallocateAllPayments = mutation({
+  args: { orgId: v.string() },
+  handler: async (ctx, args) => {
+    const purchases = await ctx.db
+      .query("purchases")
+      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .collect();
+
+    let allocationsDeleted = 0;
+    let allocationsCreated = 0;
+    let purchasesProcessed = 0;
+
+    for (const purchase of purchases) {
+      const payments = await ctx.db
+        .query("payments")
+        .withIndex("by_purchaseId", (q) => q.eq("purchaseId", purchase._id))
+        .collect();
+
+      const scheduledPayments = await ctx.db
+        .query("scheduledPayments")
+        .withIndex("by_purchaseId", (q) => q.eq("purchaseId", purchase._id))
+        .collect();
+
+      if (payments.length === 0 || scheduledPayments.length === 0) continue;
+
+      // Delete all existing allocations for this purchase's scheduled payments
+      for (const sp of scheduledPayments) {
+        const allocs = await ctx.db
+          .query("paymentAllocations")
+          .withIndex("by_scheduledPaymentId", (q) =>
+            q.eq("scheduledPaymentId", sp._id)
+          )
+          .collect();
+        for (const alloc of allocs) {
+          await ctx.db.delete(alloc._id);
+          allocationsDeleted++;
+        }
+      }
+
+      // Re-allocate all payments in date order
+      const sortedPayments = [...payments].sort((a, b) => a.date - b.date);
+
+      for (const payment of sortedPayments) {
+        // Gather current allocations (from earlier payments in this loop)
+        const currentAllocations = [];
+        for (const sp of scheduledPayments) {
+          const spAllocs = await ctx.db
+            .query("paymentAllocations")
+            .withIndex("by_scheduledPaymentId", (q) =>
+              q.eq("scheduledPaymentId", sp._id)
+            )
+            .collect();
+          currentAllocations.push(...spAllocs);
+        }
+
+        const plan = allocatePayment(
+          payment.amount,
+          scheduledPayments,
+          currentAllocations
+        );
+
+        for (const alloc of plan) {
+          await ctx.db.insert("paymentAllocations", {
+            paymentId: payment._id,
+            scheduledPaymentId: alloc.scheduledPaymentId,
+            amount: alloc.amount,
+            orgId: args.orgId,
+          });
+          allocationsCreated++;
+        }
+      }
+
+      purchasesProcessed++;
+    }
+
+    return { purchasesProcessed, allocationsCreated, allocationsDeleted };
+  },
+});

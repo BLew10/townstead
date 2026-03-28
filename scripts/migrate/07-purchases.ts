@@ -8,6 +8,27 @@ import { log, decimalToCents, toTimestamp, type MigrationStep } from "./utils";
 const STEP = "07-purchases";
 
 async function run(pool: pg.Pool, convex: ConvexHttpClient, orgId: string) {
+  // Preload schedule month ranges per PaymentOverview for backfilling paymentTerms
+  const { rows: scheduleRanges } = await pool.query(`
+    SELECT
+      "paymentOverviewId",
+      MIN(year * 100 + month) AS min_key,
+      MAX(year * 100 + month) AS max_key
+    FROM "ScheduledPayment"
+    GROUP BY "paymentOverviewId"
+  `);
+  const scheduleRangeByOverview = new Map<string, { startMonth: number; startYear: number; endMonth: number; endYear: number }>();
+  for (const row of scheduleRanges) {
+    const minKey = Number(row.min_key);
+    const maxKey = Number(row.max_key);
+    scheduleRangeByOverview.set(row.paymentOverviewId, {
+      startYear: Math.floor(minKey / 100),
+      startMonth: minKey % 100,
+      endYear: Math.floor(maxKey / 100),
+      endMonth: maxKey % 100,
+    });
+  }
+
   // Load purchases with their linked PaymentOverview
   const { rows: purchases } = await pool.query(`
     SELECT
@@ -138,6 +159,9 @@ async function run(pool: pg.Pool, convex: ConvexHttpClient, orgId: string) {
         dueDayOfMonth = Number(row.paymentDueOn);
       }
 
+      // Derive schedule start/end from actual v1 scheduled payments
+      const range = scheduleRangeByOverview.get(row.pov_id);
+
       const termsV2Id = await convex.mutation(api.migration.insertPaymentTerms, {
         purchaseId: purchaseV2Id as Id<"purchases">,
         totalSale: decimalToCents(row.totalSale),
@@ -152,6 +176,10 @@ async function run(pool: pg.Pool, convex: ConvexHttpClient, orgId: string) {
         lateFeeAmount,
         dueDayOfMonth,
         splitEqually: row.splitPaymentsEqually || undefined,
+        scheduleStartMonth: range?.startMonth,
+        scheduleStartYear: range?.startYear,
+        scheduleEndMonth: range?.endMonth,
+        scheduleEndYear: range?.endYear,
         deliveryMethod: row.deliveryMethod ?? undefined,
         invoiceMessage: row.invoiceMessage ?? undefined,
         statementMessage: row.statementMessage ?? undefined,

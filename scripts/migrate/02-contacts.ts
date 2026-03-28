@@ -186,7 +186,7 @@ async function run(pool: pg.Pool, convex: ConvexHttpClient, orgId: string) {
     const v2Id = await convex.mutation(api.migration.insertContact, {
       firstName: c.firstName ?? "(unknown)",
       lastName: c.lastName ?? "(unknown)",
-      company: c.company ?? undefined,
+      company: c.company ?? "",
       salutation: c.salutation ?? undefined,
       email: c.email ?? undefined,
       phone: c.phone ?? undefined,
