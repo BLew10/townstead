@@ -35,8 +35,6 @@ export async function GET(
     orgId,
   };
 
-  const prepaidPayment = data.payments.find((p) => p.isPrepaid);
-
   const pdfBytes = await generateInvoicePdf({
     invoiceNumber: data.purchase.invoiceNumber ?? "DRAFT",
     editionName: data.edition?.name ?? "",
@@ -82,7 +80,7 @@ export async function GET(
       dueDate: sp.dueDate,
       amount: sp.amount,
     })),
-    prepaidAmount: prepaidPayment?.amount,
+    prepaidAmount: data.prepaidAmount > 0 ? data.prepaidAmount : undefined,
   });
 
   const filename = `invoice-${data.purchase.invoiceNumber ?? id}.pdf`;

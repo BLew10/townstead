@@ -78,8 +78,8 @@ export default function PortalMessagesPage() {
                   key={msg._id}
                   className={`rounded-lg p-3 text-sm ${
                     msg.senderRole === "client"
-                      ? "bg-primary/10 ml-8"
-                      : "bg-muted mr-8"
+                      ? "bg-primary/10 ml-8 border border-primary/20"
+                      : "bg-blue-50 dark:bg-blue-500/10 mr-8 border border-blue-100 dark:border-blue-500/20"
                   }`}
                 >
                   <div className="mb-1 flex items-center justify-between">

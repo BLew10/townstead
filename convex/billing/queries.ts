@@ -400,7 +400,21 @@ export const getInvoiceData = query({
     const net = terms
       ? computeNet(terms, scheduledPayments, allAllocations, args.now)
       : 0;
-    const amountPaid = computeAmountPaid(allAllocations);
+    let amountPaid = computeAmountPaid(allAllocations);
+
+    // Prepaid payments from migration may lack allocations — still count them
+    let prepaidAmount = 0;
+    for (const p of payments) {
+      if (!p.isPrepaid) continue;
+      const allocated = allAllocations
+        .filter((a) => a.paymentId === p._id)
+        .reduce((sum, a) => sum + a.amount, 0);
+      const unallocated = p.amount - allocated;
+      if (unallocated > 0) {
+        amountPaid += unallocated;
+      }
+      prepaidAmount += p.amount;
+    }
 
     const enrichedScheduledPayments = scheduledPayments
       .sort((a, b) => a.dueDate - b.dueDate)
@@ -418,6 +432,7 @@ export const getInvoiceData = query({
       lineItems,
       net,
       amountPaid,
+      prepaidAmount,
       balance: Math.max(0, net - amountPaid),
       scheduledPayments: enrichedScheduledPayments,
       payments: payments.sort((a, b) => a.date - b.date),

@@ -17,6 +17,7 @@ import { Download } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useState } from "react";
+import { useDefaultYear } from "@/hooks/use-default-year";
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -24,7 +25,7 @@ const MONTHS = [
 ];
 
 const currentYear = new Date().getFullYear();
-const yearOptions = Array.from({ length: 10 }, (_, i) => currentYear - i);
+const yearOptions = Array.from({ length: 12 }, (_, i) => currentYear + 2 - i);
 
 type CellStatus = "paid" | "partial" | "overdue" | "none";
 
@@ -53,7 +54,8 @@ const cellStyles: Record<CellStatus, string> = {
 
 export default function CashFlowPage() {
   const { orgId, isReady } = useOrg();
-  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const { defaultYear, setDefaultYear } = useDefaultYear();
+  const [selectedYear, setSelectedYear] = useState(defaultYear);
   const [selectedEditionId, setSelectedEditionId] = useState<string>("");
 
   const editions = useQuery(
@@ -126,7 +128,13 @@ export default function CashFlowPage() {
 
           <Select
             value={selectedYear.toString()}
-            onValueChange={(val) => val && setSelectedYear(parseInt(val, 10))}
+            onValueChange={(val) => {
+              if (val) {
+                const year = parseInt(val, 10);
+                setSelectedYear(year);
+                setDefaultYear(year);
+              }
+            }}
           >
             <SelectTrigger className="w-28">
               <SelectValue />

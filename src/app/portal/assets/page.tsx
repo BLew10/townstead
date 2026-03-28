@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ImageUpload } from "@/components/shared/image-upload";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ImageIcon } from "lucide-react";
+import { ImageIcon, CheckCircle, XCircle, Clock } from "lucide-react";
 import { usePortalAuth } from "@/hooks/use-portal-auth";
 
 export default function PortalAssetsPage() {
@@ -103,19 +103,17 @@ export default function PortalAssetsPage() {
                   </TableCell>
                   <TableCell>
                     <Badge
-                      variant={
-                        asset.status === "approved"
-                          ? "default"
-                          : asset.status === "rejected"
-                            ? "destructive"
-                            : "secondary"
-                      }
                       className={
                         asset.status === "approved"
-                          ? "bg-green-100 text-green-800 hover:bg-green-100"
-                          : undefined
+                          ? "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-500/20 dark:text-green-300 gap-1"
+                          : asset.status === "rejected"
+                            ? "bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-500/20 dark:text-red-300 gap-1"
+                            : "bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-500/20 dark:text-amber-300 gap-1"
                       }
                     >
+                      {asset.status === "approved" && <CheckCircle className="h-3 w-3" />}
+                      {asset.status === "rejected" && <XCircle className="h-3 w-3" />}
+                      {asset.status !== "approved" && asset.status !== "rejected" && <Clock className="h-3 w-3" />}
                       {asset.status}
                     </Badge>
                   </TableCell>

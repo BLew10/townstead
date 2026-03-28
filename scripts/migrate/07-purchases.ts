@@ -15,6 +15,7 @@ async function run(pool: pg.Pool, convex: ConvexHttpClient, orgId: string) {
       po."contactId",
       po."calendarEditionYear",
       po."isDeleted",
+      po."hasSubmittedArtwork",
       po."createdAt",
       pov.id AS pov_id,
       pov."totalSale",
@@ -95,6 +96,7 @@ async function run(pool: pg.Pool, convex: ConvexHttpClient, orgId: string) {
       invoiceNumber: row.invoiceNumber ?? undefined,
       orgId,
       isDeleted: row.isDeleted || undefined,
+      hasSubmittedArtwork: row.hasSubmittedArtwork || undefined,
       updatedAt: toTimestamp(row.createdAt) ?? now,
     });
 

@@ -151,6 +151,7 @@ export const insertPurchase = mutation({
     invoiceNumber: v.optional(v.string()),
     orgId: v.string(),
     isDeleted: v.optional(v.boolean()),
+    hasSubmittedArtwork: v.optional(v.boolean()),
     updatedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => ctx.db.insert("purchases", args),

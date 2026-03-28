@@ -98,7 +98,13 @@ export function columns({
         <DataTableColumnHeader column={column} title="Type" />
       ),
       cell: ({ row }) => (
-        <Badge variant={row.original.isDayType ? "default" : "secondary"}>
+        <Badge
+          className={
+            row.original.isDayType
+              ? "bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-500/20 dark:text-blue-300"
+              : "bg-violet-100 text-violet-800 hover:bg-violet-100 dark:bg-violet-500/20 dark:text-violet-300"
+          }
+        >
           {row.original.isDayType ? "Day Type" : "Non-Day Type"}
         </Badge>
       ),

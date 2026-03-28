@@ -373,6 +373,20 @@ export const update = mutation({
   },
 });
 
+export const toggleArtworkSubmitted = mutation({
+  args: {
+    id: v.id("purchases"),
+    hasSubmittedArtwork: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const purchase = await ctx.db.get(args.id);
+    if (!purchase) throw new Error("Purchase not found");
+    await ctx.db.patch(args.id, {
+      hasSubmittedArtwork: args.hasSubmittedArtwork,
+    });
+  },
+});
+
 export const softDelete = mutation({
   args: { id: v.id("purchases") },
   handler: async (ctx, args) => {

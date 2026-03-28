@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useOrg } from "@/hooks/use-org";
 import { useStableNow } from "@/hooks/use-stable-now";
+import { useDefaultYear } from "@/hooks/use-default-year";
 import { PageHeader } from "@/components/shared/page-header";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { DataTable } from "@/components/shared/data-table";
@@ -16,6 +17,7 @@ import { purchaseColumns } from "./columns";
 export default function PurchasesPage() {
   const { orgId, isReady } = useOrg();
   const now = useStableNow();
+  const { defaultYear } = useDefaultYear();
   const router = useRouter();
   const purchases = useQuery(
     api.purchases.queries.list,
@@ -61,6 +63,9 @@ export default function PurchasesPage() {
         emptyTitle="No purchases"
         emptyDescription="Get started by creating your first purchase."
         onRowClick={(row) => router.push(`/admin/purchases/${row._id}`)}
+        noPagination
+        initialSorting={[{ id: "contactName", desc: false }]}
+        initialColumnFilters={[{ id: "year", value: [String(defaultYear)] }]}
       />
     </div>
   );

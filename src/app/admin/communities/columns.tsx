@@ -108,7 +108,9 @@ export function columns({
         <DataTableColumnHeader column={column} title="Slug" />
       ),
       cell: ({ row }) => (
-        <span className="font-mono text-xs">{row.getValue("slug")}</span>
+        <span className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
+          {row.getValue("slug")}
+        </span>
       ),
     },
     {
@@ -125,7 +127,10 @@ export function columns({
           .map((id) => editionMap.get(id))
           .filter(Boolean);
         return (
-          <Badge variant="secondary" title={names.join(", ")}>
+          <Badge
+            className="bg-indigo-100 text-indigo-800 hover:bg-indigo-100 dark:bg-indigo-500/20 dark:text-indigo-300"
+            title={names.join(", ")}
+          >
             {ids.length} {ids.length === 1 ? "calendar" : "calendars"}
           </Badge>
         );

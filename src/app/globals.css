@@ -225,6 +225,9 @@
   .gradient-cta {
     background: linear-gradient(135deg, #0a3375, #2a4b8d);
   }
+  .gradient-admin-header {
+    background: linear-gradient(135deg, #1a2e4a 0%, #3d5c9f 100%);
+  }
 }
 
 @media print {

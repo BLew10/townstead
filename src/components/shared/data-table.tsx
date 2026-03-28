@@ -55,6 +55,9 @@ type DataTableBaseProps<TData, TValue> = {
   emptyTitle?: string;
   emptyDescription?: string;
   onRowClick?: (row: TData) => void;
+  noPagination?: boolean;
+  initialSorting?: SortingState;
+  initialColumnFilters?: ColumnFiltersState;
 };
 
 export type DataTableProps<TData, TValue> =
@@ -94,6 +97,9 @@ export function DataTable<TData, TValue>({
   emptyTitle = "No results",
   emptyDescription = "No items found.",
   onRowClick,
+  noPagination,
+  initialSorting,
+  initialColumnFilters,
   ...rest
 }: DataTableProps<TData, TValue>) {
   const enableRowSelection = rest.enableRowSelection === true;
@@ -105,8 +111,8 @@ export function DataTable<TData, TValue>({
       : undefined;
   const getRowId =
     enableRowSelection && "getRowId" in rest ? rest.getRowId : undefined;
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [sorting, setSorting] = useState<SortingState>(initialSorting ?? []);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(initialColumnFilters ?? []);
   const [internalRowSelection, setInternalRowSelection] =
     useState<RowSelectionState>({});
 
@@ -161,6 +167,9 @@ export function DataTable<TData, TValue>({
     onRowSelectionChange: setRowSelection,
     getRowId: enableRowSelection ? getRowId : undefined,
     state: { sorting, columnFilters, rowSelection },
+    ...(noPagination && {
+      initialState: { pagination: { pageSize: 999999 } },
+    }),
   });
 
   const colSpan = tableColumns.length;
@@ -224,7 +233,7 @@ export function DataTable<TData, TValue>({
         </div>
       )}
 
-      <div className="rounded-md border">
+      <div className="rounded-md border border-border/60 overflow-hidden">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -308,7 +317,7 @@ export function DataTable<TData, TValue>({
           )}
         </div>
 
-        {pageCount > 1 && (
+        {!noPagination && pageCount > 1 && (
           <div className="flex items-center gap-1">
             <Button
               variant="outline"

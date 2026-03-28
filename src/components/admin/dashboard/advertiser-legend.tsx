@@ -11,7 +11,7 @@ export function AdvertiserLegend({ contacts }: { contacts: LegendContact[] }) {
   if (contacts.length === 0) return null;
 
   return (
-    <div className="rounded-md border p-4 print:border-black/20">
+    <div className="rounded-md border p-4 print:hidden">
       <h3 className="mb-3 text-sm font-medium text-muted-foreground">
         Advertiser Legend
       </h3>

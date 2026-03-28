@@ -424,6 +424,129 @@ describe("getInvoiceData", () => {
     expect(result).toBeNull();
   });
 
+  it("counts unallocated prepaid payments in amountPaid and reduces balance", async () => {
+    const t = convexTest(schema, modules);
+
+    const ids = await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "Prepaid Co",
+        firstName: "Scott",
+        lastName: "Sweeney",
+        orgId: ORG,
+        isDeleted: false,
+        searchText: "Prepaid Co Scott Sweeney",
+      });
+      const editionId = await ctx.db.insert("calendarEditions", {
+        name: "Elk Grove",
+        code: "EG",
+        orgId: ORG,
+      });
+      const purchaseId = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [editionId],
+        year: 2025,
+        invoiceNumber: "250001",
+        orgId: ORG,
+        isDeleted: false,
+      });
+      await ctx.db.insert("paymentTerms", {
+        purchaseId,
+        totalSale: 1444800,
+        discount1: 494800,
+        orgId: ORG,
+      });
+      const spId = await ctx.db.insert("scheduledPayments", {
+        purchaseId,
+        dueDate: new Date(2025, 6, 1).getTime(),
+        amount: 950000,
+        month: 7,
+        year: 2025,
+        orgId: ORG,
+      });
+      // Prepaid payment exists but has NO allocations (migration data)
+      await ctx.db.insert("payments", {
+        purchaseId,
+        amount: 950000,
+        date: new Date(2024, 11, 1).getTime(),
+        isPrepaid: true,
+        orgId: ORG,
+      });
+      return { purchaseId };
+    });
+
+    const result = await t.query(api.billing.queries.getInvoiceData, {
+      purchaseId: ids.purchaseId,
+      orgId: ORG,
+      now: new Date(2025, 3, 1).getTime(),
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.net).toBe(950000);
+    expect(result!.prepaidAmount).toBe(950000);
+    expect(result!.amountPaid).toBe(950000);
+    expect(result!.balance).toBe(0);
+  });
+
+  it("does not double-count prepaid payments that have allocations", async () => {
+    const t = convexTest(schema, modules);
+
+    const ids = await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "Allocated Co",
+        firstName: "Jane",
+        lastName: "Doe",
+        orgId: ORG,
+        isDeleted: false,
+        searchText: "Allocated Co Jane Doe",
+      });
+      const purchaseId = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [],
+        year: 2026,
+        orgId: ORG,
+        isDeleted: false,
+      });
+      await ctx.db.insert("paymentTerms", {
+        purchaseId,
+        totalSale: 100000,
+        orgId: ORG,
+      });
+      const spId = await ctx.db.insert("scheduledPayments", {
+        purchaseId,
+        dueDate: new Date(2027, 0, 1).getTime(),
+        amount: 100000,
+        month: 1,
+        year: 2027,
+        orgId: ORG,
+      });
+      const paymentId = await ctx.db.insert("payments", {
+        purchaseId,
+        amount: 50000,
+        date: new Date(2026, 0, 1).getTime(),
+        isPrepaid: true,
+        orgId: ORG,
+      });
+      await ctx.db.insert("paymentAllocations", {
+        paymentId,
+        scheduledPaymentId: spId,
+        amount: 50000,
+        orgId: ORG,
+      });
+      return { purchaseId };
+    });
+
+    const result = await t.query(api.billing.queries.getInvoiceData, {
+      purchaseId: ids.purchaseId,
+      orgId: ORG,
+      now: new Date(2026, 3, 1).getTime(),
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.prepaidAmount).toBe(50000);
+    expect(result!.amountPaid).toBe(50000);
+    expect(result!.balance).toBe(50000);
+  });
+
   it("uses adPurchases.charge as fallback when adPricing is absent", async () => {
     const t = convexTest(schema, modules);
 

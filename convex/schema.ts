@@ -108,6 +108,7 @@ export default defineSchema({
     invoiceNumber: v.optional(v.string()),
     orgId: v.string(),
     isDeleted: v.optional(v.boolean()),
+    hasSubmittedArtwork: v.optional(v.boolean()),
     updatedAt: v.optional(v.number()),
   })
     .index("by_orgId", ["orgId"])

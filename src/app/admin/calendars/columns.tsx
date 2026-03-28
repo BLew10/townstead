@@ -97,7 +97,11 @@ export function columns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Code" />
       ),
-      cell: ({ row }) => <Badge variant="secondary">{row.getValue("code")}</Badge>,
+      cell: ({ row }) => (
+        <Badge className="bg-indigo-100 text-indigo-800 hover:bg-indigo-100 dark:bg-indigo-500/20 dark:text-indigo-300 font-mono">
+          {row.getValue("code")}
+        </Badge>
+      ),
     },
     {
       id: "actions",

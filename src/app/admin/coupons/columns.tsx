@@ -14,6 +14,7 @@ import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/shared/data-table-column-header";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
@@ -123,6 +124,35 @@ export function columns({
       ),
       cell: ({ row }) => formatDate(row.original.endDate),
       sortingFn: "basic",
+    },
+    {
+      id: "status",
+      header: "Status",
+      enableSorting: false,
+      cell: ({ row }) => {
+        const now = Date.now();
+        const start = row.original.startDate;
+        const end = row.original.endDate;
+        if (now < start) {
+          return (
+            <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-500/20 dark:text-blue-300">
+              Upcoming
+            </Badge>
+          );
+        }
+        if (now > end) {
+          return (
+            <Badge className="bg-gray-100 text-gray-600 hover:bg-gray-100 dark:bg-gray-500/20 dark:text-gray-400">
+              Expired
+            </Badge>
+          );
+        }
+        return (
+          <Badge className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-500/20 dark:text-green-300">
+            Active
+          </Badge>
+        );
+      },
     },
     {
       id: "actions",

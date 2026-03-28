@@ -4,9 +4,12 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "@/components/shared/data-table-column-header";
+import { RecordPaymentSheet } from "@/components/admin/record-payment-sheet";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import Link from "next/link";
 import { DollarSign } from "lucide-react";
+import { useState } from "react";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 
 export interface ThisMonthRow {
   _id: string;
@@ -105,14 +108,28 @@ export const thisMonthColumns: ColumnDef<ThisMonthRow>[] = [
     id: "actions",
     cell: ({ row }) => {
       if (row.original.status === "paid") return null;
-      return (
-        <Link href={`/admin/purchases/${row.original.purchaseId}`}>
-          <Button variant="outline" size="sm">
-            <DollarSign className="mr-1.5 h-3.5 w-3.5" />
-            Record Payment
-          </Button>
-        </Link>
-      );
+      return <RecordPaymentAction row={row.original} />;
     },
   },
 ];
+
+function RecordPaymentAction({ row }: { row: ThisMonthRow }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        <DollarSign className="mr-1.5 h-3.5 w-3.5" />
+        Record Payment
+      </Button>
+      <RecordPaymentSheet
+        open={open}
+        onOpenChange={setOpen}
+        purchaseId={row.purchaseId as Id<"purchases">}
+        contactName={row.contactName}
+        company={row.company}
+        invoiceNumber={row.invoiceNumber}
+      />
+    </>
+  );
+}

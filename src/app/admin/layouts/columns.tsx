@@ -97,6 +97,14 @@ export function columns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Name" />
       ),
+      cell: ({ row }) => (
+        <Link
+          href={`/admin/layouts/${row.original._id}`}
+          className="font-medium text-primary hover:underline"
+        >
+          {row.original.name}
+        </Link>
+      ),
     },
     {
       id: "actions",

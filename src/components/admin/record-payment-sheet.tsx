@@ -4,11 +4,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "convex/react";
-import { api } from "../../../../../convex/_generated/api";
+import { api } from "../../../convex/_generated/api";
 import { useOrg } from "@/hooks/use-org";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetFooter,
@@ -34,7 +35,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useState } from "react";
-import type { Id } from "../../../../../convex/_generated/dataModel";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { dollarsToCents } from "@/lib/utils";
 
 const recordPaymentSchema = z.object({
@@ -47,17 +48,23 @@ const recordPaymentSchema = z.object({
 
 type RecordPaymentValues = z.infer<typeof recordPaymentSchema>;
 
-interface PaymentFormProps {
+interface RecordPaymentSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   purchaseId: Id<"purchases">;
+  contactName?: string;
+  company?: string;
+  invoiceNumber?: string | null;
 }
 
-export function PaymentForm({
+export function RecordPaymentSheet({
   open,
   onOpenChange,
   purchaseId,
-}: PaymentFormProps) {
+  contactName,
+  company,
+  invoiceNumber,
+}: RecordPaymentSheetProps) {
   const { orgId } = useOrg();
   const recordPayment = useMutation(api.payments.mutations.recordPayment);
   const [isPending, setIsPending] = useState(false);
@@ -98,11 +105,20 @@ export function PaymentForm({
     }
   };
 
+  const subtitle = [contactName, company].filter(Boolean).join(" — ");
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-md overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Record Payment</SheetTitle>
+          {(subtitle || invoiceNumber) && (
+            <SheetDescription>
+              {subtitle && <span>{subtitle}</span>}
+              {subtitle && invoiceNumber && <br />}
+              {invoiceNumber && <span>Invoice #{invoiceNumber}</span>}
+            </SheetDescription>
+          )}
         </SheetHeader>
         <Form {...form}>
           <form

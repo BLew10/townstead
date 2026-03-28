@@ -29,13 +29,10 @@ interface BlogPost {
   publishedAt?: number;
 }
 
-const statusVariant: Record<
-  string,
-  "outline" | "secondary" | "default"
-> = {
-  draft: "outline",
-  pending: "secondary",
-  published: "default",
+const statusColors: Record<string, string> = {
+  draft: "bg-gray-100 text-gray-700 hover:bg-gray-100 dark:bg-gray-500/20 dark:text-gray-300",
+  pending: "bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-500/20 dark:text-amber-300",
+  published: "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-500/20 dark:text-green-300",
 };
 
 function ActionsCell({ row }: { row: { original: BlogPost } }) {
@@ -110,7 +107,7 @@ export const columns: ColumnDef<BlogPost>[] = [
       <DataTableColumnHeader column={column} title="Slug" />
     ),
     cell: ({ row }) => (
-      <span className="text-muted-foreground font-mono text-xs">
+      <span className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
         {row.original.slug}
       </span>
     ),
@@ -123,7 +120,7 @@ export const columns: ColumnDef<BlogPost>[] = [
     cell: ({ row }) => {
       const status = row.original.status;
       return (
-        <Badge variant={statusVariant[status] ?? "outline"}>
+        <Badge className={statusColors[status] ?? "bg-gray-100 text-gray-700"}>
           {status.charAt(0).toUpperCase() + status.slice(1)}
         </Badge>
       );

@@ -40,7 +40,16 @@ export default function PortalAdsPage() {
       ) : (
         <div className="space-y-4">
           {purchases.map((purchase) => (
-            <Card key={purchase._id}>
+            <Card
+              key={purchase._id}
+              className={
+                purchase.isPaid
+                  ? "border-t-2 border-t-emerald-500"
+                  : purchase.amountPaid > 0
+                    ? "border-t-2 border-t-yellow-500"
+                    : "border-t-2 border-t-muted-foreground/30"
+              }
+            >
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">
@@ -93,11 +102,19 @@ export default function PortalAdsPage() {
                       Ad Types
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {purchase.adDetails.map((ad) => (
-                        <Badge key={ad._id} variant="outline">
-                          {ad.adName} &times; {ad.quantity}
-                        </Badge>
-                      ))}
+                      {purchase.adDetails.map((ad, idx) => {
+                        const adColors = [
+                          "bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300",
+                          "bg-violet-100 text-violet-800 dark:bg-violet-500/20 dark:text-violet-300",
+                          "bg-cyan-100 text-cyan-800 dark:bg-cyan-500/20 dark:text-cyan-300",
+                          "bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300",
+                        ];
+                        return (
+                          <Badge key={ad._id} className={adColors[idx % adColors.length]}>
+                            {ad.adName} &times; {ad.quantity}
+                          </Badge>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

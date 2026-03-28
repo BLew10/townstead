@@ -55,13 +55,15 @@ describe("CalendarInventoryGrid", () => {
   it("renders an occupied day-type slot with the company name", () => {
     const slot = makeSlot();
     render(<CalendarInventoryGrid slots={[slot]} />);
-    expect(screen.getByText("Acme Corp")).toBeDefined();
+    const matches = screen.getAllByText("Acme Corp");
+    expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders non-day-type slots section when present", () => {
     const slot = makeSlot({ isDayType: false, slotNumber: null, advertisementName: "Back Cover" });
     render(<CalendarInventoryGrid slots={[slot]} />);
-    expect(screen.getByText("Non-Day Ad Placements")).toBeDefined();
+    const headings = screen.getAllByText("Non-Day Ad Placements");
+    expect(headings.length).toBeGreaterThanOrEqual(1);
     const matches = screen.getAllByText("Back Cover");
     expect(matches.length).toBeGreaterThanOrEqual(1);
   });

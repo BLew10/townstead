@@ -14,6 +14,7 @@ import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/shared/data-table-column-header";
 import { toast } from "sonner";
 
@@ -80,13 +81,28 @@ export function columns({ onEdit }: { onEdit: (ab: AddressBook) => void }): Colu
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Name" />
       ),
+      cell: ({ row }) => (
+        <span className="font-medium">{row.getValue("name")}</span>
+      ),
     },
     {
       accessorKey: "displayLevel",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Display Level" />
       ),
-      cell: ({ row }) => row.original.displayLevel ?? "—",
+      cell: ({ row }) => {
+        const level = row.original.displayLevel;
+        if (!level) return <span className="text-muted-foreground">—</span>;
+        const levelColors: Record<string, string> = {
+          primary: "bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-500/20 dark:text-blue-300",
+          secondary: "bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-500/20 dark:text-amber-300",
+        };
+        return (
+          <Badge className={levelColors[level] ?? "bg-gray-100 text-gray-700 hover:bg-gray-100 dark:bg-gray-500/20 dark:text-gray-300"}>
+            {level}
+          </Badge>
+        );
+      },
     },
     {
       id: "actions",

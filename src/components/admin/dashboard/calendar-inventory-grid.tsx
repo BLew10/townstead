@@ -76,7 +76,7 @@ export function CalendarInventoryGrid({ slots }: { slots: SlotData[] }) {
   return (
     <div className="space-y-6">
       {/* Day-type slots: 12-month grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 print:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 print:hidden">
         {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
           const monthSlots = daySlotsByMonth.get(month) ?? new Map();
           return (
@@ -115,9 +115,9 @@ export function CalendarInventoryGrid({ slots }: { slots: SlotData[] }) {
                               </span>
                             )}
                           </TooltipTrigger>
-                          <TooltipContent>
+                          <TooltipContent className="flex-col items-start gap-0">
                             {occupants.map((occ, idx) => (
-                              <div key={occ._id} className={idx > 0 ? "mt-1 pt-1 border-t border-border/50" : ""}>
+                              <div key={occ._id} className={idx > 0 ? "mt-1 pt-1 border-t border-border/50 w-full" : ""}>
                                 <p className="font-medium flex items-center gap-1">
                                   <span
                                     className="inline-block h-2 w-2 rounded-full shrink-0"
@@ -153,7 +153,7 @@ export function CalendarInventoryGrid({ slots }: { slots: SlotData[] }) {
 
       {/* Non-day-type slots */}
       {allNonDayAdNames.size > 0 && (
-        <div className="space-y-4">
+        <div className="space-y-4 print:hidden">
           <h3 className="text-sm font-semibold text-muted-foreground">
             Non-Day Ad Placements
           </h3>
@@ -224,6 +224,135 @@ export function CalendarInventoryGrid({ slots }: { slots: SlotData[] }) {
             ))}
         </div>
       )}
+
+      {/* Print-only reference tables */}
+      <div className="hidden print:block">
+        <h3 className="text-sm font-semibold mb-3">Slot Reference</h3>
+
+        {/* Day-type reference */}
+        {daySlotsByMonth.size > 0 && (
+          <div className="grid grid-cols-4 gap-x-4 gap-y-2">
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
+              const monthMap = daySlotsByMonth.get(month);
+              if (!monthMap || monthMap.size === 0) return null;
+
+              const rows: { slotNumber: number; occ: SlotData }[] = [];
+              for (const [slotNum, occupants] of monthMap) {
+                for (const occ of occupants) {
+                  rows.push({ slotNumber: slotNum, occ });
+                }
+              }
+              rows.sort((a, b) => a.slotNumber - b.slotNumber);
+
+              return (
+                <div key={month} className="break-inside-avoid mb-2">
+                  <p className="text-[10px] font-bold border-b border-black/20 pb-0.5 mb-0.5">
+                    {MONTH_NAMES[month - 1]}
+                  </p>
+                  <table className="w-full text-[9px] leading-tight">
+                    <thead>
+                      <tr className="text-left text-[8px] text-gray-500">
+                        <th className="pr-1 font-medium w-6">#</th>
+                        <th className="pr-1 font-medium">Advertiser</th>
+                        <th className="font-medium">Ad Type</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map(({ slotNumber, occ }) => (
+                        <tr key={`${slotNumber}-${occ._id}`}>
+                          <td className="pr-1 tabular-nums">{slotNumber}</td>
+                          <td className="pr-1">
+                            <span className="inline-flex items-center gap-0.5">
+                              <span
+                                className="inline-block h-1.5 w-1.5 rounded-full shrink-0"
+                                style={{
+                                  backgroundColor: getContactColor(occ.contactId.toString()),
+                                  printColorAdjust: "exact",
+                                  WebkitPrintColorAdjust: "exact",
+                                } as React.CSSProperties}
+                              />
+                              {occ.company || occ.contactName}
+                            </span>
+                          </td>
+                          <td className="text-gray-600">{occ.advertisementName}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Non-day-type reference */}
+        {allNonDayAdNames.size > 0 && (
+          <div className="mt-4 space-y-3">
+            <h4 className="text-[10px] font-bold">Non-Day Ad Placements</h4>
+            {Array.from(allNonDayAdNames)
+              .sort()
+              .map((adName) => {
+                const hasAny = Array.from({ length: 12 }, (_, i) => i + 1).some(
+                  (m) => (nonDaySlotsByMonth.get(m)?.get(adName)?.length ?? 0) > 0
+                );
+                if (!hasAny) return null;
+
+                return (
+                  <div key={adName}>
+                    <p className="text-[10px] font-bold border-b border-black/20 pb-0.5 mb-1">
+                      {adName}
+                    </p>
+                    <div className="grid grid-cols-4 gap-x-4 gap-y-2">
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
+                        const adMap = nonDaySlotsByMonth.get(month);
+                        const monthSlots = adMap?.get(adName) ?? [];
+                        if (monthSlots.length === 0) return null;
+
+                        return (
+                          <div key={month} className="break-inside-avoid mb-2">
+                            <p className="text-[10px] font-bold border-b border-black/20 pb-0.5 mb-0.5">
+                              {MONTH_NAMES[month - 1]}
+                            </p>
+                            <table className="w-full text-[9px] leading-tight">
+                              <thead>
+                                <tr className="text-left text-[8px] text-gray-500">
+                                  <th className="pr-1 font-medium w-6">#</th>
+                                  <th className="font-medium">Advertiser</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {monthSlots.map((slot) => (
+                                  <tr key={slot._id}>
+                                    <td className="pr-1 tabular-nums">
+                                      {slot.slotNumber ?? "--"}
+                                    </td>
+                                    <td>
+                                      <span className="inline-flex items-center gap-0.5">
+                                        <span
+                                          className="inline-block h-1.5 w-1.5 rounded-full shrink-0"
+                                          style={{
+                                            backgroundColor: getContactColor(slot.contactId.toString()),
+                                            printColorAdjust: "exact",
+                                            WebkitPrintColorAdjust: "exact",
+                                          } as React.CSSProperties}
+                                        />
+                                        {slot.company || slot.contactName}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

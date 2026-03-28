@@ -267,15 +267,15 @@ export async function generateInvoicePdf(
     }
   }
 
-  if (data.prepaidAmount && data.prepaidAmount > 0) {
-    drawSubtotalLine("Prepaid", `-$${(data.prepaidAmount / 100).toFixed(2)}`);
-  }
-
   drawSubtotalLine(
     "TOTAL AMOUNT OF PURCHASE",
     `$${(data.net / 100).toFixed(2)}`,
     false
   );
+
+  if (data.prepaidAmount && data.prepaidAmount > 0) {
+    drawSubtotalLine("Prepaid", `-$${(data.prepaidAmount / 100).toFixed(2)}`);
+  }
 
   // 6. PAY PLAN
   if (data.scheduledPayments.length > 0) {

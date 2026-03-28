@@ -199,17 +199,17 @@ export default function ContactDetailPage() {
 
       <Tabs defaultValue="info">
         <TabsList>
-          <TabsTrigger value="info">Info</TabsTrigger>
-          <TabsTrigger value="purchases">Purchases</TabsTrigger>
-          <TabsTrigger value="payments">Payments</TabsTrigger>
-          <TabsTrigger value="portal">Portal Access</TabsTrigger>
-          <TabsTrigger value="messages">Messages</TabsTrigger>
-          <TabsTrigger value="assets">Assets</TabsTrigger>
+          <TabsTrigger value="info" className="data-[state=active]:text-blue-700 data-[state=active]:dark:text-blue-400">Info</TabsTrigger>
+          <TabsTrigger value="purchases" className="data-[state=active]:text-emerald-700 data-[state=active]:dark:text-emerald-400">Purchases</TabsTrigger>
+          <TabsTrigger value="payments" className="data-[state=active]:text-amber-700 data-[state=active]:dark:text-amber-400">Payments</TabsTrigger>
+          <TabsTrigger value="portal" className="data-[state=active]:text-violet-700 data-[state=active]:dark:text-violet-400">Portal Access</TabsTrigger>
+          <TabsTrigger value="messages" className="data-[state=active]:text-sky-700 data-[state=active]:dark:text-sky-400">Messages</TabsTrigger>
+          <TabsTrigger value="assets" className="data-[state=active]:text-rose-700 data-[state=active]:dark:text-rose-400">Assets</TabsTrigger>
         </TabsList>
 
         <TabsContent value="info">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-            <Card>
+            <Card className="border-l-3 border-l-blue-500">
               <CardHeader>
                 <CardTitle>Contact Details</CardTitle>
               </CardHeader>
@@ -225,7 +225,7 @@ export default function ContactDetailPage() {
             </Card>
 
             <div className="space-y-6">
-              <Card>
+              <Card className="border-l-3 border-l-emerald-500">
                 <CardHeader>
                   <CardTitle>Address</CardTitle>
                 </CardHeader>
@@ -374,10 +374,10 @@ export default function ContactDetailPage() {
         </TabsContent>
         <TabsContent value="portal">
           <div className="pt-4">
-            <Card>
+            <Card className="border-l-3 border-l-violet-500">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Link2 className="h-5 w-5" />
+                  <Link2 className="h-5 w-5 text-violet-500" />
                   Client Portal Access
                 </CardTitle>
               </CardHeader>
@@ -425,10 +425,10 @@ export default function ContactDetailPage() {
 
         <TabsContent value="messages">
           <div className="pt-4 space-y-4">
-            <Card>
+            <Card className="border-l-3 border-l-sky-500">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5" />
+                  <MessageSquare className="h-5 w-5 text-sky-500" />
                   Messages
                 </CardTitle>
               </CardHeader>
@@ -440,7 +440,7 @@ export default function ContactDetailPage() {
                         key={msg._id}
                         className={`rounded-lg p-3 text-sm ${
                           msg.senderRole === "admin"
-                            ? "bg-primary/10 ml-8"
+                            ? "bg-blue-50 dark:bg-blue-500/10 ml-8 border border-blue-100 dark:border-blue-500/20"
                             : "bg-muted mr-8"
                         }`}
                       >

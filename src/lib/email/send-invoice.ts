@@ -29,8 +29,6 @@ export async function sendInvoiceEmail(
     orgId,
   };
 
-  const prepaidPayment = data.payments.find((p) => p.isPrepaid);
-
   const pdfBytes = await generateInvoicePdf({
     invoiceNumber: data.purchase.invoiceNumber ?? "DRAFT",
     editionName: data.edition?.name ?? "",
@@ -76,7 +74,7 @@ export async function sendInvoiceEmail(
       dueDate: sp.dueDate,
       amount: sp.amount,
     })),
-    prepaidAmount: prepaidPayment?.amount,
+    prepaidAmount: data.prepaidAmount > 0 ? data.prepaidAmount : undefined,
   });
 
   const contactName = `${data.contact.firstName} ${data.contact.lastName}`;
@@ -88,7 +86,7 @@ export async function sendInvoiceEmail(
       invoiceNumber: invoiceNum,
       editionName: data.edition?.name ?? "",
       year: data.purchase.year,
-      netAmount: data.net,
+      netAmount: data.balance,
     })
   );
 

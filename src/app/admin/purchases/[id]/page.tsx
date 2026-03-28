@@ -20,12 +20,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, ExternalLink, Pencil, Plus, Trash2, FileText } from "lucide-react";
+import { ArrowLeft, Clock, DollarSign, ExternalLink, Pencil, Plus, Trash2, FileText, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { useStableNow } from "@/hooks/use-stable-now";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ScheduledPaymentsTable } from "./scheduled-payments-table";
-import { PaymentForm } from "./payment-form";
+import { RecordPaymentSheet } from "@/components/admin/record-payment-sheet";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -158,27 +158,48 @@ export default function PurchaseDetailPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+        <Card className="border-t-2 border-t-blue-500">
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Net</p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">Net</p>
+              <div className="rounded-full bg-blue-100 p-1.5 dark:bg-blue-500/20">
+                <DollarSign className="h-3.5 w-3.5 text-blue-600" />
+              </div>
+            </div>
             <p className="text-2xl font-bold">{formatCurrency(detail.net)}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-t-2 border-t-emerald-500">
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Amount Paid</p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">Amount Paid</p>
+              <div className="rounded-full bg-emerald-100 p-1.5 dark:bg-emerald-500/20">
+                <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
+              </div>
+            </div>
             <p className="text-2xl font-bold">{formatCurrency(detail.amountPaid)}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-t-2 border-t-amber-500">
           <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Balance</p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">Balance</p>
+              <div className="rounded-full bg-amber-100 p-1.5 dark:bg-amber-500/20">
+                <Clock className="h-3.5 w-3.5 text-amber-600" />
+              </div>
+            </div>
             <p className="text-2xl font-bold">
               {formatCurrency(Math.max(0, detail.net - detail.amountPaid))}
             </p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={
+          detail.isPaid
+            ? "border-t-2 border-t-emerald-500"
+            : detail.lateFees > 0
+              ? "border-t-2 border-t-rose-500"
+              : "border-t-2 border-t-muted-foreground/30"
+        }>
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">Status</p>
             <div className="pt-1">
@@ -295,7 +316,13 @@ export default function PurchaseDetailPage() {
                       </TableCell>
                       <TableCell>{ap.editionName}</TableCell>
                       <TableCell>
-                        <Badge variant={ap.isDayType ? "default" : "secondary"}>
+                        <Badge
+                          className={
+                            ap.isDayType
+                              ? "bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-500/20 dark:text-blue-300"
+                              : "bg-violet-100 text-violet-800 hover:bg-violet-100 dark:bg-violet-500/20 dark:text-violet-300"
+                          }
+                        >
                           {ap.isDayType ? "Day" : "Non-Day"}
                         </Badge>
                       </TableCell>
@@ -379,10 +406,13 @@ export default function PurchaseDetailPage() {
         </TabsContent>
       </Tabs>
 
-      <PaymentForm
+      <RecordPaymentSheet
         open={paymentFormOpen}
         onOpenChange={setPaymentFormOpen}
         purchaseId={id}
+        contactName={contactName}
+        company={detail.contact?.company}
+        invoiceNumber={detail.invoiceNumber}
       />
 
       <ConfirmDialog

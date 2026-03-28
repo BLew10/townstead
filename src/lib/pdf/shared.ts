@@ -59,6 +59,11 @@ function getFont(ctx: PdfContext, bold?: boolean, times?: boolean): PDFFont {
   return bold ? ctx.boldFont : ctx.font;
 }
 
+/** Strip control characters that WinAnsi encoding cannot represent. */
+function sanitizePdfText(text: string): string {
+  return text.replace(/[\x00-\x1F\x7F]/g, " ").replace(/\s{2,}/g, " ").trim();
+}
+
 export function drawText(
   ctx: PdfContext,
   text: string,
@@ -74,9 +79,9 @@ export function drawText(
   const size = options?.size ?? 10;
   const f = getFont(ctx, options?.bold, options?.times);
 
-  let displayText = text;
+  let displayText = sanitizePdfText(text);
   if (options?.maxWidth) {
-    const textWidth = f.widthOfTextAtSize(text, size);
+    const textWidth = f.widthOfTextAtSize(displayText, size);
     if (textWidth > options.maxWidth) {
       while (
         displayText.length > 3 &&
@@ -113,7 +118,7 @@ export function drawWrappedText(
   const size = options?.size ?? 10;
   const f = getFont(ctx, options?.bold, options?.times);
   const spacing = options?.lineSpacing ?? size + 2;
-  const words = text.split(/\s+/);
+  const words = sanitizePdfText(text).split(/\s+/);
   let line = "";
 
   for (const word of words) {
@@ -203,10 +208,11 @@ export function rightAlignText(
     color?: ReturnType<typeof rgb>;
   }
 ) {
+  const safe = sanitizePdfText(text);
   const size = options?.size ?? 10;
   const f = getFont(ctx, options?.bold, options?.times);
-  const textWidth = f.widthOfTextAtSize(text, size);
-  drawText(ctx, text, rightX - textWidth, options);
+  const textWidth = f.widthOfTextAtSize(safe, size);
+  drawText(ctx, safe, rightX - textWidth, options);
 }
 
 export function centerText(
@@ -219,11 +225,12 @@ export function centerText(
     color?: ReturnType<typeof rgb>;
   }
 ) {
+  const safe = sanitizePdfText(text);
   const size = options?.size ?? 10;
   const f = getFont(ctx, options?.bold, options?.times);
-  const textWidth = f.widthOfTextAtSize(text, size);
+  const textWidth = f.widthOfTextAtSize(safe, size);
   const x = (ctx.width - textWidth) / 2;
-  drawText(ctx, text, x, options);
+  drawText(ctx, safe, x, options);
 }
 
 // --------------- V1-style shared sections ---------------

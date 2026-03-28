@@ -111,7 +111,9 @@ export function columns({
       enableSorting: false,
       cell: ({ row }) =>
         row.original.isYearly ? (
-          <Badge variant="secondary">Yearly</Badge>
+          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-500/20 dark:text-blue-300">
+            Yearly
+          </Badge>
         ) : null,
     },
     {
@@ -124,7 +126,7 @@ export function columns({
         return (
           <div className="flex flex-wrap gap-1">
             {ids.map((id) => (
-              <Badge key={id} variant="outline">
+              <Badge key={id} className="bg-teal-100 text-teal-800 hover:bg-teal-100 dark:bg-teal-500/20 dark:text-teal-300">
                 {communityMap.get(id) ?? "Unknown"}
               </Badge>
             ))}

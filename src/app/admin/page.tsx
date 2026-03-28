@@ -36,14 +36,16 @@ import { StatsCards } from "@/components/admin/dashboard/stats-cards";
 import { CalendarInventoryGrid } from "@/components/admin/dashboard/calendar-inventory-grid";
 import { AdvertiserLegend } from "@/components/admin/dashboard/advertiser-legend";
 import { EmptyState } from "@/components/shared/empty-state";
+import { useDefaultYear } from "@/hooks/use-default-year";
 
 const currentYear = new Date().getFullYear();
-const yearOptions = Array.from({ length: 10 }, (_, i) => currentYear - i);
+const yearOptions = Array.from({ length: 12 }, (_, i) => currentYear + 2 - i);
 
 export default function AdminDashboardPage() {
   const { orgId, isReady } = useOrg();
   const now = useStableNow();
-  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const { defaultYear, setDefaultYear } = useDefaultYear();
+  const [selectedYear, setSelectedYear] = useState(defaultYear);
   const [selectedEditionId, setSelectedEditionId] = useState<string>("");
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(
     new Set()
@@ -165,7 +167,13 @@ export default function AdminDashboardPage() {
 
           <Select
             value={selectedYear.toString()}
-            onValueChange={(val) => val && setSelectedYear(parseInt(val, 10))}
+            onValueChange={(val) => {
+              if (val) {
+                const year = parseInt(val, 10);
+                setSelectedYear(year);
+                setDefaultYear(year);
+              }
+            }}
           >
             <SelectTrigger className="w-28">
               <SelectValue />
@@ -257,8 +265,8 @@ export default function AdminDashboardPage() {
 
       {/* Active filter badges */}
       {isFiltered && slotsData && (
-        <div className="flex flex-wrap items-center gap-1.5 print:hidden">
-          <span className="text-xs text-muted-foreground">Showing:</span>
+        <div className="flex flex-wrap items-center gap-1.5 rounded-lg bg-muted/40 px-3 py-2 print:hidden">
+          <span className="text-xs font-medium text-muted-foreground">Showing:</span>
           {slotsData.contacts
             .filter((c: { id: string }) => selectedContactIds.has(c.id))
             .map((contact: { id: string; company: string }) => {

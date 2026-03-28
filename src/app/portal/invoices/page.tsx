@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
-import { FileText, Download, Eye } from "lucide-react";
+import { FileText, Download, Eye, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 import { useStableNow } from "@/hooks/use-stable-now";
@@ -67,15 +67,20 @@ export default function PortalInvoicesPage() {
                   <TableCell>{formatCurrency(invoice.amountPaid)}</TableCell>
                   <TableCell>
                     {invoice.isPaid ? (
-                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-500/20 dark:text-green-300 gap-1">
+                        <CheckCircle className="h-3 w-3" />
                         Paid
                       </Badge>
                     ) : invoice.amountPaid > 0 ? (
-                      <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+                      <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 dark:bg-yellow-500/20 dark:text-yellow-300 gap-1">
+                        <Clock className="h-3 w-3" />
                         Partial
                       </Badge>
                     ) : (
-                      <Badge variant="secondary">Unpaid</Badge>
+                      <Badge variant="secondary" className="gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        Unpaid
+                      </Badge>
                     )}
                   </TableCell>
                   <TableCell>

@@ -91,14 +91,16 @@ export default function ThisMonthPage() {
           />
         </div>
 
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-sm">
           {overdueCount > 0 && (
-            <span className="text-destructive font-medium">
+            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-800 dark:bg-red-500/20 dark:text-red-300">
               {overdueCount} overdue
             </span>
           )}
           {upcomingCount > 0 && (
-            <span>{upcomingCount} upcoming</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800 dark:bg-blue-500/20 dark:text-blue-300">
+              {upcomingCount} upcoming
+            </span>
           )}
         </div>
       </div>
@@ -114,6 +116,7 @@ export default function ThisMonthPage() {
         getRowId={(row) => row._id}
         rowSelection={rowSelection}
         onRowSelectionChange={setRowSelection}
+        noPagination
       />
     </div>
   );

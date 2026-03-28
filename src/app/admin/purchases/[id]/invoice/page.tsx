@@ -96,8 +96,8 @@ export default function InvoicePage() {
       .join(", "),
   ].filter(Boolean);
 
-  const prepaidPayment = data.payments?.find((p) => p.isPrepaid);
   const nonPrepaidPayments = data.payments?.filter((p) => !p.isPrepaid) ?? [];
+  const nonPrepaidAmountPaid = data.amountPaid - (data.prepaidAmount ?? 0);
 
   return (
     <div>
@@ -245,20 +245,20 @@ export default function InvoicePage() {
                     <span>-{formatCurrency(data.terms.trade!)}</span>
                   </div>
                 )}
-                {prepaidPayment && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Prepaid</span>
-                    <span>-{formatCurrency(prepaidPayment.amount)}</span>
-                  </div>
-                )}
                 <div className="flex justify-between border-t pt-1 font-semibold text-base">
                   <span>Net Amount</span>
                   <span>{formatCurrency(data.net)}</span>
                 </div>
-                {data.amountPaid > 0 && (
+                {(data.prepaidAmount ?? 0) > 0 && (
+                  <div className="flex justify-between text-muted-foreground pt-1">
+                    <span>Prepaid</span>
+                    <span>-{formatCurrency(data.prepaidAmount!)}</span>
+                  </div>
+                )}
+                {nonPrepaidAmountPaid > 0 && (
                   <div className="flex justify-between text-muted-foreground pt-1">
                     <span>Amount Paid</span>
-                    <span>-{formatCurrency(data.amountPaid)}</span>
+                    <span>-{formatCurrency(nonPrepaidAmountPaid)}</span>
                   </div>
                 )}
                 <div className="flex justify-between border-t pt-1 font-semibold text-base">

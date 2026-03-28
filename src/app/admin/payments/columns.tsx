@@ -22,17 +22,9 @@ export interface PaymentRow {
 
 export const paymentColumns: ColumnDef<PaymentRow>[] = [
   {
-    accessorKey: "date",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Date" />
-    ),
-    cell: ({ row }) => formatDate(row.original.date),
-    sortingFn: "basic",
-  },
-  {
     accessorKey: "contactName",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Contact" />
+      <DataTableColumnHeader column={column} title="Company Name" />
     ),
     cell: ({ row }) => (
       <div>
@@ -55,19 +47,27 @@ export const paymentColumns: ColumnDef<PaymentRow>[] = [
     cell: ({ row }) => formatCurrency(row.original.amount),
   },
   {
+    accessorKey: "date",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Payment Date" />
+    ),
+    cell: ({ row }) => formatDate(row.original.date),
+    sortingFn: "basic",
+  },
+  {
     accessorKey: "method",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Method" />
+      <DataTableColumnHeader column={column} title="Payment Method" />
     ),
     cell: ({ row }) => {
       const method = row.original.method;
-      if (!method) return <span className="text-muted-foreground">—</span>;
+      if (!method) return "—";
       const methodColors: Record<string, string> = {
-        check: "bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-500/20 dark:text-emerald-300",
-        credit_card: "bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-500/20 dark:text-blue-300",
-        cash: "bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-500/20 dark:text-amber-300",
-        trade: "bg-violet-100 text-violet-800 hover:bg-violet-100 dark:bg-violet-500/20 dark:text-violet-300",
-        ach: "bg-cyan-100 text-cyan-800 hover:bg-cyan-100 dark:bg-cyan-500/20 dark:text-cyan-300",
+        check: "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-500/20 dark:text-emerald-300",
+        credit_card: "bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-100 dark:bg-blue-500/20 dark:text-blue-300",
+        cash: "bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-100 dark:bg-amber-500/20 dark:text-amber-300",
+        trade: "bg-violet-100 text-violet-800 border-violet-200 hover:bg-violet-100 dark:bg-violet-500/20 dark:text-violet-300",
+        ach: "bg-cyan-100 text-cyan-800 border-cyan-200 hover:bg-cyan-100 dark:bg-cyan-500/20 dark:text-cyan-300",
       };
       return (
         <Badge className={`capitalize ${methodColors[method] ?? "bg-muted text-muted-foreground"}`}>
@@ -79,7 +79,7 @@ export const paymentColumns: ColumnDef<PaymentRow>[] = [
   {
     accessorKey: "checkNumber",
     header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Check #" />
+      <DataTableColumnHeader column={column} title="Check Number" />
     ),
     cell: ({ row }) => row.original.checkNumber ?? "—",
   },

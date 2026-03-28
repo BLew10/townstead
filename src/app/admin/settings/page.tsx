@@ -13,6 +13,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -28,6 +35,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { useDefaultYear } from "@/hooks/use-default-year";
+
+const currentYear = new Date().getFullYear();
+const defaultYearOptions = Array.from(
+  { length: 10 },
+  (_, i) => currentYear - 2 + i
+);
 
 const orgSettingsSchema = z.object({
   businessName: z.string().min(1, "Business name is required"),
@@ -67,6 +81,7 @@ const defaultValues: OrgSettingsFormValues = {
 
 export default function SettingsPage() {
   const { orgId, isReady } = useOrg();
+  const { defaultYear, setDefaultYear } = useDefaultYear();
   const settings = useQuery(
     api.settings.queries.getOrgSettings,
     isReady ? { orgId: orgId! } : "skip"
@@ -152,9 +167,43 @@ export default function SettingsPage() {
         </p>
       </div>
 
+      <Card className="border-l-3 border-l-blue-500">
+        <CardHeader>
+          <CardTitle>Display Preferences</CardTitle>
+          <CardDescription>
+            Controls the default year filter across all admin pages.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <label
+              htmlFor="default-year"
+              className="text-sm font-medium whitespace-nowrap"
+            >
+              Default Year
+            </label>
+            <Select
+              value={String(defaultYear)}
+              onValueChange={(val) => setDefaultYear(parseInt(val, 10))}
+            >
+              <SelectTrigger id="default-year" className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {defaultYearOptions.map((y) => (
+                  <SelectItem key={y} value={String(y)}>
+                    {y}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Card>
+          <Card className="border-l-3 border-l-emerald-500">
             <CardHeader>
               <CardTitle>Business Information</CardTitle>
               <CardDescription>
@@ -278,7 +327,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-l-3 border-l-amber-500">
             <CardHeader>
               <CardTitle>Remit-To Address</CardTitle>
               <CardDescription>
@@ -356,7 +405,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-l-3 border-l-violet-500">
             <CardHeader>
               <CardTitle>Invoice Options</CardTitle>
             </CardHeader>

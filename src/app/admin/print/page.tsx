@@ -20,9 +20,10 @@ import { Download, Printer } from "lucide-react";
 import { CalendarInventoryGrid } from "@/components/admin/dashboard/calendar-inventory-grid";
 import { AdvertiserLegend } from "@/components/admin/dashboard/advertiser-legend";
 import { EmptyState } from "@/components/shared/empty-state";
+import { useDefaultYear } from "@/hooks/use-default-year";
 
 const currentYear = new Date().getFullYear();
-const yearOptions = Array.from({ length: 10 }, (_, i) => currentYear - i);
+const yearOptions = Array.from({ length: 12 }, (_, i) => currentYear + 2 - i);
 
 function buildPdfUrl(
   year: number,
@@ -43,7 +44,8 @@ function buildPdfUrl(
 
 export default function AdminPrintInventoryPage() {
   const { orgId, isReady } = useOrg();
-  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const { defaultYear, setDefaultYear } = useDefaultYear();
+  const [selectedYear, setSelectedYear] = useState(defaultYear);
   const [selectedEditionIds, setSelectedEditionIds] = useState<
     Id<"calendarEditions">[]
   >([]);
@@ -159,7 +161,13 @@ export default function AdminPrintInventoryPage() {
           <div className="flex flex-wrap items-center gap-2">
             <Select
               value={selectedYear.toString()}
-              onValueChange={(val) => val && setSelectedYear(parseInt(val, 10))}
+              onValueChange={(val) => {
+                if (val) {
+                  const year = parseInt(val, 10);
+                  setSelectedYear(year);
+                  setDefaultYear(year);
+                }
+              }}
             >
               <SelectTrigger className="w-28">
                 <SelectValue />

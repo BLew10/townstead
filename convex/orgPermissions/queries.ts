@@ -38,7 +38,10 @@ export const getForUser = query({
 export const getForContact = query({
   args: { contactId: v.id("contacts") },
   handler: async (ctx, args) => {
-    const { orgId } = await requireAuth(ctx);
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const orgId = identity.orgId as string | undefined;
+    if (!orgId) return null;
 
     const grant = await ctx.db
       .query("orgPermissions")

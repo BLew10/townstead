@@ -15,6 +15,7 @@ import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useState } from "react";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/shared/data-table-column-header";
 import { toast } from "sonner";
 
@@ -112,7 +113,7 @@ export function columns({
         const url = row.original.url;
         if (!url) return <span className="text-muted-foreground">—</span>;
         return (
-          <span className="font-mono text-xs max-w-[200px] truncate block">
+          <span className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-xs max-w-[200px] truncate block text-muted-foreground">
             {url}
           </span>
         );
@@ -145,7 +146,12 @@ export function columns({
         const name = row.original.categoryId
           ? categoryMap.get(row.original.categoryId)
           : null;
-        return name ?? <span className="text-muted-foreground">—</span>;
+        if (!name) return <span className="text-muted-foreground">—</span>;
+        return (
+          <Badge className="bg-cyan-100 text-cyan-800 hover:bg-cyan-100 dark:bg-cyan-500/20 dark:text-cyan-300">
+            {name}
+          </Badge>
+        );
       },
     },
     {
