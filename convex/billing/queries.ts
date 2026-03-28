@@ -423,9 +423,14 @@ export const getInvoiceData = query({
     }
 
     const contact = await ctx.db.get(purchase.contactId);
-    const edition = purchase.calendarEditionIds.length > 0
-      ? await ctx.db.get(purchase.calendarEditionIds[0])
-      : null;
+    const allEditions = await Promise.all(
+      purchase.calendarEditionIds.map((id) => ctx.db.get(id))
+    );
+    const editionCodes = allEditions
+      .filter(Boolean)
+      .map((e) => e!.code)
+      .join(", ") || "Unknown";
+    const firstEdition = allEditions.find(Boolean) ?? null;
 
     const terms = await ctx.db
       .query("paymentTerms")
@@ -446,7 +451,7 @@ export const getInvoiceData = query({
         const ad = await ctx.db.get(ap.advertisementId);
         const apEdition = ap.calendarEditionId
           ? await ctx.db.get(ap.calendarEditionId)
-          : edition;
+          : firstEdition;
 
         const pricingEditionId = ap.calendarEditionId ?? purchase.calendarEditionIds[0];
         const pricing = pricingEditionId
@@ -490,7 +495,7 @@ export const getInvoiceData = query({
           quantity: ap.quantity,
           unitPrice,
           total,
-          calendarName: apEdition?.name ?? edition?.name ?? "",
+          calendarName: apEdition?.code ?? firstEdition?.code ?? "",
           slots,
         };
       })
@@ -538,7 +543,7 @@ export const getInvoiceData = query({
     return {
       purchase,
       contact,
-      edition,
+      editionCodes,
       terms,
       lineItems,
       net,
@@ -575,9 +580,14 @@ export const getStatementData = query({
 
     const purchaseRows = await Promise.all(
       purchases.map(async (purchase) => {
-        const edition = purchase.calendarEditionIds.length > 0
-          ? await ctx.db.get(purchase.calendarEditionIds[0])
-          : null;
+        const editions = await Promise.all(
+          purchase.calendarEditionIds.map((id) => ctx.db.get(id))
+        );
+        const editionCode = editions
+          .filter(Boolean)
+          .map((e) => e!.code)
+          .join(", ") || "Unknown";
+
         const terms = await ctx.db
           .query("paymentTerms")
           .withIndex("by_purchaseId", (q) =>
@@ -627,7 +637,7 @@ export const getStatementData = query({
         return {
           _id: purchase._id,
           invoiceNumber: purchase.invoiceNumber,
-          editionName: edition?.name ?? "Unknown",
+          editionName: editionCode,
           year: purchase.year,
           net,
           amountPaid,
@@ -646,9 +656,13 @@ export const getStatementData = query({
         )
         .collect();
 
-      const edition = purchase.calendarEditionIds.length > 0
-        ? await ctx.db.get(purchase.calendarEditionIds[0])
-        : null;
+      const editions = await Promise.all(
+        purchase.calendarEditionIds.map((id) => ctx.db.get(id))
+      );
+      const editionCode = editions
+        .filter(Boolean)
+        .map((e) => e!.code)
+        .join(", ") || "Unknown";
 
       for (const payment of payments) {
         allPayments.push({
@@ -658,7 +672,7 @@ export const getStatementData = query({
           method: payment.method,
           checkNumber: payment.checkNumber,
           invoiceNumber: purchase.invoiceNumber,
-          editionName: edition?.name ?? "Unknown",
+          editionName: editionCode,
           year: purchase.year,
         });
       }
@@ -691,10 +705,13 @@ export const getStatementDataByPurchase = query({
     }
 
     const contact = await ctx.db.get(purchase.contactId);
-    const edition =
-      purchase.calendarEditionIds.length > 0
-        ? await ctx.db.get(purchase.calendarEditionIds[0])
-        : null;
+    const allEditions = await Promise.all(
+      purchase.calendarEditionIds.map((id) => ctx.db.get(id))
+    );
+    const editionCode = allEditions
+      .filter(Boolean)
+      .map((e) => e!.code)
+      .join(", ") || "Unknown";
 
     const terms = await ctx.db
       .query("paymentTerms")
@@ -826,11 +843,11 @@ export const getStatementDataByPurchase = query({
     return {
       purchase,
       contact,
-      edition,
+      editionCodes: editionCode,
       terms,
       invoiceNumber: purchase.invoiceNumber,
       year: purchase.year,
-      editionName: edition?.name ?? "Unknown",
+      editionName: editionCode,
       startingBalance,
       ledgerEntries: entries,
       pastDueAmount,

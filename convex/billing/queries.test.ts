@@ -555,6 +555,190 @@ describe("getInvoiceData", () => {
     expect(result!.balance).toBe(50000);
   });
 
+  it("returns editionCodes with all edition codes joined for multi-edition purchase", async () => {
+    const t = convexTest(schema, modules);
+
+    const ids = await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "Multi Edition Co",
+        firstName: "Jane",
+        lastName: "Doe",
+        orgId: ORG,
+        isDeleted: false,
+        searchText: "Multi Edition Co Jane Doe",
+      });
+      const ed1 = await ctx.db.insert("calendarEditions", {
+        name: "Elk Grove",
+        code: "EG",
+        orgId: ORG,
+      });
+      const ed2 = await ctx.db.insert("calendarEditions", {
+        name: "Sacramento",
+        code: "SAC",
+        orgId: ORG,
+      });
+      const purchaseId = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [ed1, ed2],
+        year: 2026,
+        invoiceNumber: "26-0010",
+        orgId: ORG,
+        isDeleted: false,
+      });
+      await ctx.db.insert("paymentTerms", {
+        purchaseId,
+        totalSale: 100000,
+        orgId: ORG,
+      });
+      return { purchaseId };
+    });
+
+    const result = await t.query(api.billing.queries.getInvoiceData, {
+      purchaseId: ids.purchaseId,
+      orgId: ORG,
+      now: NOW,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.editionCodes).toBe("EG, SAC");
+  });
+
+  it("returns single edition code for single-edition purchase", async () => {
+    const t = convexTest(schema, modules);
+
+    const ids = await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "Single Co",
+        firstName: "John",
+        lastName: "Solo",
+        orgId: ORG,
+        isDeleted: false,
+        searchText: "Single Co John Solo",
+      });
+      const editionId = await ctx.db.insert("calendarEditions", {
+        name: "Elk Grove",
+        code: "EG",
+        orgId: ORG,
+      });
+      const purchaseId = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [editionId],
+        year: 2026,
+        orgId: ORG,
+        isDeleted: false,
+      });
+      await ctx.db.insert("paymentTerms", {
+        purchaseId,
+        totalSale: 50000,
+        orgId: ORG,
+      });
+      return { purchaseId };
+    });
+
+    const result = await t.query(api.billing.queries.getInvoiceData, {
+      purchaseId: ids.purchaseId,
+      orgId: ORG,
+      now: NOW,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.editionCodes).toBe("EG");
+  });
+
+  it("returns 'Unknown' editionCodes when purchase has no editions", async () => {
+    const t = convexTest(schema, modules);
+
+    const ids = await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "No Ed Co",
+        firstName: "X",
+        lastName: "Y",
+        orgId: ORG,
+        isDeleted: false,
+        searchText: "No Ed Co X Y",
+      });
+      const purchaseId = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [],
+        year: 2026,
+        orgId: ORG,
+        isDeleted: false,
+      });
+      await ctx.db.insert("paymentTerms", {
+        purchaseId,
+        totalSale: 50000,
+        orgId: ORG,
+      });
+      return { purchaseId };
+    });
+
+    const result = await t.query(api.billing.queries.getInvoiceData, {
+      purchaseId: ids.purchaseId,
+      orgId: ORG,
+      now: NOW,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.editionCodes).toBe("Unknown");
+  });
+
+  it("uses edition code (not name) for line item calendarName", async () => {
+    const t = convexTest(schema, modules);
+
+    const ids = await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "Code Co",
+        firstName: "X",
+        lastName: "Y",
+        orgId: ORG,
+        isDeleted: false,
+        searchText: "Code Co X Y",
+      });
+      const editionId = await ctx.db.insert("calendarEditions", {
+        name: "Elk Grove",
+        code: "EG",
+        orgId: ORG,
+      });
+      const adId = await ctx.db.insert("advertisements", {
+        name: "Full Page",
+        isDayType: false,
+        slotsPerMonth: 1,
+        orgId: ORG,
+      });
+      const purchaseId = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [editionId],
+        year: 2026,
+        orgId: ORG,
+        isDeleted: false,
+      });
+      await ctx.db.insert("paymentTerms", {
+        purchaseId,
+        totalSale: 120000,
+        orgId: ORG,
+      });
+      await ctx.db.insert("adPurchases", {
+        purchaseId,
+        advertisementId: adId,
+        calendarEditionId: editionId,
+        quantity: 12,
+        charge: 120000,
+        orgId: ORG,
+      });
+      return { purchaseId };
+    });
+
+    const result = await t.query(api.billing.queries.getInvoiceData, {
+      purchaseId: ids.purchaseId,
+      orgId: ORG,
+      now: NOW,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.lineItems).toHaveLength(1);
+    expect(result!.lineItems[0].calendarName).toBe("EG");
+  });
+
   it("uses adPurchases.charge as fallback when adPricing is absent", async () => {
     const t = convexTest(schema, modules);
 
@@ -615,6 +799,59 @@ describe("getInvoiceData", () => {
 });
 
 describe("getStatementDataByPurchase", () => {
+  it("returns all edition codes in editionName and editionCodes", async () => {
+    const t = convexTest(schema, modules);
+
+    const ids = await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "Multi Ed Corp",
+        firstName: "Carol",
+        lastName: "Multi",
+        orgId: ORG,
+      });
+      const ed1 = await ctx.db.insert("calendarEditions", {
+        name: "Elk Grove",
+        code: "EG",
+        orgId: ORG,
+      });
+      const ed2 = await ctx.db.insert("calendarEditions", {
+        name: "Sacramento",
+        code: "SAC",
+        orgId: ORG,
+      });
+      const purchaseId = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [ed1, ed2],
+        year: 2026,
+        invoiceNumber: "26-0050",
+        orgId: ORG,
+      });
+      await ctx.db.insert("paymentTerms", {
+        purchaseId,
+        totalSale: 80000,
+        orgId: ORG,
+      });
+      await ctx.db.insert("scheduledPayments", {
+        purchaseId,
+        dueDate: new Date(2027, 0, 1).getTime(),
+        amount: 80000,
+        month: 1,
+        year: 2027,
+        orgId: ORG,
+      });
+      return { purchaseId };
+    });
+
+    const result = await t.query(
+      api.billing.queries.getStatementDataByPurchase,
+      { purchaseId: ids.purchaseId, orgId: ORG, now: NOW }
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.editionName).toBe("EG, SAC");
+    expect(result!.editionCodes).toBe("EG, SAC");
+  });
+
   it("returns null for non-existent purchase", async () => {
     const t = convexTest(schema, modules);
 
@@ -1042,6 +1279,106 @@ describe("getStatementDataByPurchase", () => {
 });
 
 describe("getStatementData", () => {
+  it("returns all edition codes joined for purchase and payment rows", async () => {
+    const t = convexTest(schema, modules);
+
+    const ids = await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "Multi Corp",
+        firstName: "Alice",
+        lastName: "Multi",
+        orgId: ORG,
+        isDeleted: false,
+        searchText: "Multi Corp Alice Multi",
+      });
+      const ed1 = await ctx.db.insert("calendarEditions", {
+        name: "Elk Grove",
+        code: "EG",
+        orgId: ORG,
+      });
+      const ed2 = await ctx.db.insert("calendarEditions", {
+        name: "Sacramento",
+        code: "SAC",
+        orgId: ORG,
+      });
+      const purchaseId = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [ed1, ed2],
+        year: 2026,
+        orgId: ORG,
+        isDeleted: false,
+      });
+      await ctx.db.insert("paymentTerms", {
+        purchaseId,
+        totalSale: 100000,
+        orgId: ORG,
+      });
+      await ctx.db.insert("scheduledPayments", {
+        purchaseId,
+        dueDate: new Date(2027, 0, 1).getTime(),
+        amount: 100000,
+        month: 1,
+        year: 2027,
+        orgId: ORG,
+      });
+      await ctx.db.insert("payments", {
+        purchaseId,
+        amount: 25000,
+        date: new Date(2026, 3, 1).getTime(),
+        method: "check",
+        orgId: ORG,
+      });
+      return { contactId };
+    });
+
+    const result = await t.query(api.billing.queries.getStatementData, {
+      contactId: ids.contactId,
+      orgId: ORG,
+      now: NOW,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.purchases[0].editionName).toBe("EG, SAC");
+    expect(result!.payments[0].editionName).toBe("EG, SAC");
+  });
+
+  it("returns 'Unknown' editionName when purchase has no editions", async () => {
+    const t = convexTest(schema, modules);
+
+    const ids = await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "Empty Ed Corp",
+        firstName: "Bob",
+        lastName: "None",
+        orgId: ORG,
+        isDeleted: false,
+        searchText: "Empty Ed Corp Bob None",
+      });
+      const purchaseId = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [],
+        year: 2026,
+        orgId: ORG,
+        isDeleted: false,
+      });
+      await ctx.db.insert("paymentTerms", {
+        purchaseId,
+        totalSale: 50000,
+        orgId: ORG,
+      });
+      return { contactId };
+    });
+
+    const result = await t.query(api.billing.queries.getStatementData, {
+      contactId: ids.contactId,
+      orgId: ORG,
+      now: NOW,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.purchases[0].editionName).toBe("Unknown");
+  });
+
   it("includes unallocated prepaid in per-purchase balance (BUG 2 regression)", async () => {
     const t = convexTest(schema, modules);
 

@@ -37,7 +37,7 @@ export async function GET(
 
   const pdfBytes = await generateInvoicePdf({
     invoiceNumber: data.purchase.invoiceNumber ?? "DRAFT",
-    editionName: data.edition?.name ?? "",
+    editionName: data.editionCodes,
     year: data.purchase.year,
     createdAt: data.purchase._creationTime,
     contact: {

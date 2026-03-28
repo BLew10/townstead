@@ -31,7 +31,7 @@ export async function sendInvoiceEmail(
 
   const pdfBytes = await generateInvoicePdf({
     invoiceNumber: data.purchase.invoiceNumber ?? "DRAFT",
-    editionName: data.edition?.name ?? "",
+    editionName: data.editionCodes,
     year: data.purchase.year,
     createdAt: data.purchase._creationTime,
     contact: {
@@ -84,7 +84,7 @@ export async function sendInvoiceEmail(
     InvoiceEmail({
       contactName,
       invoiceNumber: invoiceNum,
-      editionName: data.edition?.name ?? "",
+      editionName: data.editionCodes,
       year: data.purchase.year,
       netAmount: data.balance,
     })
@@ -94,7 +94,7 @@ export async function sendInvoiceEmail(
   await resend.emails.send({
     from: EMAIL_FROM,
     to: data.contact.email,
-    subject: `Invoice #${invoiceNum} — ${data.edition?.name ?? ""} ${data.purchase.year}`,
+    subject: `Invoice #${invoiceNum} — ${data.editionCodes} ${data.purchase.year}`,
     html,
     attachments: [
       {

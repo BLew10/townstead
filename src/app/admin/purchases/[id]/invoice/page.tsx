@@ -135,7 +135,7 @@ export default function InvoicePage() {
           </div>
           <div className="text-right text-sm text-muted-foreground">
             <p className="font-semibold text-foreground">
-              {data.edition?.name ?? ""}
+              {data.editionCodes}
             </p>
             <p>{data.purchase.year}</p>
           </div>

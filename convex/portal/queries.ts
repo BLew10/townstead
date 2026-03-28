@@ -164,7 +164,7 @@ export const getMyPurchases = query({
           ...purchase,
           editionNames: editions
             .filter(Boolean)
-            .map((e) => e!.name)
+            .map((e) => e!.code)
             .join(", "),
           adDetails,
           net,
@@ -210,7 +210,7 @@ async function collectPayments(ctx: { db: any }, purchases: any[]) {
     );
     const editionName = editions
       .filter(Boolean)
-      .map((e: any) => e.name)
+      .map((e: any) => e.code)
       .join(", ");
 
     for (const payment of pPayments) {
@@ -278,7 +278,7 @@ export const getInvoices = query({
           year: purchase.year,
           editionName: editions
             .filter(Boolean)
-            .map((e) => e!.name)
+            .map((e) => e!.code)
             .join(", "),
           net,
           amountPaid,
