@@ -32,7 +32,6 @@ describe("PortalSidebar", () => {
     expect(screen.getByText("Payments")).toBeDefined();
     expect(screen.getByText("Invoices")).toBeDefined();
     expect(screen.getByText("Assets")).toBeDefined();
-    expect(screen.getByText("Messages")).toBeDefined();
   });
 
   it("links point to correct portal routes", () => {

@@ -14,7 +14,10 @@ export interface OrgAuth {
 export async function requireAuth(ctx: AuthCtx): Promise<OrgAuth> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new Error("Not authenticated");
-  const orgId = identity.orgId as string;
+  const rawO = (identity as Record<string, unknown>).o;
+  const orgId =
+    (identity.orgId as string | undefined) ??
+    (typeof rawO === "string" ? rawO : (rawO as { id?: string } | undefined)?.id);
   if (!orgId) throw new Error("No organization selected");
   return { userId: identity.subject, orgId };
 }
@@ -23,7 +26,9 @@ export async function requireAuth(ctx: AuthCtx): Promise<OrgAuth> {
  * Extracts auth for public-facing operations where the user
  * is not an org member. Only validates that the user is signed in.
  */
-export async function requirePublicAuth(ctx: AuthCtx): Promise<{ userId: string }> {
+export async function requirePublicAuth(
+  ctx: AuthCtx
+): Promise<{ userId: string }> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new Error("Not authenticated");
   return { userId: identity.subject };
@@ -64,9 +69,9 @@ export async function checkPermission(
       .first();
     if (!defaults) return false;
     const defaultPerms =
-      grant.role === "contact"
-        ? defaults.contactDefaults
-        : defaults.userDefaults;
+      grant.role === "contact" ?
+        defaults.contactDefaults
+      : defaults.userDefaults;
     return defaultPerms.includes(permission);
   }
 
@@ -124,9 +129,9 @@ export async function resolveEffectivePermissions(
       .first();
     if (!defaults) return { permissions: [], isAdmin: false };
     const defaultPerms =
-      grant.role === "contact"
-        ? defaults.contactDefaults
-        : defaults.userDefaults;
+      grant.role === "contact" ?
+        defaults.contactDefaults
+      : defaults.userDefaults;
     return { permissions: defaultPerms, isAdmin: false };
   }
 

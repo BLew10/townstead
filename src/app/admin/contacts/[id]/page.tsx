@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   ArrowLeft,
   Pencil,
@@ -37,15 +38,23 @@ import {
   FileText,
   Link2,
   Unlink,
-  MessageSquare,
   ImageIcon,
+  Send,
+  Copy,
+  RefreshCw,
+  XCircle,
+  Info,
+  Check,
+  Clock,
+  Shield,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useMutation } from "convex/react";
 import { useOrg } from "@/hooks/use-org";
 import { useStableNow } from "@/hooks/use-stable-now";
 import { formatDate, formatCurrency } from "@/lib/utils";
+import { PERMISSIONS, DEFAULT_CONTACT_PERMISSIONS } from "../../../../../convex/permissions";
 
 function DetailField({
   label,
@@ -62,6 +71,19 @@ function DetailField({
     </div>
   );
 }
+
+const PORTAL_PERMISSION_OPTIONS = [
+  { value: PERMISSIONS.PORTAL_VIEW, label: "View Portal Dashboard" },
+  { value: PERMISSIONS.PORTAL_ASSETS, label: "Upload Ad Artwork" },
+  { value: PERMISSIONS.PORTAL_MESSAGES, label: "Send & Receive Messages" },
+  { value: PERMISSIONS.PORTAL_PAYMENTS, label: "View Payments" },
+  { value: PERMISSIONS.PORTAL_INVOICES, label: "View Invoices" },
+  { value: PERMISSIONS.PORTAL_PLACEMENTS, label: "View Ad Placements" },
+  { value: PERMISSIONS.EVENTS_SUBMIT, label: "Submit Events" },
+  { value: PERMISSIONS.EVENTS_UPDATE_OWN, label: "Edit Own Events" },
+  { value: PERMISSIONS.BLOG_SUBMIT, label: "Submit Blog Posts" },
+  { value: PERMISSIONS.BLOG_UPDATE_OWN, label: "Edit Own Blog Posts" },
+];
 
 function ContactDetailSkeleton() {
   return (
@@ -106,15 +128,29 @@ export default function ContactDetailPage() {
     isReady ? { contactId: id } : "skip"
   );
   const [formOpen, setFormOpen] = useState(false);
-  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
-  const [linkUserId, setLinkUserId] = useState("");
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [invitePermissions, setInvitePermissions] = useState<string[]>([
+    ...DEFAULT_CONTACT_PERMISSIONS,
+  ]);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{
+    inviteUrl: string;
+    emailSent: boolean;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [clerkLookup, setClerkLookup] = useState<{
+    found: boolean;
+    userId?: string;
+    name?: string;
+    checked: boolean;
+  }>({ found: false, checked: false });
 
   const clientGrant = useQuery(
     api.orgPermissions.queries.getForContact,
     isReady ? { contactId: id } : "skip"
   );
-  const clientMessages = useQuery(
-    api.messages.queries.listByContact,
+  const portalInvite = useQuery(
+    api.portalInvites.queries.getByContact,
     isReady ? { contactId: id } : "skip"
   );
   const clientAssets = useQuery(
@@ -124,10 +160,28 @@ export default function ContactDetailPage() {
 
   const linkContact = useMutation(api.orgPermissions.mutations.linkContact);
   const unlinkContact = useMutation(api.orgPermissions.mutations.unlinkContact);
-  const sendMessage = useMutation(api.messages.mutations.send);
+  const revokeInvite = useMutation(api.portalInvites.mutations.revoke);
   const reviewAsset = useMutation(api.clientAssets.mutations.review);
 
-  const [newMessage, setNewMessage] = useState("");
+  const lookupClerkUser = useCallback(async (email: string) => {
+    try {
+      const res = await fetch(`/api/portal/lookup?email=${encodeURIComponent(email)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setClerkLookup({ ...data, checked: true });
+      } else {
+        setClerkLookup({ found: false, checked: true });
+      }
+    } catch {
+      setClerkLookup({ found: false, checked: true });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (contact?.email && !clientGrant && !portalInvite) {
+      lookupClerkUser(contact.email);
+    }
+  }, [contact?.email, clientGrant, portalInvite, lookupClerkUser]);
 
   if (contact === undefined) {
     return <ContactDetailSkeleton />;
@@ -203,7 +257,6 @@ export default function ContactDetailPage() {
           <TabsTrigger value="purchases" className="data-[state=active]:text-emerald-700 data-[state=active]:dark:text-emerald-400">Purchases</TabsTrigger>
           <TabsTrigger value="payments" className="data-[state=active]:text-amber-700 data-[state=active]:dark:text-amber-400">Payments</TabsTrigger>
           <TabsTrigger value="portal" className="data-[state=active]:text-violet-700 data-[state=active]:dark:text-violet-400">Portal Access</TabsTrigger>
-          <TabsTrigger value="messages" className="data-[state=active]:text-sky-700 data-[state=active]:dark:text-sky-400">Messages</TabsTrigger>
           <TabsTrigger value="assets" className="data-[state=active]:text-rose-700 data-[state=active]:dark:text-rose-400">Assets</TabsTrigger>
         </TabsList>
 
@@ -373,7 +426,7 @@ export default function ContactDetailPage() {
           </div>
         </TabsContent>
         <TabsContent value="portal">
-          <div className="pt-4">
+          <div className="pt-4 space-y-4">
             <Card className="border-l-3 border-l-violet-500">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -383,10 +436,17 @@ export default function ContactDetailPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {clientGrant ? (
-                  <div className="space-y-3">
+                  /* STATE 3: Linked */
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                        <Check className="mr-1 h-3 w-3" />
+                        Portal Access Active
+                      </Badge>
+                    </div>
                     <div className="flex items-center justify-between rounded-md border p-3">
                       <div>
-                        <p className="text-sm font-medium">Linked User ID</p>
+                        <p className="text-sm font-medium">Linked Account</p>
                         <p className="text-sm text-muted-foreground font-mono">
                           {clientGrant.userId}
                         </p>
@@ -402,98 +462,174 @@ export default function ContactDetailPage() {
                         Unlink
                       </Button>
                     </div>
-                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                      Portal Access Enabled
-                    </Badge>
+                    {clientGrant.permissions.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium mb-2">Active Permissions</p>
+                        <div className="flex flex-wrap gap-1">
+                          {clientGrant.permissions.map((p) => (
+                            <Badge key={p} variant="secondary" className="text-xs">
+                              {p}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : portalInvite && portalInvite.status === "pending" ? (
+                  /* STATE 2: Pending invite */
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
+                        <Clock className="mr-1 h-3 w-3" />
+                        Invite Pending
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        Sent {formatDate(portalInvite.createdAt)} &middot;
+                        Expires {formatDate(portalInvite.expiresAt)}
+                      </span>
+                    </div>
+
+                    {portalInvite.permissions.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium mb-2">Invited Permissions</p>
+                        <div className="flex flex-wrap gap-1">
+                          {portalInvite.permissions.map((p) => (
+                            <Badge key={p} variant="secondary" className="text-xs">
+                              {p}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          const baseUrl = window.location.origin;
+                          const url = `${baseUrl}/portal/invite/${portalInvite.token}`;
+                          await navigator.clipboard.writeText(url);
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        }}
+                      >
+                        {copied ? (
+                          <Check className="mr-2 h-4 w-4" />
+                        ) : (
+                          <Copy className="mr-2 h-4 w-4" />
+                        )}
+                        {copied ? "Copied" : "Copy Invite Link"}
+                      </Button>
+
+                      {contact.email && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              setInviteLoading(true);
+                              await fetch("/api/portal/invite", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  contactId: id,
+                                  permissions: portalInvite.permissions,
+                                }),
+                              });
+                            } catch {
+                              // silently handle
+                            } finally {
+                              setInviteLoading(false);
+                            }
+                          }}
+                          disabled={inviteLoading}
+                        >
+                          <RefreshCw className={`mr-2 h-4 w-4 ${inviteLoading ? "animate-spin" : ""}`} />
+                          Resend Email
+                        </Button>
+                      )}
+
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={async () => {
+                          await revokeInvite({ id: portalInvite._id });
+                        }}
+                      >
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Revoke Invite
+                      </Button>
+                    </div>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                      No client portal account linked. Link a Clerk user ID to
-                      give this contact access to the client portal.
-                    </p>
-                    <Button onClick={() => setLinkDialogOpen(true)}>
-                      <Link2 className="mr-2 h-4 w-4" />
-                      Link Client Account
+                  /* STATE 1: No access, no pending invite */
+                  <div className="space-y-4">
+                    <div className="rounded-md border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/30 p-4">
+                      <div className="flex gap-3">
+                        <Info className="h-5 w-5 text-violet-500 shrink-0 mt-0.5" />
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">How Portal Access Works</p>
+                          <p className="text-sm text-muted-foreground">
+                            Portal access lets this contact sign in and view their ads, invoices,
+                            and payments. Send a portal invite to generate a unique link.
+                            The client can sign up with any email they choose and will be
+                            automatically connected to this contact record.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {clerkLookup.checked && clerkLookup.found && (
+                      <div className="rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex gap-3 items-center">
+                            <Shield className="h-5 w-5 text-blue-500" />
+                            <div>
+                              <p className="text-sm font-medium">
+                                Existing account found for {contact.email}
+                              </p>
+                              {clerkLookup.name && (
+                                <p className="text-xs text-muted-foreground">
+                                  {clerkLookup.name}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                await linkContact({
+                                  userId: clerkLookup.userId!,
+                                  contactId: id,
+                                });
+                              } catch (err) {
+                                alert(
+                                  err instanceof Error
+                                    ? err.message
+                                    : "Failed to link"
+                                );
+                              }
+                            }}
+                          >
+                            <Link2 className="mr-2 h-4 w-4" />
+                            Link Now
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    <Button onClick={() => {
+                      setInviteDialogOpen(true);
+                      setInviteResult(null);
+                      setInvitePermissions([...DEFAULT_CONTACT_PERMISSIONS]);
+                    }}>
+                      <Send className="mr-2 h-4 w-4" />
+                      Send Portal Invite
                     </Button>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="messages">
-          <div className="pt-4 space-y-4">
-            <Card className="border-l-3 border-l-sky-500">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-sky-500" />
-                  Messages
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 max-h-96 overflow-y-auto mb-4">
-                  {clientMessages && clientMessages.length > 0 ? (
-                    clientMessages.map((msg) => (
-                      <div
-                        key={msg._id}
-                        className={`rounded-lg p-3 text-sm ${
-                          msg.senderRole === "admin"
-                            ? "bg-blue-50 dark:bg-blue-500/10 ml-8 border border-blue-100 dark:border-blue-500/20"
-                            : "bg-muted mr-8"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <Badge variant="outline" className="text-xs">
-                            {msg.senderRole === "admin" ? "Admin" : "Client"}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(msg.createdAt)}
-                          </span>
-                        </div>
-                        <p className="whitespace-pre-wrap">{msg.content}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <EmptyState
-                      icon={MessageSquare}
-                      title="No messages"
-                      description="Start a conversation with this client."
-                    />
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Input
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type a message..."
-                    onKeyDown={async (e) => {
-                      if (e.key === "Enter" && !e.shiftKey && newMessage.trim()) {
-                        e.preventDefault();
-                        await sendMessage({
-                          contactId: id,
-                          content: newMessage.trim(),
-                          senderRole: "admin",
-                        });
-                        setNewMessage("");
-                      }
-                    }}
-                  />
-                  <Button
-                    onClick={async () => {
-                      if (!newMessage.trim()) return;
-                      await sendMessage({
-                        contactId: id,
-                        content: newMessage.trim(),
-                        senderRole: "admin",
-                      });
-                      setNewMessage("");
-                    }}
-                  >
-                    Send
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -590,53 +726,139 @@ export default function ContactDetailPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
-        <DialogContent>
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Link Client Account</DialogTitle>
+            <DialogTitle>Send Portal Invite</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="userId">Clerk User ID</Label>
-              <Input
-                id="userId"
-                value={linkUserId}
-                onChange={(e) => setLinkUserId(e.target.value)}
-                placeholder="user_2abc123..."
-              />
-              <p className="text-xs text-muted-foreground">
-                Enter the Clerk user ID of the client who should access this
-                contact&apos;s data through the portal.
-              </p>
+          {inviteResult ? (
+            <div className="space-y-4">
+              <div className="rounded-md border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 p-4 text-center space-y-2">
+                <Check className="mx-auto h-8 w-8 text-green-600" />
+                <p className="text-sm font-medium">Invite Created</p>
+                {inviteResult.emailSent && (
+                  <p className="text-xs text-muted-foreground">
+                    Email sent to {contact.email}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Invite Link</Label>
+                <div className="flex gap-2">
+                  <Input
+                    readOnly
+                    value={inviteResult.inviteUrl}
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(inviteResult.inviteUrl);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                  >
+                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                {!inviteResult.emailSent && (
+                  <p className="text-xs text-muted-foreground">
+                    No email on file. Share this link manually with the client.
+                  </p>
+                )}
+              </div>
+              <DialogFooter>
+                <Button onClick={() => setInviteDialogOpen(false)}>Done</Button>
+              </DialogFooter>
             </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setLinkDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              disabled={!linkUserId.trim()}
-              onClick={async () => {
-                try {
-                  await linkContact({
-                    userId: linkUserId.trim(),
-                    contactId: id,
-                  });
-                  setLinkDialogOpen(false);
-                  setLinkUserId("");
-                } catch (err) {
-                  alert(
-                    err instanceof Error ? err.message : "Failed to link"
-                  );
-                }
-              }}
-            >
-              Link Account
-            </Button>
-          </DialogFooter>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  {contact.email
+                    ? <>An invite will be sent to <strong>{contact.email}</strong>. The client can sign up with any email they choose.</>
+                    : <>No email on file. You&apos;ll get a link to share manually.</>}
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-violet-500" />
+                  Portal Permissions
+                </Label>
+                <div className="grid gap-2 rounded-md border p-3 max-h-52 overflow-y-auto">
+                  {PORTAL_PERMISSION_OPTIONS.map((opt) => (
+                    <label
+                      key={opt.value}
+                      className="flex items-center gap-2 text-sm cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={invitePermissions.includes(opt.value)}
+                        onCheckedChange={(checked) => {
+                          setInvitePermissions((prev) =>
+                            checked
+                              ? [...prev, opt.value]
+                              : prev.filter((p) => p !== opt.value)
+                          );
+                        }}
+                      />
+                      {opt.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setInviteDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  disabled={inviteLoading}
+                  onClick={async () => {
+                    try {
+                      setInviteLoading(true);
+                      const res = await fetch("/api/portal/invite", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          contactId: id,
+                          permissions: invitePermissions,
+                        }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) {
+                        alert(data.error ?? "Failed to create invite");
+                        return;
+                      }
+                      setInviteResult({
+                        inviteUrl: data.inviteUrl,
+                        emailSent: data.emailSent,
+                      });
+                    } catch (err) {
+                      alert(
+                        err instanceof Error
+                          ? err.message
+                          : "Failed to send invite"
+                      );
+                    } finally {
+                      setInviteLoading(false);
+                    }
+                  }}
+                >
+                  {inviteLoading ? (
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="mr-2 h-4 w-4" />
+                  )}
+                  Send Invite
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

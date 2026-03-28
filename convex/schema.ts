@@ -425,6 +425,26 @@ export default defineSchema({
     userDefaults: v.array(v.string()),
   }).index("by_orgId", ["orgId"]),
 
+  portalInvites: defineTable({
+    contactId: v.id("contacts"),
+    orgId: v.string(),
+    token: v.string(),
+    permissions: v.array(v.string()),
+    expiresAt: v.number(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("redeemed"),
+      v.literal("revoked"),
+      v.literal("expired")
+    ),
+    redeemedByUserId: v.optional(v.string()),
+    redeemedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_contactId", ["contactId"])
+    .index("by_orgId", ["orgId"]),
+
   clientLinks: defineTable({
     userId: v.string(),
     contactId: v.id("contacts"),
@@ -477,17 +497,6 @@ export default defineSchema({
     nsfFeeAmount: v.optional(v.number()),
     orgId: v.string(),
   }).index("by_orgId", ["orgId"]),
-
-  messages: defineTable({
-    contactId: v.id("contacts"),
-    content: v.string(),
-    senderRole: v.union(v.literal("admin"), v.literal("client")),
-    orgId: v.string(),
-    createdAt: v.number(),
-  })
-    .index("by_orgId", ["orgId"])
-    .index("by_contactId", ["contactId"])
-    .index("by_contactId_and_createdAt", ["contactId", "createdAt"]),
 
   dashboardStatsCache: defineTable({
     orgId: v.string(),

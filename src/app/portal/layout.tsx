@@ -32,8 +32,9 @@ export default function PortalLayout({
           Account Not Linked
         </h1>
         <p className="mt-2 max-w-md text-center text-muted-foreground">
-          Your account has not been linked to a client profile yet. Please
-          contact your account administrator to get portal access.
+          Your account hasn&apos;t been connected to a client profile yet.
+          If you received an invite link, use it to connect your account.
+          Otherwise, contact your account administrator to request portal access.
         </p>
       </div>
     );

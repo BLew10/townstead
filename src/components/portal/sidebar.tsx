@@ -8,7 +8,6 @@ import {
   CreditCard,
   FileText,
   ImageIcon,
-  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,7 +18,6 @@ const navItems = [
   { label: "Payments", href: "/portal/payments", icon: CreditCard, color: "text-emerald-500" },
   { label: "Invoices", href: "/portal/invoices", icon: FileText, color: "text-violet-500" },
   { label: "Assets", href: "/portal/assets", icon: ImageIcon, color: "text-rose-500" },
-  { label: "Messages", href: "/portal/messages", icon: MessageSquare, color: "text-sky-500" },
 ];
 
 export function PortalSidebar() {

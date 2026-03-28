@@ -19,10 +19,7 @@ async function resolvePortalContact(ctx: QueryCtx): Promise<{
     .query("orgPermissions")
     .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
     .filter((q) =>
-      q.and(
-        q.eq(q.field("role"), "contact"),
-        q.eq(q.field("isActive"), true)
-      )
+      q.and(q.eq(q.field("role"), "contact"), q.eq(q.field("isActive"), true))
     )
     .first();
 
@@ -125,9 +122,7 @@ export const getMyPurchases = query({
 
         const adPurchases = await ctx.db
           .query("adPurchases")
-          .withIndex("by_purchaseId", (q) =>
-            q.eq("purchaseId", purchase._id)
-          )
+          .withIndex("by_purchaseId", (q) => q.eq("purchaseId", purchase._id))
           .collect();
 
         const adDetails = await Promise.all(
@@ -139,16 +134,12 @@ export const getMyPurchases = query({
 
         const terms = await ctx.db
           .query("paymentTerms")
-          .withIndex("by_purchaseId", (q) =>
-            q.eq("purchaseId", purchase._id)
-          )
+          .withIndex("by_purchaseId", (q) => q.eq("purchaseId", purchase._id))
           .first();
 
         const scheduledPayments = await ctx.db
           .query("scheduledPayments")
-          .withIndex("by_purchaseId", (q) =>
-            q.eq("purchaseId", purchase._id)
-          )
+          .withIndex("by_purchaseId", (q) => q.eq("purchaseId", purchase._id))
           .collect();
 
         const allAllocations = [];
@@ -162,8 +153,9 @@ export const getMyPurchases = query({
           allAllocations.push(...spAllocs);
         }
 
-        const net = terms
-          ? computeNet(terms, scheduledPayments, allAllocations, args.now)
+        const net =
+          terms ?
+            computeNet(terms, scheduledPayments, allAllocations, args.now)
           : 0;
         const amountPaid = computeAmountPaid(allAllocations);
         const isPaid = computeIsPaid(net, amountPaid);
@@ -204,18 +196,13 @@ export const getPaymentHistory = query({
   },
 });
 
-async function collectPayments(
-  ctx: { db: any },
-  purchases: any[]
-) {
+async function collectPayments(ctx: { db: any }, purchases: any[]) {
   const payments = [];
 
   for (const purchase of purchases) {
     const pPayments = await ctx.db
       .query("payments")
-      .withIndex("by_purchaseId", (q: any) =>
-        q.eq("purchaseId", purchase._id)
-      )
+      .withIndex("by_purchaseId", (q: any) => q.eq("purchaseId", purchase._id))
       .collect();
 
     const editions = await Promise.all(
@@ -260,16 +247,12 @@ export const getInvoices = query({
 
         const terms = await ctx.db
           .query("paymentTerms")
-          .withIndex("by_purchaseId", (q) =>
-            q.eq("purchaseId", purchase._id)
-          )
+          .withIndex("by_purchaseId", (q) => q.eq("purchaseId", purchase._id))
           .first();
 
         const scheduledPayments = await ctx.db
           .query("scheduledPayments")
-          .withIndex("by_purchaseId", (q) =>
-            q.eq("purchaseId", purchase._id)
-          )
+          .withIndex("by_purchaseId", (q) => q.eq("purchaseId", purchase._id))
           .collect();
 
         const allAllocations = [];
@@ -283,8 +266,9 @@ export const getInvoices = query({
           allAllocations.push(...spAllocs);
         }
 
-        const net = terms
-          ? computeNet(terms, scheduledPayments, allAllocations, args.now)
+        const net =
+          terms ?
+            computeNet(terms, scheduledPayments, allAllocations, args.now)
           : 0;
         const amountPaid = computeAmountPaid(allAllocations);
 
@@ -317,16 +301,3 @@ export const getMyAssets = query({
   },
 });
 
-export const getMyMessages = query({
-  args: {},
-  handler: async (ctx) => {
-    const { contactId } = await resolvePortalContact(ctx);
-
-    return await ctx.db
-      .query("messages")
-      .withIndex("by_contactId_and_createdAt", (q) =>
-        q.eq("contactId", contactId)
-      )
-      .collect();
-  },
-});

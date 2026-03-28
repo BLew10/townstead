@@ -108,22 +108,38 @@ contacts (hub)
 | Info | `getById`, `categories.getById`, `addressBooks.list` | Edit (opens ContactForm sheet) |
 | Purchases | `purchases.listByContact` (enriched with net/amountPaid/isPaid) | Row click -> `/admin/purchases/:id` |
 | Payments | `payments.listByContact` (flat list across all purchases) | View only |
-| Portal | `orgPermissions.getForContact` | Link (dialog with Clerk userId input), Unlink |
+| Portal | `orgPermissions.getForContact`, `portalInvites.getByContact` | Send Invite (dialog with permission picker), Copy Link, Resend, Revoke, Unlink; email-shortcut via `/api/portal/lookup` |
 | Messages | `messages.listByContact` | Send message (inline input, Enter or button) |
 | Assets | `clientAssets.listByContact` | Approve, Reject (with feedback prompt) |
 
-## Portal Link/Unlink Flow
+## Portal Invite Flow
 
-1. **Check**: `orgPermissions.queries.getForContact({ contactId })` returns existing grant or null
-2. **Link**: Admin enters a Clerk user ID in a dialog -> calls `orgPermissions.mutations.linkContact({ userId, contactId })`
-   - Validates: contact exists + belongs to org
-   - Validates: no existing grant for this contactId (1:1)
-   - Validates: no existing grant for this userId+orgId combo (prevents double-link)
-   - Creates: `{ userId, orgId, role: "contact", permissions: [], contactId, isActive: true }`
-3. **Unlink**: Calls `orgPermissions.mutations.unlinkContact({ id })` -> hard-deletes the grant row
-   - Guard: only deletes grants with `role === "contact"`
+The Portal Access tab has 3 states:
 
-The `clientLinks` table also exists (legacy). Both may need to be kept in sync depending on migration status.
+### State 1 — No access, no pending invite
+- Shows "How Portal Access Works" explanation callout
+- Email shortcut: if contact has email, auto-checks Clerk for existing user via `GET /api/portal/lookup?email=...`. If found, shows one-click "Link Now" button (calls `linkContact` directly)
+- "Send Portal Invite" button opens dialog with permission picker (checkboxes from `PORTAL_PERMISSION_OPTIONS`)
+- Dialog calls `POST /api/portal/invite` which creates `portalInvites` record + sends email via Resend
+
+### State 2 — Pending invite
+- Shows invite status badge, created/expiry dates, selected permissions
+- Copy Invite Link, Resend Email, Revoke Invite buttons
+- Revoke calls `portalInvites.mutations.revoke`
+
+### State 3 — Linked
+- Shows linked user ID, active permissions, Unlink button
+- Unlink calls `orgPermissions.mutations.unlinkContact`
+
+### Invite Redemption
+- Client clicks invite link -> `/portal/invite/[token]` (protected by Clerk auth)
+- Page validates token via `portalInvites.queries.validateToken`
+- "Accept Invitation" button calls `portalInvites.mutations.redeem` which creates `orgPermissions` grant
+- Token-based: client can use any email to sign up, decoupled from contact email
+
+### Key Tables
+- **portalInvites**: `{ contactId, orgId, token, permissions[], expiresAt, status, redeemedByUserId?, redeemedAt?, createdAt }`
+- **orgPermissions**: `{ userId, orgId, role, permissions[], contactId?, isActive }` — role="contact" for portal links
 
 ## Statement Generation
 
