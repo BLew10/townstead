@@ -8,7 +8,7 @@ type PaymentAllocationDoc = Doc<"paymentAllocations">;
 export function isScheduledPaymentLate(
   sp: ScheduledPaymentDoc,
   allocations: PaymentAllocationDoc[],
-  now: number = Date.now()
+  now: number
 ): boolean {
   if (sp.lateFeeWaived) return false;
   const paid = allocations
@@ -30,7 +30,7 @@ export function computeLateFees(
   terms: PaymentTermsDoc,
   scheduledPayments: ScheduledPaymentDoc[],
   allocations: PaymentAllocationDoc[],
-  now: number = Date.now()
+  now: number
 ): number {
   if (!terms.lateFeeType || !terms.lateFeeAmount) return 0;
 
@@ -64,7 +64,7 @@ export function computeNet(
   terms: PaymentTermsDoc,
   scheduledPayments: ScheduledPaymentDoc[],
   allocations: PaymentAllocationDoc[],
-  now: number = Date.now()
+  now: number
 ): number {
   const lateFees = computeLateFees(terms, scheduledPayments, allocations, now);
   const earlyDiscount = computeEarlyDiscount(terms);

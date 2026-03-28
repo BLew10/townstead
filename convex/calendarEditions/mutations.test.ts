@@ -135,6 +135,211 @@ describe("calendarEditions.mutations.update", () => {
   });
 });
 
+describe("calendarEditions.mutations.create — community linking", () => {
+  it("adds the edition to the community's calendarEditionIds when communityId is provided", async () => {
+    const t = convexTest(schema, modules);
+
+    const communityId = await t.run(async (ctx) =>
+      ctx.db.insert("communities", {
+        name: "Downtown", slug: "downtown", orgId: "org_1",
+        calendarEditionIds: [], isDeleted: false,
+      })
+    );
+
+    const editionId = await t.mutation(api.calendarEditions.mutations.create, {
+      orgId: "org_1", name: "Spring 2026", code: "SP26", communityId,
+    });
+
+    const community = await t.run(async (ctx) => ctx.db.get(communityId));
+    expect(community!.calendarEditionIds).toContain(editionId);
+  });
+
+  it("does not modify any community when communityId is omitted", async () => {
+    const t = convexTest(schema, modules);
+
+    const communityId = await t.run(async (ctx) =>
+      ctx.db.insert("communities", {
+        name: "Downtown", slug: "downtown", orgId: "org_1",
+        calendarEditionIds: [], isDeleted: false,
+      })
+    );
+
+    await t.mutation(api.calendarEditions.mutations.create, {
+      orgId: "org_1", name: "Spring 2026", code: "SP26",
+    });
+
+    const community = await t.run(async (ctx) => ctx.db.get(communityId));
+    expect(community!.calendarEditionIds).toHaveLength(0);
+  });
+
+  it("throws when communityId belongs to a different org", async () => {
+    const t = convexTest(schema, modules);
+
+    const communityId = await t.run(async (ctx) =>
+      ctx.db.insert("communities", {
+        name: "Other Org Community", slug: "other", orgId: "org_b",
+        calendarEditionIds: [], isDeleted: false,
+      })
+    );
+
+    await expect(
+      t.mutation(api.calendarEditions.mutations.create, {
+        orgId: "org_a", name: "Edition", code: "ED", communityId,
+      })
+    ).rejects.toThrowError("Community not found");
+  });
+
+  it("throws when communityId does not exist", async () => {
+    const t = convexTest(schema, modules);
+
+    const fakeCommunityId = await t.run(async (ctx) => {
+      const id = await ctx.db.insert("communities", {
+        name: "Temp", slug: "tmp", orgId: "org_1",
+        calendarEditionIds: [], isDeleted: false,
+      });
+      await ctx.db.delete(id);
+      return id;
+    });
+
+    await expect(
+      t.mutation(api.calendarEditions.mutations.create, {
+        orgId: "org_1", name: "Edition", code: "ED", communityId: fakeCommunityId,
+      })
+    ).rejects.toThrowError("Community not found");
+  });
+
+  it("preserves existing calendarEditionIds on the community", async () => {
+    const t = convexTest(schema, modules);
+
+    const existingEditionId = await t.run(async (ctx) =>
+      ctx.db.insert("calendarEditions", {
+        name: "Existing", code: "EX", orgId: "org_1", isDeleted: false,
+      })
+    );
+
+    const communityId = await t.run(async (ctx) =>
+      ctx.db.insert("communities", {
+        name: "Downtown", slug: "downtown", orgId: "org_1",
+        calendarEditionIds: [existingEditionId], isDeleted: false,
+      })
+    );
+
+    const newEditionId = await t.mutation(api.calendarEditions.mutations.create, {
+      orgId: "org_1", name: "New", code: "NEW", communityId,
+    });
+
+    const community = await t.run(async (ctx) => ctx.db.get(communityId));
+    expect(community!.calendarEditionIds).toHaveLength(2);
+    expect(community!.calendarEditionIds).toContain(existingEditionId);
+    expect(community!.calendarEditionIds).toContain(newEditionId);
+  });
+});
+
+describe("calendarEditions.mutations.update — community linking", () => {
+  it("assigns edition to a community when communityId is provided", async () => {
+    const t = convexTest(schema, modules);
+
+    const editionId = await t.mutation(api.calendarEditions.mutations.create, {
+      orgId: "org_1", name: "Edition", code: "ED",
+    });
+
+    const communityId = await t.run(async (ctx) =>
+      ctx.db.insert("communities", {
+        name: "Downtown", slug: "downtown", orgId: "org_1",
+        calendarEditionIds: [], isDeleted: false,
+      })
+    );
+
+    await t.mutation(api.calendarEditions.mutations.update, {
+      id: editionId, name: "Edition", code: "ED", communityId,
+    });
+
+    const community = await t.run(async (ctx) => ctx.db.get(communityId));
+    expect(community!.calendarEditionIds).toContain(editionId);
+  });
+
+  it("moves edition from old community to new community on reassignment", async () => {
+    const t = convexTest(schema, modules);
+
+    const editionId = await t.run(async (ctx) =>
+      ctx.db.insert("calendarEditions", {
+        name: "Edition", code: "ED", orgId: "org_1", isDeleted: false,
+      })
+    );
+
+    const oldCommunityId = await t.run(async (ctx) =>
+      ctx.db.insert("communities", {
+        name: "Old Community", slug: "old", orgId: "org_1",
+        calendarEditionIds: [editionId], isDeleted: false,
+      })
+    );
+
+    const newCommunityId = await t.run(async (ctx) =>
+      ctx.db.insert("communities", {
+        name: "New Community", slug: "new", orgId: "org_1",
+        calendarEditionIds: [], isDeleted: false,
+      })
+    );
+
+    await t.mutation(api.calendarEditions.mutations.update, {
+      id: editionId, name: "Edition", code: "ED", communityId: newCommunityId,
+    });
+
+    const oldCommunity = await t.run(async (ctx) => ctx.db.get(oldCommunityId));
+    const newCommunity = await t.run(async (ctx) => ctx.db.get(newCommunityId));
+    expect(oldCommunity!.calendarEditionIds).not.toContain(editionId);
+    expect(newCommunity!.calendarEditionIds).toContain(editionId);
+  });
+
+  it("removes edition from community when communityId is empty string", async () => {
+    const t = convexTest(schema, modules);
+
+    const editionId = await t.run(async (ctx) =>
+      ctx.db.insert("calendarEditions", {
+        name: "Edition", code: "ED", orgId: "org_1", isDeleted: false,
+      })
+    );
+
+    const communityId = await t.run(async (ctx) =>
+      ctx.db.insert("communities", {
+        name: "Community", slug: "comm", orgId: "org_1",
+        calendarEditionIds: [editionId], isDeleted: false,
+      })
+    );
+
+    await t.mutation(api.calendarEditions.mutations.update, {
+      id: editionId, name: "Edition", code: "ED", removeCommunity: true,
+    });
+
+    const community = await t.run(async (ctx) => ctx.db.get(communityId));
+    expect(community!.calendarEditionIds).not.toContain(editionId);
+  });
+
+  it("does not modify communities when neither communityId nor removeCommunity is provided", async () => {
+    const t = convexTest(schema, modules);
+
+    const editionId = await t.run(async (ctx) =>
+      ctx.db.insert("calendarEditions", {
+        name: "Edition", code: "ED", orgId: "org_1", isDeleted: false,
+      })
+    );
+
+    const communityId = await t.run(async (ctx) =>
+      ctx.db.insert("communities", {
+        name: "Community", slug: "comm", orgId: "org_1",
+        calendarEditionIds: [editionId], isDeleted: false,
+      })
+    );
+
+    await t.mutation(api.calendarEditions.mutations.update, {
+      id: editionId, name: "Updated", code: "ED",
+    });
+
+    const community = await t.run(async (ctx) => ctx.db.get(communityId));
+    expect(community!.calendarEditionIds).toContain(editionId);
+  });
+});
+
 describe("calendarEditions.mutations.softDelete", () => {
   it("marks the edition as deleted", async () => {
     const t = convexTest(schema, modules);

@@ -67,9 +67,10 @@ export const listThisMonth = query({
   args: {
     orgId: v.string(),
     year: v.optional(v.number()),
+    now: v.number(),
   },
   handler: async (ctx, args) => {
-    const now = Date.now();
+    const now = args.now;
     const currentDate = new Date(now);
     const targetYear = args.year ?? currentDate.getFullYear();
     const currentMonth = currentDate.getMonth() + 1;
@@ -291,6 +292,7 @@ export const getInvoiceData = query({
   args: {
     purchaseId: v.id("purchases"),
     orgId: v.string(),
+    now: v.number(),
   },
   handler: async (ctx, args) => {
     const purchase = await ctx.db.get(args.purchaseId);
@@ -395,9 +397,8 @@ export const getInvoiceData = query({
       .withIndex("by_purchaseId", (q) => q.eq("purchaseId", purchase._id))
       .collect();
 
-    const now = Date.now();
     const net = terms
-      ? computeNet(terms, scheduledPayments, allAllocations, now)
+      ? computeNet(terms, scheduledPayments, allAllocations, args.now)
       : 0;
     const amountPaid = computeAmountPaid(allAllocations);
 
@@ -406,7 +407,7 @@ export const getInvoiceData = query({
       .map((sp) => ({
         ...sp,
         paidAmount: computeScheduledPaymentPaid(sp._id, allAllocations),
-        isLate: isScheduledPaymentLate(sp, allAllocations, now),
+        isLate: isScheduledPaymentLate(sp, allAllocations, args.now),
       }));
 
     return {
@@ -428,6 +429,7 @@ export const getStatementData = query({
   args: {
     contactId: v.id("contacts"),
     orgId: v.string(),
+    now: v.number(),
   },
   handler: async (ctx, args) => {
     const contact = await ctx.db.get(args.contactId);
@@ -441,7 +443,7 @@ export const getStatementData = query({
       .filter((q) => q.neq(q.field("isDeleted"), true))
       .collect();
 
-    const now = Date.now();
+    const now = args.now;
     let overallBalance = 0;
     let latestStatementMessage: string | undefined;
 
@@ -544,6 +546,7 @@ export const getStatementDataByPurchase = query({
   args: {
     purchaseId: v.id("purchases"),
     orgId: v.string(),
+    now: v.number(),
   },
   handler: async (ctx, args) => {
     const purchase = await ctx.db.get(args.purchaseId);
@@ -583,9 +586,8 @@ export const getStatementDataByPurchase = query({
       .withIndex("by_purchaseId", (q) => q.eq("purchaseId", purchase._id))
       .collect();
 
-    const now = Date.now();
     const net = terms
-      ? computeNet(terms, scheduledPayments, allAllocations, now)
+      ? computeNet(terms, scheduledPayments, allAllocations, args.now)
       : 0;
     const amountPaid = computeAmountPaid(allAllocations);
 
@@ -602,7 +604,7 @@ export const getStatementDataByPurchase = query({
 
     // Count late fees already baked into net (for the starting balance)
     const totalLateFees = terms
-      ? computeLateFees(terms, scheduledPayments, allAllocations, now)
+      ? computeLateFees(terms, scheduledPayments, allAllocations, args.now)
       : 0;
 
     // Starting balance = net minus late fees minus prepaid (we add late fees back as ledger entries)
@@ -621,7 +623,7 @@ export const getStatementDataByPurchase = query({
 
     // Late fee entries from scheduled payments
     for (const sp of scheduledPayments) {
-      const isLate = isScheduledPaymentLate(sp, allAllocations, now);
+      const isLate = isScheduledPaymentLate(sp, allAllocations, args.now);
       if (isLate && !sp.lateFeeWaived && lateFeePerOccurrence > 0) {
         entries.push({
           date: sp.dueDate,
@@ -654,7 +656,7 @@ export const getStatementDataByPurchase = query({
     // Compute past-due and next-payment for summary block
     let pastDueAmount = 0;
     for (const sp of scheduledPayments) {
-      const isLate = isScheduledPaymentLate(sp, allAllocations, now);
+      const isLate = isScheduledPaymentLate(sp, allAllocations, args.now);
       if (isLate) {
         const spPaid = computeScheduledPaymentPaid(sp._id, allAllocations);
         pastDueAmount += sp.amount - spPaid;

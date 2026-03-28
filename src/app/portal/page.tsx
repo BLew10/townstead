@@ -6,9 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Megaphone, CreditCard, DollarSign, CalendarClock } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { useStableNow } from "@/hooks/use-stable-now";
 
 export default function PortalDashboardPage() {
-  const data = useQuery(api.portal.queries.getDashboardData);
+  const now = useStableNow();
+  const data = useQuery(api.portal.queries.getDashboardData, { now });
 
   if (!data) {
     return (

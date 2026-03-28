@@ -1,10 +1,28 @@
 import { mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
+import type { MutationCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import {
   generateInvoiceNumber,
   computeBaseNet,
   generateScheduledPayments,
 } from "../billing/helpers";
+
+async function invalidateStatsCache(
+  ctx: MutationCtx,
+  orgId: string,
+  calendarEditionIds: Id<"calendarEditions">[],
+  year: number
+) {
+  for (const calendarEditionId of calendarEditionIds) {
+    await ctx.scheduler.runAfter(
+      0,
+      internal.dashboard.mutations.recomputeStatsCache,
+      { orgId, calendarEditionId, year }
+    );
+  }
+}
 
 const adSelectionValidator = v.object({
   advertisementId: v.id("advertisements"),
@@ -164,6 +182,13 @@ export const create = mutation({
         orgId: args.orgId,
       });
     }
+
+    await invalidateStatsCache(
+      ctx,
+      args.orgId,
+      args.calendarEditionIds,
+      args.year
+    );
 
     return purchaseId;
   },
@@ -326,6 +351,25 @@ export const update = mutation({
         }
       }
     }
+
+    const allEditionIds = new Set([
+      ...purchase.calendarEditionIds,
+      ...updatedEditionIds,
+    ]);
+    await invalidateStatsCache(
+      ctx,
+      purchase.orgId,
+      [...allEditionIds],
+      updatedYear
+    );
+    if (updatedYear !== purchase.year) {
+      await invalidateStatsCache(
+        ctx,
+        purchase.orgId,
+        [...allEditionIds],
+        purchase.year
+      );
+    }
   },
 });
 
@@ -390,5 +434,12 @@ export const softDelete = mutation({
     }
 
     await ctx.db.patch(args.id, { isDeleted: true });
+
+    await invalidateStatsCache(
+      ctx,
+      purchase.orgId,
+      purchase.calendarEditionIds,
+      purchase.year
+    );
   },
 });

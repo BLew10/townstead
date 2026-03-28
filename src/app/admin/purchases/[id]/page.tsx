@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/table";
 import { ArrowLeft, ExternalLink, Pencil, Plus, Trash2, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { useStableNow } from "@/hooks/use-stable-now";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ScheduledPaymentsTable } from "./scheduled-payments-table";
 import { PaymentForm } from "./payment-form";
@@ -67,7 +68,8 @@ export default function PurchaseDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as Id<"purchases">;
-  const detail = useQuery(api.purchases.queries.getDetail, { id });
+  const now = useStableNow();
+  const detail = useQuery(api.purchases.queries.getDetail, { id, now });
   const softDelete = useMutation(api.purchases.mutations.softDelete);
 
   const [paymentFormOpen, setPaymentFormOpen] = useState(false);

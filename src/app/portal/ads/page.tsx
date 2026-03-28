@@ -8,9 +8,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Megaphone } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { useStableNow } from "@/hooks/use-stable-now";
 
 export default function PortalAdsPage() {
-  const purchases = useQuery(api.portal.queries.getMyPurchases);
+  const now = useStableNow();
+  const purchases = useQuery(api.portal.queries.getMyPurchases, { now });
 
   if (purchases === undefined) {
     return (

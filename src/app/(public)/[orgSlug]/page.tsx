@@ -1,12 +1,15 @@
 "use client";
 
-import { use } from "react";
+import { use, useMemo } from "react";
 import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { format } from "date-fns";
 import { ArrowRight, Search, MapPin } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCommunityFilter } from "@/hooks/use-community-filter";
+import { CommunityBadges } from "@/components/public/community-badge";
+import { useStableNow } from "@/hooks/use-stable-now";
 
 export default function OrgHomePage({
   params,
@@ -14,7 +17,21 @@ export default function OrgHomePage({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = use(params);
-  const data = useQuery(api.public.queries.getHomepageData, { orgSlug });
+  const { communityId, communityMap } = useCommunityFilter(orgSlug);
+  const now = useStableNow();
+  const data = useQuery(api.public.queries.getHomepageData, {
+    orgSlug,
+    communityId,
+    now,
+  });
+  const businessCategories = useQuery(api.public.queries.listCategories, {
+    orgSlug,
+    type: "business" as const,
+  });
+  const bizCategoryMap = useMemo(() => {
+    if (!businessCategories) return new Map<string, string>();
+    return new Map(businessCategories.map((c) => [c._id, c.name]));
+  }, [businessCategories]);
 
   if (!data) return <HomepageSkeleton />;
 
@@ -117,6 +134,7 @@ export default function OrgHomePage({
                 <p className="text-sm text-on-surface/60">
                   {format(new Date(event.date), "EEEE, MMMM d · h:mm a")}
                 </p>
+                <CommunityBadges communityIds={event.communityIds} communityMap={communityMap} />
               </Link>
             ))}
           </div>
@@ -146,11 +164,12 @@ export default function OrgHomePage({
                 <div className="flex-1">
                   <h4 className="mb-1 text-lg font-bold">{coupon.title}</h4>
                   {coupon.description && (
-                    <p className="mb-4 font-headline text-lg italic text-primary">
+                    <p className="mb-2 font-headline text-lg italic text-primary">
                       {coupon.description}
                     </p>
                   )}
-                  <span className="border-b-2 border-secondary pb-0.5 text-sm font-bold transition-colors hover:text-secondary">
+                  <CommunityBadges communityIds={coupon.communityIds} communityMap={communityMap} />
+                  <span className="mt-2 inline-block border-b-2 border-secondary pb-0.5 text-sm font-bold transition-colors hover:text-secondary">
                     View Deal
                   </span>
                 </div>
@@ -183,9 +202,9 @@ export default function OrgHomePage({
                     {(biz.company ?? biz.firstName ?? "B").charAt(0)}
                   </span>
                 </div>
-                {biz.category && (
+                {biz.categoryId && bizCategoryMap.get(biz.categoryId) && (
                   <span className="mb-3 inline-block rounded-full bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase text-primary">
-                    {biz.category}
+                    {bizCategoryMap.get(biz.categoryId)}
                   </span>
                 )}
                 <h5 className="font-bold text-on-surface">
@@ -234,6 +253,9 @@ export default function OrgHomePage({
                       {recentPosts[0].excerpt}
                     </p>
                   )}
+                  <div className="mb-4">
+                    <CommunityBadges communityIds={recentPosts[0].communityIds} communityMap={communityMap} />
+                  </div>
                   {recentPosts[0].publishedAt && (
                     <span className="text-sm font-semibold">
                       {format(
@@ -264,8 +286,9 @@ export default function OrgHomePage({
                       <h4 className="mb-2 font-headline text-2xl transition-colors group-hover:text-primary">
                         {post.title}
                       </h4>
+                      <CommunityBadges communityIds={post.communityIds} communityMap={communityMap} />
                       {post.publishedAt && (
-                        <span className="text-xs font-semibold italic text-on-surface/50">
+                        <span className="mt-1 block text-xs font-semibold italic text-on-surface/50">
                           {format(new Date(post.publishedAt), "MMM d, yyyy")}
                         </span>
                       )}

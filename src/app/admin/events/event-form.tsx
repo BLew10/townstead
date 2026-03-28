@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useOrg } from "@/hooks/use-org";
 import { eventSchema, type EventFormValues } from "@/lib/validators";
@@ -28,8 +28,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { ImageUpload } from "@/components/shared/image-upload";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 
 function timestampToDateString(ts: number | undefined): string {
@@ -45,19 +46,27 @@ interface EventFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editing: Doc<"events"> | null;
-  editions: Doc<"calendarEditions">[];
+  communities: Doc<"communities">[];
 }
 
 export function EventForm({
   open,
   onOpenChange,
   editing,
-  editions,
+  communities,
 }: EventFormProps) {
   const { orgId } = useOrg();
   const create = useMutation(api.events.mutations.create);
   const update = useMutation(api.events.mutations.update);
+  const generateUploadUrl = useMutation(api.events.mutations.generateUploadUrl);
   const [isPending, setIsPending] = useState(false);
+  const [imageFileId, setImageFileId] = useState<Id<"_storage"> | undefined>();
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const existingImageUrl = useQuery(
+    api.storage.getUrl,
+    imageFileId ? { storageId: imageFileId } : "skip"
+  );
 
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
@@ -69,7 +78,7 @@ export function EventForm({
       startTime: "",
       endTime: "",
       isYearly: false,
-      calendarEditionIds: [],
+      communityIds: [],
     },
   });
 
@@ -83,8 +92,9 @@ export function EventForm({
         startTime: editing.startTime ?? "",
         endTime: editing.endTime ?? "",
         isYearly: editing.isYearly ?? false,
-        calendarEditionIds: (editing.calendarEditionIds as string[]) ?? [],
+        communityIds: (editing.communityIds as string[]) ?? [],
       });
+      setImageFileId(editing.imageFileId ?? undefined);
     } else {
       form.reset({
         name: "",
@@ -94,10 +104,32 @@ export function EventForm({
         startTime: "",
         endTime: "",
         isYearly: false,
-        calendarEditionIds: [],
+        communityIds: [],
       });
+      setImageFileId(undefined);
     }
   }, [editing, form]);
+
+  const handleImageUpload = useCallback(
+    async (file: File) => {
+      setUploadingImage(true);
+      try {
+        const url = await generateUploadUrl();
+        const result = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+        const { storageId } = await result.json();
+        setImageFileId(storageId as Id<"_storage">);
+      } catch {
+        toast.error("Failed to upload image");
+      } finally {
+        setUploadingImage(false);
+      }
+    },
+    [generateUploadUrl]
+  );
 
   const onSubmit = async (values: EventFormValues) => {
     if (!orgId) return;
@@ -111,10 +143,11 @@ export function EventForm({
         startTime: values.startTime || undefined,
         endTime: values.endTime || undefined,
         isYearly: values.isYearly || undefined,
-        calendarEditionIds:
-          values.calendarEditionIds && values.calendarEditionIds.length > 0
-            ? (values.calendarEditionIds as Id<"calendarEditions">[])
+        communityIds:
+          values.communityIds && values.communityIds.length > 0
+            ? (values.communityIds as Id<"communities">[])
             : undefined,
+        imageFileId,
       };
 
       if (editing) {
@@ -170,6 +203,16 @@ export function EventForm({
                   </FormItem>
                 )}
               />
+              <div className="space-y-1">
+                <Label>Event Image</Label>
+                <ImageUpload
+                  preset="card"
+                  onUpload={handleImageUpload}
+                  onRemove={() => setImageFileId(undefined)}
+                  currentImageUrl={existingImageUrl ?? null}
+                  uploading={uploadingImage}
+                />
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -264,46 +307,46 @@ export function EventForm({
               />
             </div>
 
-            {editions.length > 0 && (
+            {communities.length > 0 && (
               <>
                 <Separator />
                 <div className="space-y-4">
                   <h3 className="text-sm font-medium text-muted-foreground">
-                    Calendar Editions
+                    Communities
                   </h3>
                   <FormField
                     control={form.control}
-                    name="calendarEditionIds"
+                    name="communityIds"
                     render={({ field }) => (
                       <FormItem>
                         <div className="space-y-2">
-                          {editions.map((edition) => {
+                          {communities.map((community) => {
                             const checked = (field.value ?? []).includes(
-                              edition._id
+                              community._id
                             );
                             return (
                               <div
-                                key={edition._id}
+                                key={community._id}
                                 className="flex items-center gap-2"
                               >
                                 <Checkbox
-                                  id={`edition-${edition._id}`}
+                                  id={`community-${community._id}`}
                                   checked={checked}
                                   onCheckedChange={(val) => {
                                     const current = field.value ?? [];
                                     if (val) {
-                                      field.onChange([...current, edition._id]);
+                                      field.onChange([...current, community._id]);
                                     } else {
                                       field.onChange(
                                         current.filter(
-                                          (id: string) => id !== edition._id
+                                          (id: string) => id !== community._id
                                         )
                                       );
                                     }
                                   }}
                                 />
-                                <Label htmlFor={`edition-${edition._id}`}>
-                                  {edition.name}
+                                <Label htmlFor={`community-${community._id}`}>
+                                  {community.name}
                                 </Label>
                               </div>
                             );

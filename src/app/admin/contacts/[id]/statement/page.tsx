@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
 import { useOrg } from "@/hooks/use-org";
+import { useStableNow } from "@/hooks/use-stable-now";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -27,11 +28,12 @@ export default function StatementPage() {
   const params = useParams();
   const contactId = params.id as Id<"contacts">;
   const { orgId, isReady } = useOrg();
+  const now = useStableNow();
   const [emailSending, setEmailSending] = useState(false);
 
   const data = useQuery(
     api.billing.queries.getStatementData,
-    isReady ? { contactId, orgId: orgId! } : "skip"
+    isReady ? { contactId, orgId: orgId!, now } : "skip"
   );
 
   if (!isReady || data === undefined) {

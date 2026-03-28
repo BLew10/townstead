@@ -7,6 +7,9 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { Ticket, Calendar } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCommunityFilter } from "@/hooks/use-community-filter";
+import { CommunityBadges } from "@/components/public/community-badge";
+import { useStableNow } from "@/hooks/use-stable-now";
 
 export default function CouponsPage({
   params,
@@ -14,8 +17,14 @@ export default function CouponsPage({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = use(params);
+  const { communityId, communityMap } = useCommunityFilter(orgSlug);
+  const now = useStableNow();
 
-  const coupons = useQuery(api.public.queries.listCoupons, { orgSlug });
+  const coupons = useQuery(api.public.queries.listCoupons, {
+    orgSlug,
+    communityId,
+    now,
+  });
 
   const businesses = useQuery(api.public.queries.listDirectoryBusinesses, {
     orgSlug,
@@ -114,6 +123,7 @@ export default function CouponsPage({
                         {coupon.description}
                       </p>
                     )}
+                    <CommunityBadges communityIds={coupon.communityIds} communityMap={communityMap} />
                     <div className="flex items-center gap-2 text-xs text-on-surface/70">
                       <Calendar className="size-3.5" />
                       <span>

@@ -3,6 +3,7 @@ import { z } from "zod";
 export const calendarEditionSchema = z.object({
   name: z.string().min(1, "Name is required"),
   code: z.string().min(1, "Code is required"),
+  communityId: z.string().optional(),
 });
 
 export const advertisementSchema = z.object({
@@ -56,7 +57,7 @@ export const contactSchema = z.object({
   altContactLastName: z.string().optional(),
   address: addressSchema.optional(),
   website: z.string().url("Invalid URL").optional().or(z.literal("")),
-  category: z.string().optional(),
+  categoryId: z.string().optional(),
   notes: z.string().optional(),
   customerSince: z.number().optional(),
   addressBookIds: z.array(z.string()).optional(),
@@ -120,7 +121,7 @@ export const eventSchema = z.object({
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   isYearly: z.boolean().optional(),
-  calendarEditionIds: z.array(z.string()).optional(),
+  communityIds: z.array(z.string()).optional(),
 });
 
 export const layoutSchema = z.object({

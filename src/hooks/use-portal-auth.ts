@@ -7,21 +7,21 @@ import { api } from "../../convex/_generated/api";
 export function usePortalAuth() {
   const { user, isLoaded: clerkLoaded } = useUser();
 
-  const link = useQuery(
-    api.clientLinks.queries.getByUserId,
-    clerkLoaded && user ? { userId: user.id } : "skip"
+  const grant = useQuery(
+    api.orgPermissions.queries.getMyGrant,
+    clerkLoaded && user ? {} : "skip"
   );
 
   const contact = useQuery(
     api.contacts.queries.getById,
-    link?.contactId ? { id: link.contactId } : "skip"
+    grant?.contactId ? { id: grant.contactId } : "skip"
   );
 
   return {
-    contactId: link?.contactId ?? null,
+    contactId: grant?.contactId ?? null,
     contact: contact ?? null,
-    linkId: link?._id ?? null,
-    isLoading: !clerkLoaded || link === undefined,
-    isLinked: !!link,
+    grantId: grant?._id ?? null,
+    isLoading: !clerkLoaded || grant === undefined,
+    isLinked: !!grant && grant.role === "contact" && grant.isActive,
   };
 }

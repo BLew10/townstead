@@ -27,7 +27,13 @@ const SEGMENT_LABELS: Record<string, string> = {
   "cash-flow": "Cash Flow",
   invoice: "Invoice",
   statement: "Statement",
-  new: "New Purchase",
+  new: "New",
+  blog: "Blog",
+  communities: "Communities",
+  coupons: "Coupons",
+  videos: "Videos",
+  categories: "Categories",
+  branding: "Site Branding",
   edit: "Edit",
 };
 

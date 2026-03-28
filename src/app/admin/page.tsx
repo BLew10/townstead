@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useOrg } from "@/hooks/use-org";
+import { useStableNow } from "@/hooks/use-stable-now";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +29,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
-import { Check, ChevronsUpDown, Printer, X } from "lucide-react";
+import { ChevronsUpDown, Printer, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getContactColor, getContrastText } from "@/lib/colors";
 import { StatsCards } from "@/components/admin/dashboard/stats-cards";
@@ -41,6 +42,7 @@ const yearOptions = Array.from({ length: 10 }, (_, i) => currentYear - i);
 
 export default function AdminDashboardPage() {
   const { orgId, isReady } = useOrg();
+  const now = useStableNow();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedEditionId, setSelectedEditionId] = useState<string>("");
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(
@@ -55,13 +57,25 @@ export default function AdminDashboardPage() {
 
   const editionId = selectedEditionId || editions?.[0]?._id;
 
-  const dashboard = useQuery(
-    api.dashboard.queries.getDashboardData,
+  const slotsData = useQuery(
+    api.dashboard.queries.getDashboardSlots,
     isReady && editionId
       ? {
           orgId: orgId!,
           calendarEditionId: editionId as Id<"calendarEditions">,
           year: selectedYear,
+        }
+      : "skip"
+  );
+
+  const stats = useQuery(
+    api.dashboard.queries.getDashboardStats,
+    isReady && editionId
+      ? {
+          orgId: orgId!,
+          calendarEditionId: editionId as Id<"calendarEditions">,
+          year: selectedYear,
+          now,
         }
       : "skip"
   );
@@ -85,18 +99,18 @@ export default function AdminDashboardPage() {
   const isFiltered = selectedContactIds.size > 0;
 
   const filteredSlots = useMemo(() => {
-    if (!dashboard || !isFiltered) return dashboard?.slots ?? [];
-    return dashboard.slots.filter((s: { contactId: string }) =>
+    if (!slotsData || !isFiltered) return slotsData?.slots ?? [];
+    return slotsData.slots.filter((s: { contactId: string }) =>
       selectedContactIds.has(s.contactId)
     );
-  }, [dashboard, selectedContactIds, isFiltered]);
+  }, [slotsData, selectedContactIds, isFiltered]);
 
   const filteredContacts = useMemo(() => {
-    if (!dashboard || !isFiltered) return dashboard?.contacts ?? [];
-    return dashboard.contacts.filter((c: { id: string }) =>
+    if (!slotsData || !isFiltered) return slotsData?.contacts ?? [];
+    return slotsData.contacts.filter((c: { id: string }) =>
       selectedContactIds.has(c.id)
     );
-  }, [dashboard, selectedContactIds, isFiltered]);
+  }, [slotsData, selectedContactIds, isFiltered]);
 
   if (!isReady || editions === undefined) {
     return (
@@ -165,7 +179,7 @@ export default function AdminDashboardPage() {
             </SelectContent>
           </Select>
 
-          {dashboard && dashboard.contacts.length > 0 && (
+          {slotsData && slotsData.contacts.length > 0 && (
             <Popover
               open={contactFilterOpen}
               onOpenChange={setContactFilterOpen}
@@ -190,7 +204,7 @@ export default function AdminDashboardPage() {
                   <CommandList>
                     <CommandEmpty>No advertisers found.</CommandEmpty>
                     <CommandGroup>
-                      {dashboard.contacts.map(
+                      {slotsData.contacts.map(
                         (contact: { id: string; company: string }) => {
                           const isSelected = selectedContactIds.has(contact.id);
                           const bg = getContactColor(contact.id);
@@ -206,15 +220,9 @@ export default function AdminDashboardPage() {
                                 className="mr-1 inline-block h-3 w-3 shrink-0 rounded-sm"
                                 style={{ backgroundColor: bg }}
                               />
-                              <span className="truncate">
+                              <span className="min-w-0 flex-1 truncate">
                                 {contact.company}
                               </span>
-                              <Check
-                                className={cn(
-                                  "ml-auto h-4 w-4 shrink-0",
-                                  isSelected ? "opacity-100" : "opacity-0"
-                                )}
-                              />
                             </CommandItem>
                           );
                         }
@@ -248,10 +256,10 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Active filter badges */}
-      {isFiltered && dashboard && (
+      {isFiltered && slotsData && (
         <div className="flex flex-wrap items-center gap-1.5 print:hidden">
           <span className="text-xs text-muted-foreground">Showing:</span>
-          {dashboard.contacts
+          {slotsData.contacts
             .filter((c: { id: string }) => selectedContactIds.has(c.id))
             .map((contact: { id: string; company: string }) => {
               const bg = getContactColor(contact.id);
@@ -289,38 +297,27 @@ export default function AdminDashboardPage() {
         </h1>
       </div>
 
-      {dashboard === undefined ? (
-        <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-28" />
-            ))}
-          </div>
-          <Skeleton className="h-96 w-full" />
-        </div>
+      <StatsCards stats={stats} />
+
+      {slotsData === undefined ? (
+        <Skeleton className="h-96 w-full" />
+      ) : filteredSlots.length === 0 ? (
+        <EmptyState
+          title={
+            isFiltered
+              ? "No matching placements"
+              : "No ad placements"
+          }
+          description={
+            isFiltered
+              ? "No slots match the selected advertisers."
+              : "No slots have been assigned for this edition and year yet."
+          }
+        />
       ) : (
         <>
-          <StatsCards stats={dashboard.stats} />
-
-          {filteredSlots.length === 0 ? (
-            <EmptyState
-              title={
-                isFiltered
-                  ? "No matching placements"
-                  : "No ad placements"
-              }
-              description={
-                isFiltered
-                  ? "No slots match the selected advertisers."
-                  : "No slots have been assigned for this edition and year yet."
-              }
-            />
-          ) : (
-            <>
-              <CalendarInventoryGrid slots={filteredSlots as any} />
-              <AdvertiserLegend contacts={filteredContacts} />
-            </>
-          )}
+          <CalendarInventoryGrid slots={filteredSlots as any} />
+          <AdvertiserLegend contacts={filteredContacts} />
         </>
       )}
     </div>

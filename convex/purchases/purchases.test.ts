@@ -1,8 +1,11 @@
 import { convexTest } from "convex-test";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
 import { modules } from "../test.setup";
+
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
 
 describe("purchases", () => {
   it("tenant isolation — list returns only purchases for the given org", async () => {
@@ -49,6 +52,7 @@ describe("purchases", () => {
 
     const results = await t.query(api.purchases.queries.list, {
       orgId: "org_a",
+      now: 1710000000000,
     });
     expect(results).toHaveLength(1);
     expect(results[0].company).toBe("A Corp");
@@ -87,6 +91,7 @@ describe("purchases", () => {
 
     const results = await t.query(api.purchases.queries.list, {
       orgId: "org_1",
+      now: 1710000000000,
     });
     expect(results).toHaveLength(1);
   });
@@ -204,6 +209,7 @@ describe("purchases", () => {
 
     const detail = await t.query(api.purchases.queries.getDetail, {
       id: purchaseId,
+      now: 1710000000000,
     });
     expect(detail).not.toBeNull();
     expect(detail!.contact!.company).toBe("Detail Corp");

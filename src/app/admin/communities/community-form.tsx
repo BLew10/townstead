@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import {
   Dialog,
@@ -14,8 +14,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { ImageUpload } from "@/components/shared/image-upload";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 
 function slugify(text: string): string {
@@ -40,6 +41,9 @@ export function CommunityForm({
 }: CommunityFormProps) {
   const create = useMutation(api.communities.mutations.create);
   const update = useMutation(api.communities.mutations.update);
+  const generateUploadUrl = useMutation(
+    api.communities.mutations.generateUploadUrl
+  );
 
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
@@ -49,6 +53,15 @@ export function CommunityForm({
     Id<"calendarEditions">[]
   >([]);
   const [isPending, setIsPending] = useState(false);
+  const [imageFileId, setImageFileId] = useState<Id<"_storage"> | undefined>(
+    undefined
+  );
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const imageUrl = useQuery(
+    api.storage.getUrl,
+    imageFileId ? { storageId: imageFileId } : "skip"
+  );
 
   useEffect(() => {
     if (editing) {
@@ -57,12 +70,18 @@ export function CommunityForm({
       setSlugManuallyEdited(true);
       setDescription(editing.description ?? "");
       setSelectedEditions([...editing.calendarEditionIds]);
+      setImageFileId(
+        (editing as Record<string, unknown>).imageFileId as
+          | Id<"_storage">
+          | undefined
+      );
     } else {
       setName("");
       setSlug("");
       setSlugManuallyEdited(false);
       setDescription("");
       setSelectedEditions([]);
+      setImageFileId(undefined);
     }
   }, [editing]);
 
@@ -86,6 +105,27 @@ export function CommunityForm({
     );
   }
 
+  const handleImageUpload = useCallback(
+    async (file: File) => {
+      setUploadingImage(true);
+      try {
+        const url = await generateUploadUrl();
+        const result = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+        const { storageId } = await result.json();
+        setImageFileId(storageId as Id<"_storage">);
+      } catch {
+        toast.error("Failed to upload image.");
+      } finally {
+        setUploadingImage(false);
+      }
+    },
+    [generateUploadUrl]
+  );
+
   async function handleSubmit() {
     if (!name.trim() || !slug.trim()) {
       toast.error("Name and slug are required");
@@ -101,6 +141,7 @@ export function CommunityForm({
           slug: slug.trim(),
           description: description.trim() || undefined,
           calendarEditionIds: selectedEditions,
+          imageFileId,
         });
         toast.success("Community updated");
       } else {
@@ -109,6 +150,7 @@ export function CommunityForm({
           slug: slug.trim(),
           description: description.trim() || undefined,
           calendarEditionIds: selectedEditions,
+          imageFileId,
         });
         toast.success("Community created");
       }
@@ -158,6 +200,17 @@ export function CommunityForm({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional description for this community"
               rows={3}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Image</Label>
+            <ImageUpload
+              preset="card"
+              onUpload={handleImageUpload}
+              onRemove={() => setImageFileId(undefined)}
+              currentImageUrl={imageUrl ?? null}
+              uploading={uploadingImage}
             />
           </div>
 

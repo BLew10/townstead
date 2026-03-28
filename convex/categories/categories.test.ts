@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { modules } from "../test.setup";
 
@@ -104,5 +104,68 @@ describe("categories", () => {
       orgId: "org_1",
     });
     expect(all).toHaveLength(2);
+  });
+});
+
+describe("categories.seedBusinessCategories", () => {
+  it("inserts business categories for the given org", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.mutation(internal.categories.mutations.seedBusinessCategories, {
+      orgId: "org_1",
+      names: ["Accountants", "Bakeries, Donuts", "Fitness"],
+    });
+
+    const results = await t.query(api.categories.queries.list, {
+      orgId: "org_1",
+      type: "business",
+    });
+    expect(results).toHaveLength(3);
+    expect(results.map((c) => c.name).sort()).toEqual([
+      "Accountants",
+      "Bakeries, Donuts",
+      "Fitness",
+    ]);
+  });
+
+  it("skips duplicates when run multiple times", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.mutation(internal.categories.mutations.seedBusinessCategories, {
+      orgId: "org_1",
+      names: ["Accountants", "Fitness"],
+    });
+
+    const result = await t.mutation(
+      internal.categories.mutations.seedBusinessCategories,
+      {
+        orgId: "org_1",
+        names: ["Accountants", "Fitness", "Bakeries, Donuts"],
+      }
+    );
+
+    expect(result.inserted).toBe(1);
+    expect(result.skipped).toBe(2);
+
+    const all = await t.query(api.categories.queries.list, {
+      orgId: "org_1",
+      type: "business",
+    });
+    expect(all).toHaveLength(3);
+  });
+
+  it("isolates seeded categories by org", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.mutation(internal.categories.mutations.seedBusinessCategories, {
+      orgId: "org_a",
+      names: ["Accountants"],
+    });
+
+    const orgB = await t.query(api.categories.queries.list, {
+      orgId: "org_b",
+      type: "business",
+    });
+    expect(orgB).toHaveLength(0);
   });
 });

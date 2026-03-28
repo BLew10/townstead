@@ -20,8 +20,8 @@ export default function EventsPage() {
     api.events.queries.list,
     isReady ? { orgId: orgId! } : "skip"
   );
-  const editions = useQuery(
-    api.calendarEditions.queries.list,
+  const communities = useQuery(
+    api.communities.queries.list,
     isReady ? { orgId: orgId! } : "skip"
   );
   const [formOpen, setFormOpen] = useState(false);
@@ -83,7 +83,7 @@ export default function EventsPage() {
         <DataTable
           columns={columns({
             onEdit: handleEdit,
-            editions: editions ?? [],
+            communities: communities ?? [],
           })}
           data={events}
           searchKey="name"
@@ -98,7 +98,7 @@ export default function EventsPage() {
         open={formOpen}
         onOpenChange={setFormOpen}
         editing={editing}
-        editions={editions ?? []}
+        communities={communities ?? []}
       />
     </div>
   );

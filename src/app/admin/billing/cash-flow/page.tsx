@@ -110,7 +110,10 @@ export default function CashFlowPage() {
             onValueChange={(val) => setSelectedEditionId(val ?? "")}
           >
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="Select edition..." />
+              <SelectValue placeholder="Select edition...">
+                {editions.find((ed) => ed._id === editionId)?.name ??
+                  "Select edition..."}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {editions.map((ed) => (

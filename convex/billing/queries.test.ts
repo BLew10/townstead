@@ -278,6 +278,7 @@ describe("getInvoiceData", () => {
     const result = await t.query(api.billing.queries.getInvoiceData, {
       purchaseId: ids.purchaseId,
       orgId: ORG,
+      now: 1710000000000,
     });
 
     expect(result).not.toBeNull();
@@ -345,6 +346,7 @@ describe("getInvoiceData", () => {
     const result = await t.query(api.billing.queries.getInvoiceData, {
       purchaseId: ids.purchaseId,
       orgId: ORG,
+      now: 1710000000000,
     });
 
     expect(result).not.toBeNull();
@@ -387,6 +389,7 @@ describe("getInvoiceData", () => {
     const result = await t.query(api.billing.queries.getInvoiceData, {
       purchaseId: ids.purchaseId,
       orgId: ORG,
+      now: 1710000000000,
     });
     expect(result).toBeNull();
   });
@@ -416,6 +419,7 @@ describe("getInvoiceData", () => {
     const result = await t.query(api.billing.queries.getInvoiceData, {
       purchaseId: ids.purchaseId,
       orgId: "org_b",
+      now: 1710000000000,
     });
     expect(result).toBeNull();
   });
@@ -469,6 +473,7 @@ describe("getInvoiceData", () => {
     const result = await t.query(api.billing.queries.getInvoiceData, {
       purchaseId: ids.purchaseId,
       orgId: ORG,
+      now: 1710000000000,
     });
 
     expect(result).not.toBeNull();
@@ -501,7 +506,7 @@ describe("getStatementDataByPurchase", () => {
 
     const result = await t.query(
       api.billing.queries.getStatementDataByPurchase,
-      { purchaseId: fakePurchaseId, orgId: ORG }
+      { purchaseId: fakePurchaseId, orgId: ORG, now: 1710000000000 }
     );
 
     expect(result).toBeNull();
@@ -527,7 +532,7 @@ describe("getStatementDataByPurchase", () => {
 
     const result = await t.query(
       api.billing.queries.getStatementDataByPurchase,
-      { purchaseId, orgId: "org_b" }
+      { purchaseId, orgId: "org_b", now: 1710000000000 }
     );
 
     expect(result).toBeNull();
@@ -568,7 +573,7 @@ describe("getStatementDataByPurchase", () => {
 
     const result = await t.query(
       api.billing.queries.getStatementDataByPurchase,
-      { purchaseId: ids.purchaseId, orgId: ORG }
+      { purchaseId: ids.purchaseId, orgId: ORG, now: 1710000000000 }
     );
 
     expect(result).not.toBeNull();
@@ -626,7 +631,7 @@ describe("getStatementDataByPurchase", () => {
 
     const result = await t.query(
       api.billing.queries.getStatementDataByPurchase,
-      { purchaseId: ids.purchaseId, orgId: ORG }
+      { purchaseId: ids.purchaseId, orgId: ORG, now: 1710000000000 }
     );
 
     expect(result).not.toBeNull();
@@ -678,7 +683,7 @@ describe("getStatementDataByPurchase", () => {
 
     const result = await t.query(
       api.billing.queries.getStatementDataByPurchase,
-      { purchaseId: ids.purchaseId, orgId: ORG }
+      { purchaseId: ids.purchaseId, orgId: ORG, now: 1710000000000 }
     );
 
     expect(result).not.toBeNull();

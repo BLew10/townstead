@@ -1,6 +1,6 @@
 import { query, QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
-import { Doc } from "../_generated/dataModel";
+import { Doc, Id } from "../_generated/dataModel";
 
 async function resolveOrg(ctx: QueryCtx, orgSlug: string): Promise<Doc<"tenantBranding"> | null> {
   return await ctx.db
@@ -9,13 +9,40 @@ async function resolveOrg(ctx: QueryCtx, orgSlug: string): Promise<Doc<"tenantBr
     .unique();
 }
 
-export const getHomepageData = query({
+function filterByCommunity<T extends { communityIds?: Id<"communities">[] }>(
+  items: T[],
+  communityId?: Id<"communities">,
+): T[] {
+  if (!communityId) return items;
+  return items.filter((item) => item.communityIds?.includes(communityId));
+}
+
+export const listCommunities = query({
   args: { orgSlug: v.string() },
+  handler: async (ctx, args) => {
+    const branding = await resolveOrg(ctx, args.orgSlug);
+    if (!branding) return [];
+    const orgId = branding.orgId;
+
+    return await ctx.db
+      .query("communities")
+      .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
+      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .collect();
+  },
+});
+
+export const getHomepageData = query({
+  args: {
+    orgSlug: v.string(),
+    communityId: v.optional(v.id("communities")),
+    now: v.number(),
+  },
   handler: async (ctx, args) => {
     const branding = await resolveOrg(ctx, args.orgSlug);
     if (!branding) return null;
     const orgId = branding.orgId;
-    const now = Date.now();
+    const now = args.now;
 
     const allEvents = await ctx.db
       .query("events")
@@ -26,7 +53,7 @@ export const getHomepageData = query({
           q.neq(q.field("isApproved"), false)
         )
       )
-      .take(5);
+      .take(20);
 
     const allContacts = await ctx.db
       .query("contacts")
@@ -48,7 +75,7 @@ export const getHomepageData = query({
           q.gte(q.field("endDate"), now)
         )
       )
-      .take(6);
+      .take(20);
 
     const recentPosts = await ctx.db
       .query("blogPosts")
@@ -57,14 +84,14 @@ export const getHomepageData = query({
       )
       .filter((q) => q.neq(q.field("isDeleted"), true))
       .order("desc")
-      .take(3);
+      .take(10);
 
     return {
       branding,
-      featuredEvents: allEvents,
+      featuredEvents: filterByCommunity(allEvents, args.communityId).slice(0, 5),
       featuredBusinesses: allContacts,
-      activeCoupons,
-      recentPosts,
+      activeCoupons: filterByCommunity(activeCoupons, args.communityId).slice(0, 6),
+      recentPosts: filterByCommunity(recentPosts, args.communityId).slice(0, 3),
     };
   },
 });
@@ -75,6 +102,7 @@ export const listEvents = query({
     startDate: v.optional(v.number()),
     endDate: v.optional(v.number()),
     categoryId: v.optional(v.id("categories")),
+    communityId: v.optional(v.id("communities")),
   },
   handler: async (ctx, args) => {
     const branding = await resolveOrg(ctx, args.orgSlug);
@@ -108,7 +136,7 @@ export const listEvents = query({
         .withIndex("by_orgId_and_date", (q) => q.eq("orgId", orgId));
     };
 
-    const events = await buildIndex()
+    let events = await buildIndex()
       .filter((filterQ) =>
         filterQ.and(
           filterQ.neq(filterQ.field("isDeleted"), true),
@@ -116,6 +144,8 @@ export const listEvents = query({
         )
       )
       .collect();
+
+    events = filterByCommunity(events, args.communityId);
 
     if (args.categoryId) {
       return events.filter((e) => e.categoryId === args.categoryId);
@@ -129,6 +159,7 @@ export const getEvent = query({
   handler: async (ctx, args) => {
     const event = await ctx.db.get(args.id);
     if (!event || event.isDeleted === true) return null;
+    if (event.isApproved === false) return null;
     return event;
   },
 });
@@ -159,7 +190,7 @@ export const listDirectoryBusinesses = query({
         .collect();
 
       if (args.categoryId) {
-        return results.filter((c) => c.category === args.categoryId);
+        return results.filter((c) => c.categoryId === args.categoryId);
       }
       return results;
     }
@@ -176,7 +207,7 @@ export const listDirectoryBusinesses = query({
       .collect();
 
     if (args.categoryId) {
-      return contacts.filter((c) => c.category === args.categoryId);
+      return contacts.filter((c) => c.categoryId === args.categoryId);
     }
     return contacts;
   },
@@ -202,14 +233,18 @@ export const getDirectoryBusiness = query({
 });
 
 export const listCoupons = query({
-  args: { orgSlug: v.string() },
+  args: {
+    orgSlug: v.string(),
+    communityId: v.optional(v.id("communities")),
+    now: v.number(),
+  },
   handler: async (ctx, args) => {
     const branding = await resolveOrg(ctx, args.orgSlug);
     if (!branding) return [];
     const orgId = branding.orgId;
-    const now = Date.now();
+    const now = args.now;
 
-    return await ctx.db
+    const coupons = await ctx.db
       .query("coupons")
       .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
       .filter((q) =>
@@ -219,6 +254,8 @@ export const listCoupons = query({
         )
       )
       .collect();
+
+    return filterByCommunity(coupons, args.communityId);
   },
 });
 
@@ -235,13 +272,14 @@ export const listBlogPosts = query({
   args: {
     orgSlug: v.string(),
     categoryId: v.optional(v.id("categories")),
+    communityId: v.optional(v.id("communities")),
   },
   handler: async (ctx, args) => {
     const branding = await resolveOrg(ctx, args.orgSlug);
     if (!branding) return [];
     const orgId = branding.orgId;
 
-    const posts = await ctx.db
+    let posts = await ctx.db
       .query("blogPosts")
       .withIndex("by_orgId_and_status", (q) =>
         q.eq("orgId", orgId).eq("status", "published")
@@ -249,6 +287,8 @@ export const listBlogPosts = query({
       .filter((q) => q.neq(q.field("isDeleted"), true))
       .order("desc")
       .collect();
+
+    posts = filterByCommunity(posts, args.communityId);
 
     if (args.categoryId) {
       return posts.filter((p) =>
@@ -287,17 +327,20 @@ export const listVideos = query({
   args: {
     orgSlug: v.string(),
     categoryId: v.optional(v.id("categories")),
+    communityId: v.optional(v.id("communities")),
   },
   handler: async (ctx, args) => {
     const branding = await resolveOrg(ctx, args.orgSlug);
     if (!branding) return [];
     const orgId = branding.orgId;
 
-    const videos = await ctx.db
+    let videos = await ctx.db
       .query("videos")
       .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
       .filter((q) => q.neq(q.field("isDeleted"), true))
       .collect();
+
+    videos = filterByCommunity(videos, args.communityId);
 
     if (args.categoryId) {
       return videos.filter((v) => v.categoryId === args.categoryId);

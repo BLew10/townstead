@@ -16,6 +16,7 @@ export async function sendInvoiceEmail(
     convex.query(api.billing.queries.getInvoiceData, {
       purchaseId,
       orgId,
+      now: Date.now(),
     }),
     convex.query(api.settings.queries.getOrgSettings, { orgId }),
   ]);

@@ -13,6 +13,8 @@ import {
 import { Search, CalendarDays, MapPin, Clock, Filter } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EventCalendar } from "@/components/public/event-calendar";
+import { useCommunityFilter } from "@/hooks/use-community-filter";
+import { CommunityBadges } from "@/components/public/community-badge";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 
 export default function EventsPage({
@@ -21,6 +23,7 @@ export default function EventsPage({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = use(params);
+  const { communityId, communityMap } = useCommunityFilter(orgSlug);
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -37,6 +40,7 @@ export default function EventsPage({
     startDate: monthStart,
     endDate: monthEnd,
     categoryId: selectedCategory,
+    communityId,
   });
 
   const categories = useQuery(api.public.queries.listCategories, {
@@ -233,6 +237,9 @@ export default function EventsPage({
                                 {event.location}
                               </span>
                             )}
+                          </div>
+                          <div className="mt-2">
+                            <CommunityBadges communityIds={event.communityIds} communityMap={communityMap} />
                           </div>
                         </div>
                         <span className="shrink-0 rounded-lg bg-surface-container-high px-3 py-2 text-center">

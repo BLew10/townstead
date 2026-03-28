@@ -9,11 +9,11 @@ describe("portal", () => {
     const t = convexTest(schema, modules);
 
     await expect(
-      t.query(api.portal.queries.getDashboardData, {})
+      t.query(api.portal.queries.getDashboardData, { now: 1710000000000 })
     ).rejects.toThrowError("Not authenticated");
   });
 
-  it("getDashboardData rejects user without client link", async () => {
+  it("getDashboardData rejects user without portal access", async () => {
     const t = convexTest(schema, modules);
     const asUser = t.withIdentity({
       name: "Unknown User",
@@ -21,8 +21,8 @@ describe("portal", () => {
     });
 
     await expect(
-      asUser.query(api.portal.queries.getDashboardData, {})
-    ).rejects.toThrowError("No client link found");
+      asUser.query(api.portal.queries.getDashboardData, { now: 1710000000000 })
+    ).rejects.toThrowError("No portal access");
   });
 
   it("getDashboardData returns data for a linked client", async () => {
@@ -35,10 +35,13 @@ describe("portal", () => {
         lastName: "Doe",
         orgId: "org_1",
       });
-      await ctx.db.insert("clientLinks", {
+      await ctx.db.insert("orgPermissions", {
         userId: "user_portal",
-        contactId,
         orgId: "org_1",
+        role: "contact",
+        permissions: [],
+        contactId,
+        isActive: true,
       });
     });
 
@@ -49,11 +52,41 @@ describe("portal", () => {
 
     const data = await asPortalUser.query(
       api.portal.queries.getDashboardData,
-      {}
+      { now: 1710000000000 }
     );
     expect(data.activeAdsCount).toBe(0);
     expect(data.totalOutstanding).toBe(0);
     expect(data.upcomingPayments).toHaveLength(0);
+  });
+
+  it("getDashboardData rejects inactive grant", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "Inactive Corp",
+        firstName: "X",
+        lastName: "Y",
+        orgId: "org_1",
+      });
+      await ctx.db.insert("orgPermissions", {
+        userId: "user_inactive",
+        orgId: "org_1",
+        role: "contact",
+        permissions: [],
+        contactId,
+        isActive: false,
+      });
+    });
+
+    const asUser = t.withIdentity({
+      name: "Inactive",
+      subject: "user_inactive",
+    });
+
+    await expect(
+      asUser.query(api.portal.queries.getDashboardData, { now: 1710000000000 })
+    ).rejects.toThrowError("No portal access");
   });
 
   it("getMyPurchases returns purchases for the linked contact", async () => {
@@ -66,10 +99,13 @@ describe("portal", () => {
         lastName: "Smith",
         orgId: "org_1",
       });
-      await ctx.db.insert("clientLinks", {
+      await ctx.db.insert("orgPermissions", {
         userId: "user_buyer",
-        contactId,
         orgId: "org_1",
+        role: "contact",
+        permissions: [],
+        contactId,
+        isActive: true,
       });
       const editionId = await ctx.db.insert("calendarEditions", {
         name: "Spring 2026",
@@ -98,7 +134,7 @@ describe("portal", () => {
 
     const purchases = await asUser.query(
       api.portal.queries.getMyPurchases,
-      {}
+      { now: 1710000000000 }
     );
     expect(purchases).toHaveLength(1);
     expect(purchases[0].invoiceNumber).toBe("26-0001");
@@ -123,10 +159,13 @@ describe("portal", () => {
         lastName: "Person",
         orgId: "org_1",
       });
-      await ctx.db.insert("clientLinks", {
+      await ctx.db.insert("orgPermissions", {
         userId: "user_me",
-        contactId: myContact,
         orgId: "org_1",
+        role: "contact",
+        permissions: [],
+        contactId: myContact,
+        isActive: true,
       });
       const editionId = await ctx.db.insert("calendarEditions", {
         name: "Edition",
@@ -152,7 +191,7 @@ describe("portal", () => {
     const asMe = t.withIdentity({ name: "Me", subject: "user_me" });
     const myPurchases = await asMe.query(
       api.portal.queries.getMyPurchases,
-      {}
+      { now: 1710000000000 }
     );
     expect(myPurchases).toHaveLength(1);
   });
@@ -171,10 +210,13 @@ describe("portal", () => {
         lastName: "B",
         orgId: "org_1",
       });
-      await ctx.db.insert("clientLinks", {
+      await ctx.db.insert("orgPermissions", {
         userId: "user_assets",
-        contactId,
         orgId: "org_1",
+        role: "contact",
+        permissions: [],
+        contactId,
+        isActive: true,
       });
       await ctx.db.insert("clientAssets", {
         contactId,
@@ -189,5 +231,38 @@ describe("portal", () => {
     const assets = await asUser.query(api.portal.queries.getMyAssets, {});
     expect(assets).toHaveLength(1);
     expect(assets[0].fileName).toBe("my-ad.png");
+  });
+
+  it("getMyGrant returns null for unauthenticated user", async () => {
+    const t = convexTest(schema, modules);
+    const result = await t.query(api.orgPermissions.queries.getMyGrant, {});
+    expect(result).toBeNull();
+  });
+
+  it("getMyGrant returns active contact grant", async () => {
+    const t = convexTest(schema, modules);
+
+    const contactId = await t.run(async (ctx) => {
+      const cId = await ctx.db.insert("contacts", {
+        company: "Grant Corp",
+        firstName: "G",
+        lastName: "G",
+        orgId: "org_1",
+      });
+      await ctx.db.insert("orgPermissions", {
+        userId: "user_grant",
+        orgId: "org_1",
+        role: "contact",
+        permissions: [],
+        contactId: cId,
+        isActive: true,
+      });
+      return cId;
+    });
+
+    const asUser = t.withIdentity({ subject: "user_grant" });
+    const grant = await asUser.query(api.orgPermissions.queries.getMyGrant, {});
+    expect(grant).not.toBeNull();
+    expect(grant!.contactId).toEqual(contactId);
   });
 });

@@ -1,0 +1,198 @@
+import { QueryCtx, MutationCtx } from "./_generated/server";
+
+type AuthCtx = Pick<QueryCtx | MutationCtx, "auth" | "db">;
+
+export interface OrgAuth {
+  userId: string;
+  orgId: string;
+}
+
+/**
+ * Extracts and validates auth for org-scoped operations.
+ * Requires a Clerk org membership (orgId in JWT).
+ */
+export async function requireAuth(ctx: AuthCtx): Promise<OrgAuth> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new Error("Not authenticated");
+  const orgId = identity.orgId as string;
+  if (!orgId) throw new Error("No organization selected");
+  return { userId: identity.subject, orgId };
+}
+
+/**
+ * Extracts auth for public-facing operations where the user
+ * is not an org member. Only validates that the user is signed in.
+ */
+export async function requirePublicAuth(ctx: AuthCtx): Promise<{ userId: string }> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new Error("Not authenticated");
+  return { userId: identity.subject };
+}
+
+/**
+ * Checks whether a user has a specific permission within an org.
+ *
+ * Resolution order:
+ * 1. Look up explicit orgPermissions grant for user+org
+ * 2. If grant exists and is active, check its permissions array
+ * 3. If no grant exists, fall back to orgPermissionDefaults for the org
+ * 4. Admin role users (org members) implicitly have all permissions
+ */
+export async function checkPermission(
+  ctx: AuthCtx,
+  userId: string,
+  orgId: string,
+  permission: string
+): Promise<boolean> {
+  const grant = await ctx.db
+    .query("orgPermissions")
+    .withIndex("by_userId_and_orgId", (q) =>
+      q.eq("userId", userId).eq("orgId", orgId)
+    )
+    .first();
+
+  if (grant) {
+    if (!grant.isActive) return false;
+    if (grant.role === "admin") return true;
+    if (grant.permissions.length > 0) {
+      return grant.permissions.includes(permission);
+    }
+    // Empty permissions array = fall through to defaults for this role
+    const defaults = await ctx.db
+      .query("orgPermissionDefaults")
+      .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
+      .first();
+    if (!defaults) return false;
+    const defaultPerms =
+      grant.role === "contact"
+        ? defaults.contactDefaults
+        : defaults.userDefaults;
+    return defaultPerms.includes(permission);
+  }
+
+  // No explicit grant — check org defaults for "user" role
+  const defaults = await ctx.db
+    .query("orgPermissionDefaults")
+    .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
+    .first();
+  if (!defaults) return false;
+  return defaults.userDefaults.includes(permission);
+}
+
+/**
+ * Like checkPermission but throws if the user lacks the permission.
+ */
+export async function requirePermission(
+  ctx: AuthCtx,
+  userId: string,
+  orgId: string,
+  permission: string
+): Promise<void> {
+  const allowed = await checkPermission(ctx, userId, orgId, permission);
+  if (!allowed) {
+    throw new Error(`Permission denied: ${permission}`);
+  }
+}
+
+/**
+ * Resolves the effective permissions list for a user within an org.
+ * Used when multiple permissions need to be checked together (tiered logic).
+ */
+export async function resolveEffectivePermissions(
+  ctx: AuthCtx,
+  userId: string,
+  orgId: string
+): Promise<{ permissions: string[]; isAdmin: boolean }> {
+  const grant = await ctx.db
+    .query("orgPermissions")
+    .withIndex("by_userId_and_orgId", (q) =>
+      q.eq("userId", userId).eq("orgId", orgId)
+    )
+    .first();
+
+  if (grant) {
+    if (!grant.isActive) return { permissions: [], isAdmin: false };
+    if (grant.role === "admin") return { permissions: [], isAdmin: true };
+
+    if (grant.permissions.length > 0) {
+      return { permissions: grant.permissions, isAdmin: false };
+    }
+
+    const defaults = await ctx.db
+      .query("orgPermissionDefaults")
+      .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
+      .first();
+    if (!defaults) return { permissions: [], isAdmin: false };
+    const defaultPerms =
+      grant.role === "contact"
+        ? defaults.contactDefaults
+        : defaults.userDefaults;
+    return { permissions: defaultPerms, isAdmin: false };
+  }
+
+  const defaults = await ctx.db
+    .query("orgPermissionDefaults")
+    .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
+    .first();
+  if (!defaults) return { permissions: [], isAdmin: false };
+  return { permissions: defaults.userDefaults, isAdmin: false };
+}
+
+export interface CreateActionResult {
+  allowed: boolean;
+  needsApproval: boolean;
+}
+
+/**
+ * Checks whether a user can create content in a tiered domain
+ * and whether approval is required.
+ *
+ * - `{domain}:create` = auto-approved (supersedes submit)
+ * - `{domain}:submit` = requires approval
+ * - Neither = not allowed
+ * - Admin role = auto-approved, no approval needed
+ */
+export async function checkCreateAction(
+  ctx: AuthCtx,
+  userId: string,
+  orgId: string,
+  domain: string
+): Promise<CreateActionResult> {
+  const { permissions, isAdmin } = await resolveEffectivePermissions(
+    ctx,
+    userId,
+    orgId
+  );
+
+  if (isAdmin) {
+    return { allowed: true, needsApproval: false };
+  }
+
+  const hasCreate = permissions.includes(`${domain}:create`);
+  const hasSubmit = permissions.includes(`${domain}:submit`);
+
+  if (hasCreate) {
+    return { allowed: true, needsApproval: false };
+  }
+  if (hasSubmit) {
+    return { allowed: true, needsApproval: true };
+  }
+  return { allowed: false, needsApproval: false };
+}
+
+/**
+ * Like checkCreateAction but throws if the user cannot create at all.
+ * Returns whether approval is required.
+ */
+export async function requireCreateAction(
+  ctx: AuthCtx,
+  userId: string,
+  orgId: string,
+  domain: string
+): Promise<{ needsApproval: boolean }> {
+  const result = await checkCreateAction(ctx, userId, orgId, domain);
+  if (!result.allowed) {
+    throw new Error(`Permission denied: ${domain}:create`);
+  }
+  return { needsApproval: result.needsApproval };
+}

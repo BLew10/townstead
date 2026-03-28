@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { JsonLd } from "@/components/public/json-ld";
 import { BusinessMap } from "@/components/public/business-map";
 import { formatDate } from "@/lib/utils";
+import { useStableNow } from "@/hooks/use-stable-now";
 
 export default function BusinessDetailPage({
   params,
@@ -25,6 +26,7 @@ export default function BusinessDetailPage({
   params: Promise<{ orgSlug: string; slug: string }>;
 }) {
   const { orgSlug, slug } = use(params);
+  const now = useStableNow();
 
   const business = useQuery(api.public.queries.getDirectoryBusiness, {
     orgSlug,
@@ -36,14 +38,14 @@ export default function BusinessDetailPage({
     type: "business",
   });
 
-  const allCoupons = useQuery(api.public.queries.listCoupons, { orgSlug });
+  const allCoupons = useQuery(api.public.queries.listCoupons, { orgSlug, now });
 
   const relatedCoupons = allCoupons?.filter(
     (c) => business && c.businessContactId === business._id,
   );
 
-  const categoryName = business?.category
-    ? categories?.find((c) => c._id === business.category)?.name
+  const categoryName = business?.categoryId
+    ? categories?.find((c) => c._id === business.categoryId)?.name
     : undefined;
 
   if (business === undefined) {

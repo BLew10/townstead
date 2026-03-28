@@ -44,6 +44,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { useOrg } from "@/hooks/use-org";
+import { useStableNow } from "@/hooks/use-stable-now";
 import { formatDate, formatCurrency } from "@/lib/utils";
 
 function DetailField({
@@ -83,33 +84,46 @@ export default function ContactDetailPage() {
   const router = useRouter();
   const id = params.id as Id<"contacts">;
   const { orgId, isReady } = useOrg();
-  const contact = useQuery(api.contacts.queries.getById, { id });
+  const now = useStableNow();
+  const contact = useQuery(
+    api.contacts.queries.getById,
+    isReady ? { id } : "skip"
+  );
+  const contactCategory = useQuery(
+    api.categories.queries.getById,
+    contact?.categoryId ? { id: contact.categoryId } : "skip"
+  );
   const addressBooks = useQuery(
     api.addressBooks.queries.list,
     isReady ? { orgId: orgId! } : "skip"
   );
-  const purchases = useQuery(api.purchases.queries.listByContact, {
-    contactId: id,
-  });
-  const payments = useQuery(api.payments.queries.listByContact, {
-    contactId: id,
-  });
+  const purchases = useQuery(
+    api.purchases.queries.listByContact,
+    isReady ? { contactId: id, now } : "skip"
+  );
+  const payments = useQuery(
+    api.payments.queries.listByContact,
+    isReady ? { contactId: id } : "skip"
+  );
   const [formOpen, setFormOpen] = useState(false);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [linkUserId, setLinkUserId] = useState("");
 
-  const clientLink = useQuery(api.clientLinks.queries.getByContactId, {
-    contactId: id,
-  });
-  const clientMessages = useQuery(api.messages.queries.listByContact, {
-    contactId: id,
-  });
-  const clientAssets = useQuery(api.clientAssets.queries.listByContact, {
-    contactId: id,
-  });
+  const clientGrant = useQuery(
+    api.orgPermissions.queries.getForContact,
+    isReady ? { contactId: id } : "skip"
+  );
+  const clientMessages = useQuery(
+    api.messages.queries.listByContact,
+    isReady ? { contactId: id } : "skip"
+  );
+  const clientAssets = useQuery(
+    api.clientAssets.queries.listByContact,
+    isReady ? { contactId: id } : "skip"
+  );
 
-  const createLink = useMutation(api.clientLinks.mutations.create);
-  const removeLink = useMutation(api.clientLinks.mutations.remove);
+  const linkContact = useMutation(api.orgPermissions.mutations.linkContact);
+  const unlinkContact = useMutation(api.orgPermissions.mutations.unlinkContact);
   const sendMessage = useMutation(api.messages.mutations.send);
   const reviewAsset = useMutation(api.clientAssets.mutations.review);
 
@@ -206,7 +220,7 @@ export default function ContactDetailPage() {
                 <DetailField label="Email" value={contact.email} />
                 <DetailField label="Phone" value={contact.phone} />
                 <DetailField label="Website" value={contact.website} />
-                <DetailField label="Category" value={contact.category} />
+                <DetailField label="Category" value={contactCategory?.name} />
               </CardContent>
             </Card>
 
@@ -368,20 +382,20 @@ export default function ContactDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {clientLink ? (
+                {clientGrant ? (
                   <div className="space-y-3">
                     <div className="flex items-center justify-between rounded-md border p-3">
                       <div>
                         <p className="text-sm font-medium">Linked User ID</p>
                         <p className="text-sm text-muted-foreground font-mono">
-                          {clientLink.userId}
+                          {clientGrant.userId}
                         </p>
                       </div>
                       <Button
                         variant="destructive"
                         size="sm"
                         onClick={async () => {
-                          await removeLink({ id: clientLink._id });
+                          await unlinkContact({ id: clientGrant._id });
                         }}
                       >
                         <Unlink className="mr-2 h-4 w-4" />
@@ -607,7 +621,7 @@ export default function ContactDetailPage() {
               disabled={!linkUserId.trim()}
               onClick={async () => {
                 try {
-                  await createLink({
+                  await linkContact({
                     userId: linkUserId.trim(),
                     contactId: id,
                   });

@@ -3,6 +3,7 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useOrg } from "@/hooks/use-org";
+import { useStableNow } from "@/hooks/use-stable-now";
 import { DataTable } from "@/components/shared/data-table";
 import { thisMonthColumns, type ThisMonthRow } from "./columns";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,6 +23,7 @@ const yearOptions = Array.from({ length: 10 }, (_, i) => currentYear - i);
 
 export default function ThisMonthPage() {
   const { orgId, isReady } = useOrg();
+  const now = useStableNow();
   const [selectedYear, setSelectedYear] = useState<number | undefined>(
     undefined
   );
@@ -29,7 +31,7 @@ export default function ThisMonthPage() {
 
   const data = useQuery(
     api.billing.queries.listThisMonth,
-    isReady ? { orgId: orgId!, year: selectedYear } : "skip"
+    isReady ? { orgId: orgId!, year: selectedYear, now } : "skip"
   );
 
   const rows = (data ?? []) as ThisMonthRow[];

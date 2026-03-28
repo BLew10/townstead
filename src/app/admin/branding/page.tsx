@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useOrganization } from "@clerk/nextjs";
 import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import { useOrg } from "@/hooks/use-org";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
+import { ImageUpload } from "@/components/shared/image-upload";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +30,9 @@ export default function BrandingPage() {
     isReady ? { orgId: orgId! } : "skip"
   );
   const upsert = useMutation(api.tenantBranding.mutations.upsert);
+  const generateUploadUrl = useMutation(
+    api.tenantBranding.mutations.generateUploadUrl
+  );
 
   const [siteName, setSiteName] = useState("");
   const [tagline, setTagline] = useState("");
@@ -38,6 +43,13 @@ export default function BrandingPage() {
   const [youtube, setYoutube] = useState("");
   const [footerText, setFooterText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [logoId, setLogoId] = useState<Id<"_storage"> | undefined>(undefined);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const logoUrl = useQuery(
+    api.storage.getUrl,
+    logoId ? { storageId: logoId } : "skip"
+  );
 
   useEffect(() => {
     if (branding) {
@@ -49,8 +61,31 @@ export default function BrandingPage() {
       setTwitter(branding.socialLinks?.twitter ?? "");
       setYoutube(branding.socialLinks?.youtube ?? "");
       setFooterText(branding.footerText ?? "");
+      setLogoId(branding.logo ?? undefined);
     }
   }, [branding]);
+
+  const handleLogoUpload = useCallback(
+    async (file: File) => {
+      setUploadingLogo(true);
+      try {
+        const url = await generateUploadUrl();
+        const result = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+        const { storageId } = await result.json();
+        setLogoId(storageId as Id<"_storage">);
+        toast.success("Logo uploaded.");
+      } catch {
+        toast.error("Failed to upload logo.");
+      } finally {
+        setUploadingLogo(false);
+      }
+    },
+    [generateUploadUrl]
+  );
 
   if (!isReady || branding === undefined) {
     return (
@@ -73,6 +108,7 @@ export default function BrandingPage() {
       await upsert({
         orgId,
         orgSlug: organization.slug,
+        logo: logoId,
         siteName: siteName || undefined,
         tagline: tagline || undefined,
         primaryColor: primaryColor || undefined,
@@ -104,6 +140,17 @@ export default function BrandingPage() {
           <CardTitle>Brand Identity</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2 sm:col-span-2">
+            <Label>Logo</Label>
+            <ImageUpload
+              preset="logo"
+              onUpload={handleLogoUpload}
+              onRemove={() => setLogoId(undefined)}
+              currentImageUrl={logoUrl ?? null}
+              uploading={uploadingLogo}
+            />
+          </div>
+
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="siteName">Site Name</Label>
             <Input

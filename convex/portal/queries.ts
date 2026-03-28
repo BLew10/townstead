@@ -1,31 +1,42 @@
-import { query } from "../_generated/server";
+import { query, QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
+import { Id } from "../_generated/dataModel";
 import {
   computeNet,
   computeAmountPaid,
   computeIsPaid,
   computeScheduledPaymentPaid,
-  isScheduledPaymentLate,
 } from "../billing/helpers";
 
-async function resolvePortalContact(ctx: { auth: any; db: any }) {
+async function resolvePortalContact(ctx: QueryCtx): Promise<{
+  contactId: Id<"contacts">;
+  orgId: string;
+}> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new Error("Not authenticated");
 
-  const link = await ctx.db
-    .query("clientLinks")
-    .withIndex("by_userId", (q: any) => q.eq("userId", identity.subject))
+  const grant = await ctx.db
+    .query("orgPermissions")
+    .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+    .filter((q) =>
+      q.and(
+        q.eq(q.field("role"), "contact"),
+        q.eq(q.field("isActive"), true)
+      )
+    )
     .first();
-  if (!link) throw new Error("No client link found");
 
-  return { contactId: link.contactId, orgId: link.orgId };
+  if (!grant) throw new Error("No portal access");
+  if (!grant.contactId) throw new Error("No linked contact");
+
+  return { contactId: grant.contactId, orgId: grant.orgId };
 }
 
 export const getDashboardData = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { now: v.number() },
+  handler: async (ctx, args) => {
     const { contactId, orgId } = await resolvePortalContact(ctx);
-    const now = Date.now();
+    const now = args.now;
 
     const purchases = await ctx.db
       .query("purchases")
@@ -67,7 +78,7 @@ export const getDashboardData = query({
         allAllocations.push(...spAllocs);
       }
 
-      const net = computeNet(terms, scheduledPayments, allAllocations);
+      const net = computeNet(terms, scheduledPayments, allAllocations, now);
       const amountPaid = computeAmountPaid(allAllocations);
       totalOutstanding += Math.max(0, net - amountPaid);
 
@@ -96,8 +107,8 @@ export const getDashboardData = query({
 });
 
 export const getMyPurchases = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { now: v.number() },
+  handler: async (ctx, args) => {
     const { contactId } = await resolvePortalContact(ctx);
 
     const purchases = await ctx.db
@@ -152,7 +163,7 @@ export const getMyPurchases = query({
         }
 
         const net = terms
-          ? computeNet(terms, scheduledPayments, allAllocations)
+          ? computeNet(terms, scheduledPayments, allAllocations, args.now)
           : 0;
         const amountPaid = computeAmountPaid(allAllocations);
         const isPaid = computeIsPaid(net, amountPaid);
@@ -231,8 +242,8 @@ async function collectPayments(
 }
 
 export const getInvoices = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { now: v.number() },
+  handler: async (ctx, args) => {
     const { contactId } = await resolvePortalContact(ctx);
 
     const purchases = await ctx.db
@@ -273,7 +284,7 @@ export const getInvoices = query({
         }
 
         const net = terms
-          ? computeNet(terms, scheduledPayments, allAllocations)
+          ? computeNet(terms, scheduledPayments, allAllocations, args.now)
           : 0;
         const amountPaid = computeAmountPaid(allAllocations);
 

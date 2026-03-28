@@ -72,6 +72,7 @@ export default defineSchema({
     ),
     website: v.optional(v.string()),
     category: v.optional(v.string()),
+    categoryId: v.optional(v.id("categories")),
     notes: v.optional(v.string()),
     customerSince: v.optional(v.number()),
     addressBookIds: v.optional(v.array(v.id("addressBooks"))),
@@ -276,7 +277,6 @@ export default defineSchema({
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
     isYearly: v.optional(v.boolean()),
-    calendarEditionIds: v.optional(v.array(v.id("calendarEditions"))),
     communityIds: v.optional(v.array(v.id("communities"))),
     location: v.optional(v.string()),
     contactId: v.optional(v.id("contacts")),
@@ -390,6 +390,40 @@ export default defineSchema({
     .index("by_orgId", ["orgId"])
     .index("by_businessContactId", ["businessContactId"]),
 
+  users: defineTable({
+    clerkId: v.string(),
+    email: v.string(),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_clerkId", ["clerkId"])
+    .index("by_email", ["email"]),
+
+  orgPermissions: defineTable({
+    userId: v.string(),
+    orgId: v.string(),
+    role: v.union(
+      v.literal("admin"),
+      v.literal("contact"),
+      v.literal("user")
+    ),
+    permissions: v.array(v.string()),
+    contactId: v.optional(v.id("contacts")),
+    isActive: v.boolean(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_orgId", ["orgId"])
+    .index("by_userId_and_orgId", ["userId", "orgId"])
+    .index("by_contactId", ["contactId"]),
+
+  orgPermissionDefaults: defineTable({
+    orgId: v.string(),
+    contactDefaults: v.array(v.string()),
+    userDefaults: v.array(v.string()),
+  }).index("by_orgId", ["orgId"]),
+
   clientLinks: defineTable({
     userId: v.string(),
     contactId: v.id("contacts"),
@@ -453,4 +487,14 @@ export default defineSchema({
     .index("by_orgId", ["orgId"])
     .index("by_contactId", ["contactId"])
     .index("by_contactId_and_createdAt", ["contactId", "createdAt"]),
+
+  dashboardStatsCache: defineTable({
+    orgId: v.string(),
+    calendarEditionId: v.id("calendarEditions"),
+    year: v.number(),
+    totalRevenue: v.number(),
+    totalAmountPaid: v.number(),
+    latePaymentsCount: v.number(),
+    computedAt: v.number(),
+  }).index("by_org_edition_year", ["orgId", "calendarEditionId", "year"]),
 });

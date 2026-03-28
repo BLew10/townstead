@@ -9,7 +9,7 @@ vi.mock("@/hooks/use-portal-auth", () => ({
   usePortalAuth: () => ({
     contact: { company: "Test Company" },
     contactId: "c1",
-    linkId: "l1",
+    grantId: "g1",
     isLoading: false,
     isLinked: true,
   }),

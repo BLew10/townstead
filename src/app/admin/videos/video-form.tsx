@@ -160,7 +160,12 @@ export function VideoForm({
               onValueChange={setBusinessContactId}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select a contact" />
+                <SelectValue placeholder="Select a contact">
+                  {(() => {
+                    const match = contacts.find((c) => c._id === businessContactId);
+                    return match ? contactLabel(match) : "Select a contact";
+                  })()}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">None</SelectItem>
@@ -177,7 +182,10 @@ export function VideoForm({
             <Label>Category</Label>
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a category" />
+                <SelectValue placeholder="Select a category">
+                  {categories.find((c) => c._id === categoryId)?.name ??
+                    "Select a category"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="">None</SelectItem>

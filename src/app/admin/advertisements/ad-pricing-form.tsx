@@ -167,7 +167,10 @@ export function AdPricingForm({
                 onValueChange={(v) => setSelectedEdition(v ?? "")}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select edition" />
+                  <SelectValue placeholder="Select edition">
+                    {editions?.find((ed) => ed._id === selectedEdition)?.name ??
+                      "Select edition"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {editions?.map((edition) => (

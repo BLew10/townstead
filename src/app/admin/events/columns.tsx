@@ -83,12 +83,12 @@ function ActionsCell({
 
 export function columns({
   onEdit,
-  editions,
+  communities,
 }: {
   onEdit: (event: Event) => void;
-  editions: Doc<"calendarEditions">[];
+  communities: Doc<"communities">[];
 }): ColumnDef<Event>[] {
-  const editionMap = new Map(editions.map((e) => [e._id, e.name]));
+  const communityMap = new Map(communities.map((c) => [c._id, c.name]));
 
   return [
     {
@@ -115,17 +115,17 @@ export function columns({
         ) : null,
     },
     {
-      id: "editions",
-      header: "Calendar Editions",
+      id: "communities",
+      header: "Communities",
       enableSorting: false,
       cell: ({ row }) => {
-        const ids = row.original.calendarEditionIds;
+        const ids = row.original.communityIds;
         if (!ids || ids.length === 0) return null;
         return (
           <div className="flex flex-wrap gap-1">
             {ids.map((id) => (
               <Badge key={id} variant="outline">
-                {editionMap.get(id) ?? "Unknown"}
+                {communityMap.get(id) ?? "Unknown"}
               </Badge>
             ))}
           </div>

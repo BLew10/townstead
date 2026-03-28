@@ -152,7 +152,7 @@ export const getPrintInventoryData = query({
   },
 });
 
-export const getDashboardData = query({
+export const getDashboardSlots = query({
   args: {
     orgId: v.string(),
     calendarEditionId: v.id("calendarEditions"),
@@ -166,71 +166,6 @@ export const getDashboardData = query({
       null
     );
 
-    // 4. Compute stats from all purchases that include this edition for this year
-    const allPurchases = await ctx.db
-      .query("purchases")
-      .withIndex("by_orgId_and_year", (q) =>
-        q.eq("orgId", args.orgId).eq("year", args.year)
-      )
-      .filter((q) => q.neq(q.field("isDeleted"), true))
-      .collect();
-
-    const editionPurchases = allPurchases.filter((p) =>
-      p.calendarEditionIds.includes(args.calendarEditionId)
-    );
-
-    let totalRevenue = 0;
-    let totalAmountPaid = 0;
-    let latePaymentsCount = 0;
-    const now = Date.now();
-
-    for (const purchase of editionPurchases) {
-      const terms = await ctx.db
-        .query("paymentTerms")
-        .withIndex("by_purchaseId", (q) =>
-          q.eq("purchaseId", purchase._id)
-        )
-        .first();
-
-      if (!terms) continue;
-
-      const scheduledPayments = await ctx.db
-        .query("scheduledPayments")
-        .withIndex("by_purchaseId", (q) =>
-          q.eq("purchaseId", purchase._id)
-        )
-        .collect();
-
-      const allAllocations: Doc<"paymentAllocations">[] = [];
-      for (const sp of scheduledPayments) {
-        const spAllocs = await ctx.db
-          .query("paymentAllocations")
-          .withIndex("by_scheduledPaymentId", (q) =>
-            q.eq("scheduledPaymentId", sp._id)
-          )
-          .collect();
-        allAllocations.push(...spAllocs);
-      }
-
-      const net = computeNet(terms, scheduledPayments, allAllocations, now);
-      const amountPaid = computeAmountPaid(allAllocations);
-
-      totalRevenue += net;
-      totalAmountPaid += amountPaid;
-
-      for (const sp of scheduledPayments) {
-        if (isScheduledPaymentLate(sp, allAllocations, now)) {
-          latePaymentsCount++;
-        }
-      }
-    }
-
-    const collectionRate =
-      totalRevenue > 0
-        ? Math.round((totalAmountPaid / totalRevenue) * 10000) / 100
-        : 0;
-
-    // 5. Build unique contacts list for the legend
     const contactMap = new Map<string, { id: string; company: string }>();
     for (const slot of enrichedSlots) {
       const cid = slot.contactId.toString();
@@ -244,13 +179,130 @@ export const getDashboardData = query({
 
     return {
       slots: enrichedSlots,
-      stats: {
-        totalRevenue,
-        collectionRate,
-        outstandingBalance: Math.max(0, totalRevenue - totalAmountPaid),
-        latePaymentsCount,
-      },
       contacts: Array.from(contactMap.values()),
     };
   },
 });
+
+export const getDashboardStats = query({
+  args: {
+    orgId: v.string(),
+    calendarEditionId: v.id("calendarEditions"),
+    year: v.number(),
+    now: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const cached = await ctx.db
+      .query("dashboardStatsCache")
+      .withIndex("by_org_edition_year", (q) =>
+        q
+          .eq("orgId", args.orgId)
+          .eq("calendarEditionId", args.calendarEditionId)
+          .eq("year", args.year)
+      )
+      .first();
+
+    if (cached) {
+      const collectionRate =
+        cached.totalRevenue > 0
+          ? Math.round(
+              (cached.totalAmountPaid / cached.totalRevenue) * 10000
+            ) / 100
+          : 0;
+      return {
+        totalRevenue: cached.totalRevenue,
+        collectionRate,
+        outstandingBalance: Math.max(
+          0,
+          cached.totalRevenue - cached.totalAmountPaid
+        ),
+        latePaymentsCount: cached.latePaymentsCount,
+      };
+    }
+
+    return computeDashboardStatsFromDb(
+      ctx,
+      args.orgId,
+      args.calendarEditionId,
+      args.year,
+      args.now
+    );
+  },
+});
+
+export async function computeDashboardStatsFromDb(
+  ctx: QueryCtx,
+  orgId: string,
+  calendarEditionId: Id<"calendarEditions">,
+  year: number,
+  now: number
+) {
+  const allPurchases = await ctx.db
+    .query("purchases")
+    .withIndex("by_orgId_and_year", (q) =>
+      q.eq("orgId", orgId).eq("year", year)
+    )
+    .filter((q) => q.neq(q.field("isDeleted"), true))
+    .collect();
+
+  const editionPurchases = allPurchases.filter((p) =>
+    p.calendarEditionIds.includes(calendarEditionId)
+  );
+
+  let totalRevenue = 0;
+  let totalAmountPaid = 0;
+  let latePaymentsCount = 0;
+
+  for (const purchase of editionPurchases) {
+    const terms = await ctx.db
+      .query("paymentTerms")
+      .withIndex("by_purchaseId", (q) =>
+        q.eq("purchaseId", purchase._id)
+      )
+      .first();
+
+    if (!terms) continue;
+
+    const scheduledPayments = await ctx.db
+      .query("scheduledPayments")
+      .withIndex("by_purchaseId", (q) =>
+        q.eq("purchaseId", purchase._id)
+      )
+      .collect();
+
+    const allAllocations: Doc<"paymentAllocations">[] = [];
+    for (const sp of scheduledPayments) {
+      const spAllocs = await ctx.db
+        .query("paymentAllocations")
+        .withIndex("by_scheduledPaymentId", (q) =>
+          q.eq("scheduledPaymentId", sp._id)
+        )
+        .collect();
+      allAllocations.push(...spAllocs);
+    }
+
+    const net = computeNet(terms, scheduledPayments, allAllocations, now);
+    const amountPaid = computeAmountPaid(allAllocations);
+
+    totalRevenue += net;
+    totalAmountPaid += amountPaid;
+
+    for (const sp of scheduledPayments) {
+      if (isScheduledPaymentLate(sp, allAllocations, now)) {
+        latePaymentsCount++;
+      }
+    }
+  }
+
+  const collectionRate =
+    totalRevenue > 0
+      ? Math.round((totalAmountPaid / totalRevenue) * 10000) / 100
+      : 0;
+
+  return {
+    totalRevenue,
+    collectionRate,
+    outstandingBalance: Math.max(0, totalRevenue - totalAmountPaid),
+    latePaymentsCount,
+  };
+}

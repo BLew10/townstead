@@ -14,7 +14,6 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = request.nextUrl;
   const yearStr = searchParams.get("year");
-  const calendarEditionIdParam = searchParams.get("calendarEditionId");
 
   if (!yearStr) {
     return NextResponse.json({ error: "Missing year" }, { status: 400 });
@@ -26,25 +25,26 @@ export async function GET(request: NextRequest) {
   }
 
   const convex = getConvexClient();
+  const communityIdParam = searchParams.get("communityId");
 
-  let editionId: Id<"calendarEditions"> | null = null;
+  let communityId: Id<"communities"> | null = null;
   let editionLabel: string | undefined;
-  let editionSlug = "";
+  let communitySlug = "";
 
-  if (calendarEditionIdParam) {
-    const edition = await convex.query(api.calendarEditions.queries.getById, {
-      id: calendarEditionIdParam as Id<"calendarEditions">,
+  if (communityIdParam) {
+    const community = await convex.query(api.communities.queries.getById, {
+      id: communityIdParam as Id<"communities">,
     });
-    if (!edition || edition.orgId !== orgId || edition.isDeleted) {
-      return NextResponse.json({ error: "Edition not found" }, { status: 404 });
+    if (!community || community.orgId !== orgId || community.isDeleted) {
+      return NextResponse.json({ error: "Community not found" }, { status: 404 });
     }
-    editionId = edition._id;
-    editionLabel = `Edition: ${edition.name}`;
-    editionSlug = edition.name.replace(/[^\w\-]+/g, "-").replace(/^-|-$/g, "") || "edition";
+    communityId = community._id;
+    editionLabel = `Community: ${community.name}`;
+    communitySlug = community.slug || community.name.replace(/[^\w\-]+/g, "-").replace(/^-|-$/g, "") || "community";
   }
 
   const events = await convex.query(api.events.queries.list, { orgId });
-  const months = buildEventExportMonthGroups(events, year, editionId);
+  const months = buildEventExportMonthGroups(events, year, communityId);
 
   const pdfBytes = await generateEventsExportPdf({
     year,
@@ -52,8 +52,8 @@ export async function GET(request: NextRequest) {
     months,
   });
 
-  const filename = editionSlug
-    ? `events-${year}-${editionSlug}.pdf`
+  const filename = communitySlug
+    ? `events-${year}-${communitySlug}.pdf`
     : `events-calendar-${year}.pdf`;
 
   return new NextResponse(Buffer.from(pdfBytes), {

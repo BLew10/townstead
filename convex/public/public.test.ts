@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
 import { modules } from "../test.setup";
+import { PERMISSIONS } from "../permissions";
 
 describe("public", () => {
   it("getHomepageData returns null for unknown orgSlug", async () => {
@@ -10,6 +11,7 @@ describe("public", () => {
 
     const result = await t.query(api.public.queries.getHomepageData, {
       orgSlug: "nonexistent",
+      now: 1710000000000,
     });
     expect(result).toBeNull();
   });
@@ -27,6 +29,7 @@ describe("public", () => {
 
     const result = await t.query(api.public.queries.getHomepageData, {
       orgSlug: "test-community",
+      now: 1710000000000,
     });
     expect(result).not.toBeNull();
     expect(result!.branding.siteName).toBe("Test Community");
@@ -82,7 +85,42 @@ describe("public", () => {
     expect(events[0].name).toBe("Active Event");
   });
 
-  it("submitEvent creates a pending event via orgSlug", async () => {
+  it("getEvent returns null for unapproved events", async () => {
+    const t = convexTest(schema, modules);
+
+    const eventId = await t.run(async (ctx) => {
+      return await ctx.db.insert("events", {
+        name: "Unapproved",
+        date: Date.now() + 100000000,
+        orgId: "org_1",
+        isDeleted: false,
+        isApproved: false,
+      });
+    });
+
+    const result = await t.query(api.public.queries.getEvent, { id: eventId });
+    expect(result).toBeNull();
+  });
+
+  it("getEvent returns approved events", async () => {
+    const t = convexTest(schema, modules);
+
+    const eventId = await t.run(async (ctx) => {
+      return await ctx.db.insert("events", {
+        name: "Approved Event",
+        date: Date.now() + 100000000,
+        orgId: "org_1",
+        isDeleted: false,
+        isApproved: true,
+      });
+    });
+
+    const result = await t.query(api.public.queries.getEvent, { id: eventId });
+    expect(result).not.toBeNull();
+    expect(result!.name).toBe("Approved Event");
+  });
+
+  it("submitEvent requires authentication", async () => {
     const t = convexTest(schema, modules);
 
     await t.run(async (ctx) => {
@@ -93,11 +131,36 @@ describe("public", () => {
       });
     });
 
-    const eventId = await t.mutation(api.public.mutations.submitEvent, {
+    await expect(
+      t.mutation(api.public.mutations.submitEvent, {
+        orgSlug: "submit-org",
+        name: "Anon Event",
+        date: 1800000000000,
+      })
+    ).rejects.toThrowError("Not authenticated");
+  });
+
+  it("submitEvent creates a pending event with permission", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("tenantBranding", {
+        orgId: "org_1",
+        orgSlug: "submit-org",
+        siteName: "Submit Org",
+      });
+      await ctx.db.insert("orgPermissionDefaults", {
+        orgId: "org_1",
+        contactDefaults: [],
+        userDefaults: [PERMISSIONS.EVENTS_SUBMIT, PERMISSIONS.COUPONS_CLAIM],
+      });
+    });
+
+    const authed = t.withIdentity({ subject: "user_abc" });
+    const eventId = await authed.mutation(api.public.mutations.submitEvent, {
       orgSlug: "submit-org",
       name: "Community Meetup",
       date: 1800000000000,
-      submittedBy: "user_abc",
     });
     expect(eventId).toBeTruthy();
 
@@ -105,9 +168,98 @@ describe("public", () => {
     expect(doc!.name).toBe("Community Meetup");
     expect(doc!.isApproved).toBe(false);
     expect(doc!.orgId).toBe("org_1");
+    expect(doc!.submittedBy).toBe("user_abc");
   });
 
-  it("claimCoupon creates a claim and rejects duplicate", async () => {
+  it("submitEvent denied without permission", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("tenantBranding", {
+        orgId: "org_1",
+        orgSlug: "locked-org",
+        siteName: "Locked Org",
+      });
+      await ctx.db.insert("orgPermissionDefaults", {
+        orgId: "org_1",
+        contactDefaults: [],
+        userDefaults: [],
+      });
+    });
+
+    const authed = t.withIdentity({ subject: "user_no_perms" });
+    await expect(
+      authed.mutation(api.public.mutations.submitEvent, {
+        orgSlug: "locked-org",
+        name: "Blocked Event",
+        date: 1800000000000,
+      })
+    ).rejects.toThrowError("Permission denied");
+  });
+
+  it("submitEvent auto-approves when user has events:create", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("tenantBranding", {
+        orgId: "org_1",
+        orgSlug: "auto-org",
+        siteName: "Auto Org",
+      });
+      await ctx.db.insert("orgPermissionDefaults", {
+        orgId: "org_1",
+        contactDefaults: [],
+        userDefaults: [PERMISSIONS.EVENTS_CREATE],
+      });
+    });
+
+    const authed = t.withIdentity({ subject: "trusted_user" });
+    const eventId = await authed.mutation(api.public.mutations.submitEvent, {
+      orgSlug: "auto-org",
+      name: "Auto-Approved Event",
+      date: 1800000000000,
+    });
+    expect(eventId).toBeTruthy();
+
+    const doc = await t.run(async (ctx) => ctx.db.get(eventId));
+    expect(doc!.isApproved).toBe(true);
+  });
+
+  it("submitEvent with explicit events:create grant auto-approves over submit defaults", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("tenantBranding", {
+        orgId: "org_1",
+        orgSlug: "mixed-org",
+        siteName: "Mixed Org",
+      });
+      await ctx.db.insert("orgPermissionDefaults", {
+        orgId: "org_1",
+        contactDefaults: [],
+        userDefaults: [PERMISSIONS.EVENTS_SUBMIT],
+      });
+      await ctx.db.insert("orgPermissions", {
+        userId: "promoted_user",
+        orgId: "org_1",
+        role: "user",
+        permissions: [PERMISSIONS.EVENTS_CREATE],
+        isActive: true,
+      });
+    });
+
+    const authed = t.withIdentity({ subject: "promoted_user" });
+    const eventId = await authed.mutation(api.public.mutations.submitEvent, {
+      orgSlug: "mixed-org",
+      name: "Promoted Event",
+      date: 1800000000000,
+    });
+
+    const doc = await t.run(async (ctx) => ctx.db.get(eventId));
+    expect(doc!.isApproved).toBe(true);
+  });
+
+  it("claimCoupon requires authentication", async () => {
     const t = convexTest(schema, modules);
 
     const couponId = await t.run(async (ctx) => {
@@ -127,17 +279,44 @@ describe("public", () => {
       });
     });
 
-    const claimId = await t.mutation(api.public.mutations.claimCoupon, {
+    await expect(
+      t.mutation(api.public.mutations.claimCoupon, { couponId })
+    ).rejects.toThrowError("Not authenticated");
+  });
+
+  it("claimCoupon creates a claim and rejects duplicate", async () => {
+    const t = convexTest(schema, modules);
+
+    const couponId = await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "Biz",
+        firstName: "A",
+        lastName: "B",
+        orgId: "org_1",
+      });
+      await ctx.db.insert("orgPermissionDefaults", {
+        orgId: "org_1",
+        contactDefaults: [],
+        userDefaults: [PERMISSIONS.COUPONS_CLAIM],
+      });
+      return await ctx.db.insert("coupons", {
+        businessContactId: contactId,
+        title: "20% Off",
+        startDate: Date.now() - 100000000,
+        endDate: Date.now() + 100000000,
+        orgId: "org_1",
+        isDeleted: false,
+      });
+    });
+
+    const authed = t.withIdentity({ subject: "user_claimer" });
+    const claimId = await authed.mutation(api.public.mutations.claimCoupon, {
       couponId,
-      userId: "user_claimer",
     });
     expect(claimId).toBeTruthy();
 
     await expect(
-      t.mutation(api.public.mutations.claimCoupon, {
-        couponId,
-        userId: "user_claimer",
-      })
+      authed.mutation(api.public.mutations.claimCoupon, { couponId })
     ).rejects.toThrowError("already claimed");
   });
 
@@ -151,6 +330,11 @@ describe("public", () => {
         lastName: "B",
         orgId: "org_1",
       });
+      await ctx.db.insert("orgPermissionDefaults", {
+        orgId: "org_1",
+        contactDefaults: [],
+        userDefaults: [PERMISSIONS.COUPONS_CLAIM],
+      });
       return await ctx.db.insert("coupons", {
         businessContactId: contactId,
         title: "Old Deal",
@@ -161,11 +345,9 @@ describe("public", () => {
       });
     });
 
+    const authed = t.withIdentity({ subject: "user_late" });
     await expect(
-      t.mutation(api.public.mutations.claimCoupon, {
-        couponId,
-        userId: "user_late",
-      })
+      authed.mutation(api.public.mutations.claimCoupon, { couponId })
     ).rejects.toThrowError("expired");
   });
 

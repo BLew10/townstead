@@ -11,6 +11,16 @@ vi.mock("convex/react", () => ({
   useQuery: () => ({ siteName: "Test Community" }),
 }));
 
+vi.mock("@/hooks/use-community-filter", () => ({
+  useCommunityFilter: () => ({
+    communitySlug: undefined,
+    communityId: undefined,
+    communities: [],
+    communityMap: new Map(),
+    setCommunity: vi.fn(),
+  }),
+}));
+
 vi.mock("next/navigation", () => ({
   usePathname: () => "/test-org/events",
 }));
@@ -31,13 +41,21 @@ describe("PublicHeader", () => {
     expect(screen.getByText("Test Community")).toBeDefined();
   });
 
-  it("renders all navigation items", () => {
+  it("renders all navigation items including Home", () => {
     render(<PublicHeader orgSlug="test-org" />);
+    expect(screen.getAllByText("Home").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Events").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Directory").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Coupons").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Blog").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Videos").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("Home link points to the org root", () => {
+    render(<PublicHeader orgSlug="test-org" />);
+    const homeLinks = screen.getAllByText("Home");
+    const homeLink = homeLinks[0].closest("a");
+    expect(homeLink?.getAttribute("href")).toBe("/test-org");
   });
 
   it("nav links point to org-prefixed routes", () => {

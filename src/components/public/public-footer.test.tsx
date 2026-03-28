@@ -1,15 +1,19 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
+const DEFAULT_BRANDING = {
+  siteName: "Test Community",
+  footerText: "Your local community calendar",
+  socialLinks: {
+    facebook: "https://facebook.com/test",
+    instagram: "https://instagram.com/test",
+    twitter: "",
+    youtube: "",
+  },
+};
+
 vi.mock("convex/react", () => ({
-  useQuery: () => ({
-    siteName: "Test Community",
-    footerText: "Your local community calendar",
-    socialLinks: {
-      facebook: "https://facebook.com/test",
-      instagram: "https://instagram.com/test",
-    },
-  }),
+  useQuery: () => DEFAULT_BRANDING,
 }));
 
 vi.mock("next/link", () => ({
@@ -44,12 +48,20 @@ describe("PublicFooter", () => {
     expect(eventsLink?.getAttribute("href")).toBe("/test-org/events");
   });
 
-  it("renders social links for active platforms", () => {
+  it("renders social icon links for platforms with URLs", () => {
     render(<PublicFooter orgSlug="test-org" />);
-    const fbLinks = screen.getAllByLabelText("Facebook");
-    expect(fbLinks[0].getAttribute("href")).toBe("https://facebook.com/test");
-    const igLinks = screen.getAllByLabelText("Instagram");
-    expect(igLinks[0].getAttribute("href")).toBe("https://instagram.com/test");
+    const fbLink = screen.getByLabelText("Facebook");
+    expect(fbLink.getAttribute("href")).toBe("https://facebook.com/test");
+    expect(fbLink.querySelector("svg")).toBeDefined();
+    const igLink = screen.getByLabelText("Instagram");
+    expect(igLink.getAttribute("href")).toBe("https://instagram.com/test");
+    expect(igLink.querySelector("svg")).toBeDefined();
+  });
+
+  it("does not render social icons for platforms without URLs", () => {
+    render(<PublicFooter orgSlug="test-org" />);
+    expect(screen.queryByLabelText("Twitter / X")).toBeNull();
+    expect(screen.queryByLabelText("YouTube")).toBeNull();
   });
 
   it("renders copyright with current year", () => {

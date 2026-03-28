@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useOrg } from "@/hooks/use-org";
+import { useStableNow } from "@/hooks/use-stable-now";
 import { PageHeader } from "@/components/shared/page-header";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { DataTable } from "@/components/shared/data-table";
@@ -14,10 +15,11 @@ import { purchaseColumns } from "./columns";
 
 export default function PurchasesPage() {
   const { orgId, isReady } = useOrg();
+  const now = useStableNow();
   const router = useRouter();
   const purchases = useQuery(
     api.purchases.queries.list,
-    isReady ? { orgId: orgId! } : "skip"
+    isReady ? { orgId: orgId!, now } : "skip"
   );
 
   const columns = useMemo(() => {

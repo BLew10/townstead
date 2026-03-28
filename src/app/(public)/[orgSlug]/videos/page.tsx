@@ -6,6 +6,8 @@ import { api } from "../../../../../convex/_generated/api";
 import { Play, Film, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCommunityFilter } from "@/hooks/use-community-filter";
+import { CommunityBadges } from "@/components/public/community-badge";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 
 function getEmbedUrl(url: string): string | null {
@@ -24,6 +26,7 @@ export default function VideosPage({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = use(params);
+  const { communityId, communityMap } = useCommunityFilter(orgSlug);
   const [selectedCategory, setSelectedCategory] = useState<
     Id<"categories"> | undefined
   >(undefined);
@@ -31,6 +34,7 @@ export default function VideosPage({
   const videos = useQuery(api.public.queries.listVideos, {
     orgSlug,
     categoryId: selectedCategory,
+    communityId,
   });
 
   const categories = useQuery(api.public.queries.listCategories, {
@@ -144,6 +148,9 @@ export default function VideosPage({
                       {video.description}
                     </p>
                   )}
+                  <div className="mt-3">
+                    <CommunityBadges communityIds={video.communityIds} communityMap={communityMap} />
+                  </div>
                 </div>
               </div>
             );

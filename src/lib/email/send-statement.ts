@@ -16,6 +16,7 @@ export async function sendStatementEmail(
     convex.query(api.billing.queries.getStatementData, {
       contactId,
       orgId,
+      now: Date.now(),
     }),
     convex.query(api.settings.queries.getOrgSettings, { orgId }),
   ]);

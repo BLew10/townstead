@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
 import { toast } from "sonner";
 import { useOrg } from "@/hooks/use-org";
+import { useStableNow } from "@/hooks/use-stable-now";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StepForm, type Step } from "@/components/shared/step-form";
@@ -77,8 +78,9 @@ export default function EditPurchasePage() {
   const router = useRouter();
   const { orgId } = useOrg();
   const id = params.id as Id<"purchases">;
+  const now = useStableNow();
 
-  const detail = useQuery(api.purchases.queries.getDetail, { id });
+  const detail = useQuery(api.purchases.queries.getDetail, { id, now });
   const updatePurchase = useMutation(api.purchases.mutations.update);
   const paymentTermsRef = useRef<PaymentTermsStepRef>(null);
 

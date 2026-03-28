@@ -1,8 +1,8 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, type ControllerRenderProps } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useOrg } from "@/hooks/use-org";
 import { contactSchema, type ContactFormValues } from "@/lib/validators";
@@ -20,6 +20,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  useFormField,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,8 +28,20 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { ImageUpload } from "@/components/shared/image-upload";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 
 function timestampToDateString(ts: number | undefined): string {
@@ -38,6 +51,95 @@ function timestampToDateString(ts: number | undefined): string {
 
 function dateStringToTimestamp(dateStr: string): number {
   return new Date(dateStr).getTime();
+}
+
+/** Base UI PopoverTrigger uses `render`, not Radix `asChild`; the latter leaves a wrapper button around the custom control. */
+export function ContactCategoryCombobox({
+  field,
+  categoryOpen,
+  onCategoryOpenChange,
+  categoryMap,
+  businessCategories,
+}: {
+  field: ControllerRenderProps<ContactFormValues, "categoryId">;
+  categoryOpen: boolean;
+  onCategoryOpenChange: (open: boolean) => void;
+  categoryMap: Map<string, string>;
+  businessCategories: Doc<"categories">[] | undefined;
+}) {
+  const { formItemId, formDescriptionId, formMessageId, error } = useFormField();
+  const ariaDescribedBy = !error
+    ? formDescriptionId
+    : `${formDescriptionId} ${formMessageId}`;
+
+  return (
+    <Popover open={categoryOpen} onOpenChange={onCategoryOpenChange}>
+      <PopoverTrigger
+        render={
+          <Button
+            id={formItemId}
+            aria-describedby={ariaDescribedBy}
+            aria-invalid={!!error}
+            variant="outline"
+            role="combobox"
+            aria-expanded={categoryOpen}
+            className={cn(
+              "w-full justify-between font-normal",
+              !field.value && "text-muted-foreground"
+            )}
+          >
+            {field.value
+              ? categoryMap.get(field.value) ?? "Select category..."
+              : "Select category..."}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        }
+      />
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search categories..." />
+          <CommandList>
+            <CommandEmpty>No category found.</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="__none__"
+                onSelect={() => {
+                  field.onChange("");
+                  onCategoryOpenChange(false);
+                }}
+              >
+                <Check
+                  className={cn(
+                    "mr-2 h-4 w-4",
+                    !field.value ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                None
+              </CommandItem>
+              {businessCategories?.map((cat) => (
+                <CommandItem
+                  key={cat._id}
+                  value={cat.name}
+                  onSelect={() => {
+                    field.onChange(cat._id);
+                    onCategoryOpenChange(false);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      field.value === cat._id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  {cat.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 interface ContactFormProps {
@@ -56,7 +158,25 @@ export function ContactForm({
   const { orgId } = useOrg();
   const create = useMutation(api.contacts.mutations.create);
   const update = useMutation(api.contacts.mutations.update);
+  const generateUploadUrl = useMutation(api.contacts.mutations.generateUploadUrl);
+  const businessCategories = useQuery(
+    api.categories.queries.list,
+    orgId ? { orgId, type: "business" as const } : "skip"
+  );
   const [isPending, setIsPending] = useState(false);
+  const [logoFileId, setLogoFileId] = useState<Id<"_storage"> | undefined>();
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+
+  const categoryMap = useMemo(() => {
+    if (!businessCategories) return new Map<string, string>();
+    return new Map(businessCategories.map((c) => [c._id, c.name]));
+  }, [businessCategories]);
+
+  const existingLogoUrl = useQuery(
+    api.storage.getUrl,
+    logoFileId ? { storageId: logoFileId } : "skip"
+  );
 
   const form = useForm<ContactFormValues>({
     resolver: zodResolver(contactSchema),
@@ -81,7 +201,7 @@ export function ContactForm({
         country: "",
       },
       website: "",
-      category: "",
+      categoryId: "",
       notes: "",
       customerSince: undefined,
       addressBookIds: [],
@@ -111,11 +231,12 @@ export function ContactForm({
           country: editing.address?.country ?? "",
         },
         website: editing.website ?? "",
-        category: editing.category ?? "",
+        categoryId: (editing.categoryId as string) ?? "",
         notes: editing.notes ?? "",
         customerSince: editing.customerSince,
         addressBookIds: (editing.addressBookIds as string[]) ?? [],
       });
+      setLogoFileId(editing.logoFileId ?? undefined);
     } else {
       form.reset({
         company: "",
@@ -138,13 +259,35 @@ export function ContactForm({
           country: "",
         },
         website: "",
-        category: "",
+        categoryId: "",
         notes: "",
         customerSince: undefined,
         addressBookIds: [],
       });
+      setLogoFileId(undefined);
     }
   }, [editing, form]);
+
+  const handleLogoUpload = useCallback(
+    async (file: File) => {
+      setUploadingLogo(true);
+      try {
+        const url = await generateUploadUrl();
+        const result = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+        const { storageId } = await result.json();
+        setLogoFileId(storageId as Id<"_storage">);
+      } catch {
+        toast.error("Failed to upload logo");
+      } finally {
+        setUploadingLogo(false);
+      }
+    },
+    [generateUploadUrl]
+  );
 
   const onSubmit = async (values: ContactFormValues) => {
     if (!orgId) return;
@@ -175,13 +318,16 @@ export function ContactForm({
         altContactLastName: values.altContactLastName || undefined,
         address,
         website: values.website || undefined,
-        category: values.category || undefined,
+        categoryId: values.categoryId
+          ? (values.categoryId as Id<"categories">)
+          : undefined,
         notes: values.notes || undefined,
         customerSince: values.customerSince,
         addressBookIds:
           values.addressBookIds && values.addressBookIds.length > 0
             ? (values.addressBookIds as Id<"addressBooks">[])
             : undefined,
+        logoFileId,
       };
 
       if (editing) {
@@ -201,7 +347,7 @@ export function ContactForm({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
+      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{editing ? "Edit" : "New"} Contact</SheetTitle>
         </SheetHeader>
@@ -214,6 +360,16 @@ export function ContactForm({
               <h3 className="text-sm font-medium text-muted-foreground">
                 Basic Info
               </h3>
+              <div className="space-y-1">
+                <Label>Company Logo</Label>
+                <ImageUpload
+                  preset="logo"
+                  onUpload={handleLogoUpload}
+                  onRemove={() => setLogoFileId(undefined)}
+                  currentImageUrl={existingLogoUrl ?? null}
+                  uploading={uploadingLogo}
+                />
+              </div>
               <FormField
                 control={form.control}
                 name="company"
@@ -412,13 +568,17 @@ export function ContactForm({
               />
               <FormField
                 control={form.control}
-                name="category"
+                name="categoryId"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Category</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. Sponsor, Vendor" {...field} />
-                    </FormControl>
+                    <ContactCategoryCombobox
+                      field={field}
+                      categoryOpen={categoryOpen}
+                      onCategoryOpenChange={setCategoryOpen}
+                      categoryMap={categoryMap}
+                      businessCategories={businessCategories}
+                    />
                     <FormMessage />
                   </FormItem>
                 )}

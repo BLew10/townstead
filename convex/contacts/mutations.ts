@@ -26,7 +26,8 @@ const contactFields = {
   altContactLastName: v.optional(v.string()),
   address: addressValidator,
   website: v.optional(v.string()),
-  category: v.optional(v.string()),
+  categoryId: v.optional(v.id("categories")),
+  logoFileId: v.optional(v.id("_storage")),
   notes: v.optional(v.string()),
   customerSince: v.optional(v.number()),
   addressBookIds: v.optional(v.array(v.id("addressBooks"))),
@@ -120,5 +121,12 @@ export const softDelete = mutation({
       email: undefined,
       isDeleted: true,
     });
+  },
+});
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
   },
 });

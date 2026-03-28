@@ -1,8 +1,11 @@
 import { convexTest } from "convex-test";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
 import { modules } from "../test.setup";
+
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
 
 describe("scheduledPayments", () => {
   it("listByPurchase returns scheduled payments for a given purchase", async () => {
@@ -48,7 +51,7 @@ describe("scheduledPayments", () => {
 
     const results = await t.query(
       api.scheduledPayments.queries.listByPurchase,
-      { purchaseId }
+      { purchaseId, now: 1710000000000 }
     );
     expect(results).toHaveLength(2);
     expect(results[0].dueDate).toBeLessThan(results[1].dueDate);
@@ -103,7 +106,7 @@ describe("scheduledPayments", () => {
 
     const results = await t.query(
       api.scheduledPayments.queries.listByPurchase,
-      { purchaseId }
+      { purchaseId, now: 1710000000000 }
     );
     expect(results).toHaveLength(1);
     expect(results[0].paidAmount).toBe(5000);

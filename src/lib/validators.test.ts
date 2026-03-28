@@ -534,10 +534,10 @@ describe("eventSchema", () => {
       startTime: "10:00",
       endTime: "18:00",
       isYearly: true,
-      calendarEditionIds: ["ce1", "ce2"],
+      communityIds: ["com1", "com2"],
     });
     expect(result.isYearly).toBe(true);
-    expect(result.calendarEditionIds).toHaveLength(2);
+    expect(result.communityIds).toHaveLength(2);
   });
 });
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -19,6 +20,7 @@ import {
   Ticket,
   Video,
   Palette,
+  Settings,
   ChevronDown,
   type LucideIcon,
 } from "lucide-react";
@@ -43,12 +45,12 @@ const coreNavItems: NavItem[] = [
   { label: "Advertisements", href: "/admin/advertisements", icon: Megaphone },
   { label: "Purchases", href: "/admin/purchases", icon: ShoppingCart },
   { label: "Billing", href: "/admin/billing", icon: CreditCard },
-  { label: "Events", href: "/admin/events", icon: CalendarDays },
   { label: "Layouts", href: "/admin/layouts", icon: Grid3X3 },
   { label: "Address Books", href: "/admin/address-books", icon: BookOpen },
 ];
 
 const communityNavItems: NavItem[] = [
+  { label: "Events", href: "/admin/events", icon: CalendarDays },
   { label: "Communities", href: "/admin/communities", icon: MapPin },
   { label: "Blog", href: "/admin/blog", icon: FileText },
   { label: "Coupons", href: "/admin/coupons", icon: Ticket },
@@ -105,9 +107,16 @@ function CommunitySiteGroup({
   const hasActiveCommunityRoute = communityPrefixes.some((prefix) =>
     pathname.startsWith(prefix)
   );
+  const [open, setOpen] = useState(hasActiveCommunityRoute);
+
+  useEffect(() => {
+    if (hasActiveCommunityRoute) {
+      setOpen(true);
+    }
+  }, [hasActiveCommunityRoute]);
 
   return (
-    <Collapsible defaultOpen={hasActiveCommunityRoute}>
+    <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground [&[data-state=open]>svg.chevron]:rotate-180">
         <Globe className="size-4" />
         <span className="flex-1 text-left">Community Site</span>
@@ -149,6 +158,11 @@ export function AdminSidebar() {
           ))}
           <div className="my-2 border-t border-border/40" />
           <CommunitySiteGroup pathname={pathname} />
+          <div className="my-2 border-t border-border/40" />
+          <NavLink
+            item={{ label: "Settings", href: "/admin/settings", icon: Settings }}
+            pathname={pathname}
+          />
         </nav>
       </ScrollArea>
     </aside>
@@ -176,6 +190,12 @@ export function AdminSidebarMobile({
       ))}
       <div className="my-2 border-t border-border/40" />
       <CommunitySiteGroup pathname={pathname} onClick={onNavigate} />
+      <div className="my-2 border-t border-border/40" />
+      <NavLink
+        item={{ label: "Settings", href: "/admin/settings", icon: Settings }}
+        pathname={pathname}
+        onClick={onNavigate}
+      />
       {children}
     </nav>
   );

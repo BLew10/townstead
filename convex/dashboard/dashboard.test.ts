@@ -28,7 +28,7 @@ describe("dashboard", () => {
     expect(result.contacts).toHaveLength(0);
   });
 
-  it("getDashboardData returns stats for an edition with no purchases", async () => {
+  it("getDashboardSlots returns empty slots for an edition with no purchases", async () => {
     const t = convexTest(schema, modules);
 
     const editionId = await t.run(async (ctx) => {
@@ -39,18 +39,72 @@ describe("dashboard", () => {
       });
     });
 
-    const result = await t.query(api.dashboard.queries.getDashboardData, {
+    const result = await t.query(api.dashboard.queries.getDashboardSlots, {
       orgId: "org_1",
       calendarEditionId: editionId,
       year: 2026,
     });
 
     expect(result.slots).toHaveLength(0);
-    expect(result.stats.totalRevenue).toBe(0);
-    expect(result.stats.collectionRate).toBe(0);
-    expect(result.stats.outstandingBalance).toBe(0);
-    expect(result.stats.latePaymentsCount).toBe(0);
     expect(result.contacts).toHaveLength(0);
+  });
+
+  it("getDashboardStats returns zero stats for an edition with no purchases", async () => {
+    const t = convexTest(schema, modules);
+
+    const editionId = await t.run(async (ctx) => {
+      return await ctx.db.insert("calendarEditions", {
+        name: "Spring 2026",
+        code: "SP26",
+        orgId: "org_1",
+      });
+    });
+
+    const result = await t.query(api.dashboard.queries.getDashboardStats, {
+      orgId: "org_1",
+      calendarEditionId: editionId,
+      year: 2026,
+      now: 1710000000000,
+    });
+
+    expect(result.totalRevenue).toBe(0);
+    expect(result.collectionRate).toBe(0);
+    expect(result.outstandingBalance).toBe(0);
+    expect(result.latePaymentsCount).toBe(0);
+  });
+
+  it("getDashboardStats reads from cache when available", async () => {
+    const t = convexTest(schema, modules);
+
+    const editionId = await t.run(async (ctx) => {
+      const eid = await ctx.db.insert("calendarEditions", {
+        name: "Cached Edition",
+        code: "CE26",
+        orgId: "org_1",
+      });
+      await ctx.db.insert("dashboardStatsCache", {
+        orgId: "org_1",
+        calendarEditionId: eid,
+        year: 2026,
+        totalRevenue: 5000000,
+        totalAmountPaid: 4500000,
+        latePaymentsCount: 1,
+        computedAt: 1710000000000,
+      });
+      return eid;
+    });
+
+    const result = await t.query(api.dashboard.queries.getDashboardStats, {
+      orgId: "org_1",
+      calendarEditionId: editionId,
+      year: 2026,
+      now: 1710000000000,
+    });
+
+    expect(result.totalRevenue).toBe(5000000);
+    expect(result.collectionRate).toBe(90);
+    expect(result.outstandingBalance).toBe(500000);
+    expect(result.latePaymentsCount).toBe(1);
   });
 
   it("getPrintInventoryData returns edition slots when data exists", async () => {

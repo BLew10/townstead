@@ -102,7 +102,12 @@ export default function DirectoryPage({
               "text-on-surface focus:ring-2 focus:ring-primary/30 data-placeholder:text-on-surface/50",
             )}
           >
-            <SelectValue placeholder="All Categories" />
+            <SelectValue placeholder="All Categories">
+              {selectedCategory === "all"
+                ? "All Categories"
+                : (categories?.find((cat) => cat._id === selectedCategory)?.name ??
+                  "All Categories")}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent className="border-0 bg-surface-container-lowest shadow-lg">
             <SelectItem value="all">All Categories</SelectItem>
@@ -169,9 +174,9 @@ export default function DirectoryPage({
                     </span>
                   )}
                 </div>
-                {biz.category && categoryMap.get(biz.category) && (
+                {biz.categoryId && categoryMap.get(biz.categoryId) && (
                   <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-primary">
-                    {categoryMap.get(biz.category)}
+                    {categoryMap.get(biz.categoryId)}
                   </p>
                 )}
                 <div className="mt-4 space-y-3">

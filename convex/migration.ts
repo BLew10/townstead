@@ -36,6 +36,7 @@ export const insertContact = mutation({
     ),
     website: v.optional(v.string()),
     category: v.optional(v.string()),
+    categoryId: v.optional(v.id("categories")),
     notes: v.optional(v.string()),
     customerSince: v.optional(v.number()),
     addressBookIds: v.optional(v.array(v.id("addressBooks"))),
@@ -107,6 +108,19 @@ export const insertCalendarEditionLayout = mutation({
   handler: async (ctx, args) => ctx.db.insert("calendarEditionLayouts", args),
 });
 
+export const insertCommunity = mutation({
+  args: {
+    name: v.string(),
+    slug: v.string(),
+    description: v.optional(v.string()),
+    imageFileId: v.optional(v.id("_storage")),
+    calendarEditionIds: v.array(v.id("calendarEditions")),
+    orgId: v.string(),
+    isDeleted: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => ctx.db.insert("communities", args),
+});
+
 export const insertEvent = mutation({
   args: {
     name: v.string(),
@@ -116,7 +130,7 @@ export const insertEvent = mutation({
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
     isYearly: v.optional(v.boolean()),
-    calendarEditionIds: v.optional(v.array(v.id("calendarEditions"))),
+    communityIds: v.optional(v.array(v.id("communities"))),
     location: v.optional(v.string()),
     contactId: v.optional(v.id("contacts")),
     categoryId: v.optional(v.id("categories")),

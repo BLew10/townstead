@@ -2,7 +2,12 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 
 export const create = mutation({
-  args: { orgId: v.string(), name: v.string(), code: v.string() },
+  args: {
+    orgId: v.string(),
+    name: v.string(),
+    code: v.string(),
+    communityId: v.optional(v.id("communities")),
+  },
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query("calendarEditions")
@@ -14,17 +19,36 @@ export const create = mutation({
     if (existing) {
       throw new Error(`A calendar edition with code "${args.code}" already exists`);
     }
-    return await ctx.db.insert("calendarEditions", {
+
+    const editionId = await ctx.db.insert("calendarEditions", {
       name: args.name,
       code: args.code,
       orgId: args.orgId,
       isDeleted: false,
     });
+
+    if (args.communityId) {
+      const community = await ctx.db.get(args.communityId);
+      if (!community || community.orgId !== args.orgId) {
+        throw new Error("Community not found");
+      }
+      await ctx.db.patch(args.communityId, {
+        calendarEditionIds: [...community.calendarEditionIds, editionId],
+      });
+    }
+
+    return editionId;
   },
 });
 
 export const update = mutation({
-  args: { id: v.id("calendarEditions"), name: v.string(), code: v.string() },
+  args: {
+    id: v.id("calendarEditions"),
+    name: v.string(),
+    code: v.string(),
+    communityId: v.optional(v.id("communities")),
+    removeCommunity: v.optional(v.boolean()),
+  },
   handler: async (ctx, args) => {
     const current = await ctx.db.get(args.id);
     if (!current) throw new Error("Calendar edition not found");
@@ -41,6 +65,36 @@ export const update = mutation({
       }
     }
     await ctx.db.patch(args.id, { name: args.name, code: args.code });
+
+    if (args.communityId || args.removeCommunity) {
+      const allCommunities = await ctx.db
+        .query("communities")
+        .withIndex("by_orgId", (q) => q.eq("orgId", current.orgId))
+        .filter((q) => q.neq(q.field("isDeleted"), true))
+        .collect();
+
+      for (const community of allCommunities) {
+        if (community.calendarEditionIds.includes(args.id)) {
+          await ctx.db.patch(community._id, {
+            calendarEditionIds: community.calendarEditionIds.filter(
+              (id) => id !== args.id
+            ),
+          });
+        }
+      }
+
+      if (args.communityId) {
+        const target = await ctx.db.get(args.communityId);
+        if (!target || target.orgId !== current.orgId) {
+          throw new Error("Community not found");
+        }
+        await ctx.db.patch(args.communityId, {
+          calendarEditionIds: [...target.calendarEditionIds.filter(
+            (id) => id !== args.id
+          ), args.id],
+        });
+      }
+    }
   },
 });
 

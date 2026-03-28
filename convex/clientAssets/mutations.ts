@@ -1,5 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { requireAuth } from "../auth.helpers";
 
 export const upload = mutation({
   args: {
@@ -9,10 +10,7 @@ export const upload = mutation({
     fileName: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const orgId = identity.orgId as string;
-    if (!orgId) throw new Error("No organization selected");
+    const { orgId } = await requireAuth(ctx);
 
     return await ctx.db.insert("clientAssets", {
       contactId: args.contactId,
@@ -32,9 +30,7 @@ export const review = mutation({
     feedback: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const orgId = identity.orgId as string;
+    const { orgId } = await requireAuth(ctx);
 
     const asset = await ctx.db.get(args.id);
     if (!asset || asset.orgId !== orgId) throw new Error("Not found");

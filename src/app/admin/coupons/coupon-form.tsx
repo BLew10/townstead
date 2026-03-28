@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import {
   Dialog,
@@ -22,8 +22,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { ImageUpload } from "@/components/shared/image-upload";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 
 function timestampToDateString(ts: number | undefined): string {
@@ -52,6 +53,9 @@ export function CouponForm({
 }: CouponFormProps) {
   const create = useMutation(api.coupons.mutations.create);
   const update = useMutation(api.coupons.mutations.update);
+  const generateUploadUrl = useMutation(
+    api.coupons.mutations.generateUploadUrl
+  );
   const [isPending, setIsPending] = useState(false);
 
   const [title, setTitle] = useState("");
@@ -63,6 +67,15 @@ export function CouponForm({
   const [terms, setTerms] = useState("");
   const [selectedCommunityIds, setSelectedCommunityIds] = useState<string[]>(
     []
+  );
+  const [imageFileId, setImageFileId] = useState<Id<"_storage"> | undefined>(
+    undefined
+  );
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const imageUrl = useQuery(
+    api.storage.getUrl,
+    imageFileId ? { storageId: imageFileId } : "skip"
   );
 
   useEffect(() => {
@@ -79,6 +92,11 @@ export function CouponForm({
       setSelectedCommunityIds(
         (editing.communityIds as string[] | undefined) ?? []
       );
+      setImageFileId(
+        (editing as Record<string, unknown>).imageFileId as
+          | Id<"_storage">
+          | undefined
+      );
     } else {
       setTitle("");
       setDescription("");
@@ -88,8 +106,30 @@ export function CouponForm({
       setQuantityLimit("");
       setTerms("");
       setSelectedCommunityIds([]);
+      setImageFileId(undefined);
     }
   }, [editing]);
+
+  const handleImageUpload = useCallback(
+    async (file: File) => {
+      setUploadingImage(true);
+      try {
+        const url = await generateUploadUrl();
+        const result = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+        const { storageId } = await result.json();
+        setImageFileId(storageId as Id<"_storage">);
+      } catch {
+        toast.error("Failed to upload image.");
+      } finally {
+        setUploadingImage(false);
+      }
+    },
+    [generateUploadUrl]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,6 +149,7 @@ export function CouponForm({
           selectedCommunityIds.length > 0
             ? (selectedCommunityIds as Id<"communities">[])
             : undefined,
+        imageFileId,
       };
 
       if (editing) {
@@ -163,13 +204,27 @@ export function CouponForm({
           </div>
 
           <div className="space-y-2">
+            <Label>Image</Label>
+            <ImageUpload
+              preset="coupon"
+              onUpload={handleImageUpload}
+              onRemove={() => setImageFileId(undefined)}
+              currentImageUrl={imageUrl ?? null}
+              uploading={uploadingImage}
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="businessContactId">Business</Label>
             <Select
               value={businessContactId}
               onValueChange={setBusinessContactId}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select a business" />
+                <SelectValue placeholder="Select a business">
+                  {contacts.find((c) => c._id === businessContactId)?.company ??
+                    "Select a business"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {contacts.map((contact) => (

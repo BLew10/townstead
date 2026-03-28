@@ -6,7 +6,7 @@ import {
 } from "../billing/helpers";
 
 export const listByPurchase = query({
-  args: { purchaseId: v.id("purchases") },
+  args: { purchaseId: v.id("purchases"), now: v.number() },
   handler: async (ctx, args) => {
     const scheduledPayments = await ctx.db
       .query("scheduledPayments")
@@ -15,7 +15,7 @@ export const listByPurchase = query({
       )
       .collect();
 
-    const now = Date.now();
+    const now = args.now;
     const enriched = await Promise.all(
       scheduledPayments.map(async (sp) => {
         const allocations = await ctx.db

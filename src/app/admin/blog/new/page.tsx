@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useOrg } from "@/hooks/use-org";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/page-header";
+import { ImageUpload } from "@/components/shared/image-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -41,6 +43,7 @@ export default function NewBlogPostPage() {
   const router = useRouter();
   const { orgId, isReady } = useOrg();
   const createPost = useMutation(api.blog.mutations.create);
+  const generateUploadUrl = useMutation(api.blog.mutations.generateUploadUrl);
 
   const categories = useQuery(
     api.categories.queries.list,
@@ -67,6 +70,8 @@ export default function NewBlogPostPage() {
   const [selectedCommunities, setSelectedCommunities] = useState<
     Id<"communities">[]
   >([]);
+  const [featuredImageFileId, setFeaturedImageFileId] = useState<Id<"_storage">>();
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function handleTitleChange(value: string) {
@@ -88,6 +93,24 @@ export default function NewBlogPostPage() {
         : [...prev, catId]
     );
   }
+
+  const handleImageUpload = useCallback(async (file: File) => {
+    setUploadingImage(true);
+    try {
+      const url = await generateUploadUrl();
+      const result = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      const { storageId } = await result.json();
+      setFeaturedImageFileId(storageId as Id<"_storage">);
+    } catch {
+      toast.error("Failed to upload image");
+    } finally {
+      setUploadingImage(false);
+    }
+  }, [generateUploadUrl]);
 
   function toggleCommunity(communityId: Id<"communities">) {
     setSelectedCommunities((prev) =>
@@ -113,6 +136,7 @@ export default function NewBlogPostPage() {
         status,
         seoTitle: seoTitle.trim() || undefined,
         seoDescription: seoDescription.trim() || undefined,
+        featuredImageFileId,
         categoryIds: selectedCategories.length > 0 ? selectedCategories : undefined,
         communityIds: selectedCommunities.length > 0 ? selectedCommunities : undefined,
       });
@@ -191,24 +215,32 @@ export default function NewBlogPostPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="content">Content (HTML)</Label>
-                <Textarea
-                  id="content"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
+                <Label>Content</Label>
+                <RichTextEditor
+                  content={content}
+                  onChange={setContent}
                   placeholder="Write your blog post content here..."
-                  rows={16}
-                  className="font-mono text-sm"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Supports HTML markup. Can be upgraded to a rich text editor.
-                </p>
               </div>
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Featured Image</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ImageUpload
+                preset="featuredImage"
+                onUpload={handleImageUpload}
+                onRemove={() => setFeaturedImageFileId(undefined)}
+                uploading={uploadingImage}
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Publishing</CardTitle>

@@ -11,7 +11,8 @@ export const create = mutation({
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
     isYearly: v.optional(v.boolean()),
-    calendarEditionIds: v.optional(v.array(v.id("calendarEditions"))),
+    communityIds: v.optional(v.array(v.id("communities"))),
+    imageFileId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("events", {
@@ -31,7 +32,8 @@ export const update = mutation({
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
     isYearly: v.optional(v.boolean()),
-    calendarEditionIds: v.optional(v.array(v.id("calendarEditions"))),
+    communityIds: v.optional(v.array(v.id("communities"))),
+    imageFileId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
     const { id, ...fields } = args;
@@ -43,5 +45,12 @@ export const softDelete = mutation({
   args: { id: v.id("events") },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.id, { isDeleted: true });
+  },
+});
+
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
   },
 });

@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
 import { useOrg } from "@/hooks/use-org";
+import { useStableNow } from "@/hooks/use-stable-now";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -23,11 +24,12 @@ export default function InvoicePage() {
   const params = useParams();
   const purchaseId = params.id as Id<"purchases">;
   const { orgId, isReady } = useOrg();
+  const now = useStableNow();
   const [emailSending, setEmailSending] = useState(false);
 
   const data = useQuery(
     api.billing.queries.getInvoiceData,
-    isReady ? { purchaseId, orgId: orgId! } : "skip"
+    isReady ? { purchaseId, orgId: orgId!, now } : "skip"
   );
 
   if (!isReady || data === undefined) {

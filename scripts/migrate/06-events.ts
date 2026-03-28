@@ -15,7 +15,7 @@ async function run(pool: pg.Pool, convex: ConvexHttpClient, orgId: string) {
     ORDER BY date
   `);
 
-  // Load event<->calendarEdition M:N
+  // Load event<->calendarEdition M:N to derive community associations
   const { rows: eventEditions } = await pool.query(`
     SELECT "A" AS event_id, "B" AS edition_id
     FROM "_CalendarEditionToEvent"
@@ -45,12 +45,13 @@ async function run(pool: pg.Pool, convex: ConvexHttpClient, orgId: string) {
       continue;
     }
 
-    // Map calendar edition IDs
+    // Map v1 edition IDs -> v2 community IDs (03b-communities keyed communities
+    // by the same v1 edition ID, so the lookup is the same key)
     const v1EditionIds = editionsByEvent.get(row.id) ?? [];
-    const v2EditionIds: Id<"calendarEditions">[] = [];
+    const v2CommunityIds: Id<"communities">[] = [];
     for (const v1Id of v1EditionIds) {
-      const v2Id = idMap.get("calendarEditions", v1Id);
-      if (v2Id) v2EditionIds.push(v2Id as Id<"calendarEditions">);
+      const v2Id = idMap.get("communities", v1Id);
+      if (v2Id) v2CommunityIds.push(v2Id as Id<"communities">);
     }
 
     const v2Id = await convex.mutation(api.migration.insertEvent, {
@@ -61,7 +62,7 @@ async function run(pool: pg.Pool, convex: ConvexHttpClient, orgId: string) {
       startTime: row.startTime ?? undefined,
       endTime: row.endTime ?? undefined,
       isYearly: row.isYearly ?? undefined,
-      calendarEditionIds: v2EditionIds.length > 0 ? v2EditionIds : undefined,
+      communityIds: v2CommunityIds.length > 0 ? v2CommunityIds : undefined,
       orgId,
       isDeleted: row.isDeleted || undefined,
     });

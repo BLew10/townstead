@@ -18,6 +18,14 @@ const defaultStats = {
 };
 
 describe("StatsCards", () => {
+  it("renders skeleton placeholders when stats is undefined", () => {
+    render(<StatsCards stats={undefined} />);
+    expect(screen.getByText("Total Revenue")).toBeDefined();
+    expect(screen.getByText("Collection Rate")).toBeDefined();
+    expect(screen.getByText("Outstanding Balance")).toBeDefined();
+    expect(screen.getByText("Late Payments")).toBeDefined();
+  });
+
   it("renders without crashing", () => {
     render(<StatsCards stats={defaultStats} />);
     expect(screen.getByText("Total Revenue")).toBeDefined();

@@ -51,7 +51,7 @@ export default function CouponDetailPage({
     if (!user || !coupon) return;
     setClaiming(true);
     try {
-      await claimCoupon({ couponId: coupon._id, userId: user.id });
+      await claimCoupon({ couponId: coupon._id });
       toast.success("Coupon claimed successfully!");
     } catch (err) {
       const message =

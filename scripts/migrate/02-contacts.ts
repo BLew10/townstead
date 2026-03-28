@@ -206,7 +206,7 @@ async function run(pool: pg.Pool, convex: ConvexHttpClient, orgId: string) {
           }
         : undefined,
       website: c.webAddress ?? undefined,
-      category: c.category ?? undefined,
+      categoryId: undefined,
       notes: c.notes ?? undefined,
       customerSince: toTimestamp(c.customerSince),
       addressBookIds: v2AbIds.length > 0 ? v2AbIds : undefined,

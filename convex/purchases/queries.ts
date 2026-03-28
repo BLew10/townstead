@@ -20,7 +20,7 @@ async function getEditionNames(ctx: { db: any }, editionIds: any[]) {
 }
 
 export const list = query({
-  args: { orgId: v.string() },
+  args: { orgId: v.string(), now: v.number() },
   handler: async (ctx, args) => {
     const purchases = await ctx.db
       .query("purchases")
@@ -63,12 +63,12 @@ export const list = query({
         }
 
         const net = terms
-          ? computeNet(terms, scheduledPayments, allAllocations)
+          ? computeNet(terms, scheduledPayments, allAllocations, args.now)
           : 0;
         const amountPaid = computeAmountPaid(allAllocations);
         const isPaid = computeIsPaid(net, amountPaid);
         const hasLate = scheduledPayments.some((sp) =>
-          isScheduledPaymentLate(sp, allAllocations)
+          isScheduledPaymentLate(sp, allAllocations, args.now)
         );
 
         return {
@@ -98,7 +98,7 @@ export const getById = query({
 });
 
 export const getDetail = query({
-  args: { id: v.id("purchases") },
+  args: { id: v.id("purchases"), now: v.number() },
   handler: async (ctx, args) => {
     const purchase = await ctx.db.get(args.id);
     if (!purchase || purchase.isDeleted) return null;
@@ -177,14 +177,13 @@ export const getDetail = query({
       })
     );
 
-    const now = Date.now();
     const net = terms
-      ? computeNet(terms, scheduledPayments, allAllocations, now)
+      ? computeNet(terms, scheduledPayments, allAllocations, args.now)
       : 0;
     const amountPaid = computeAmountPaid(allAllocations);
     const isPaid = computeIsPaid(net, amountPaid);
     const lateFees = terms
-      ? computeLateFees(terms, scheduledPayments, allAllocations, now)
+      ? computeLateFees(terms, scheduledPayments, allAllocations, args.now)
       : 0;
 
     const enrichedScheduledPayments = scheduledPayments
@@ -192,7 +191,7 @@ export const getDetail = query({
       .map((sp) => ({
         ...sp,
         paidAmount: computeScheduledPaymentPaid(sp._id, allAllocations),
-        isLate: isScheduledPaymentLate(sp, allAllocations, now),
+        isLate: isScheduledPaymentLate(sp, allAllocations, args.now),
       }));
 
     return {
@@ -212,7 +211,7 @@ export const getDetail = query({
 });
 
 export const listByContact = query({
-  args: { contactId: v.id("contacts") },
+  args: { contactId: v.id("contacts"), now: v.number() },
   handler: async (ctx, args) => {
     const purchases = await ctx.db
       .query("purchases")
@@ -253,7 +252,7 @@ export const listByContact = query({
         }
 
         const net = terms
-          ? computeNet(terms, scheduledPayments, allAllocations)
+          ? computeNet(terms, scheduledPayments, allAllocations, args.now)
           : 0;
         const amountPaid = computeAmountPaid(allAllocations);
         const isPaid = computeIsPaid(net, amountPaid);

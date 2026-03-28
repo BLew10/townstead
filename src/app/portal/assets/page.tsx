@@ -12,11 +12,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ImageUpload } from "@/components/shared/image-upload";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ImageIcon, Upload } from "lucide-react";
+import { ImageIcon } from "lucide-react";
 import { usePortalAuth } from "@/hooks/use-portal-auth";
 
 export default function PortalAssetsPage() {
@@ -29,9 +29,8 @@ export default function PortalAssetsPage() {
   const [uploading, setUploading] = useState(false);
 
   const handleUpload = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file || !contactId) return;
+    async (file: File) => {
+      if (!contactId) return;
 
       setUploading(true);
       try {
@@ -50,7 +49,6 @@ export default function PortalAssetsPage() {
         });
       } finally {
         setUploading(false);
-        e.target.value = "";
       }
     },
     [contactId, generateUploadUrl, uploadAsset]
@@ -58,21 +56,7 @@ export default function PortalAssetsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Assets</h1>
-        <Button disabled={uploading} asChild>
-          <label className="cursor-pointer">
-            <Upload className="mr-2 h-4 w-4" />
-            {uploading ? "Uploading..." : "Upload Asset"}
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleUpload}
-            />
-          </label>
-        </Button>
-      </div>
+      <h1 className="text-2xl font-bold tracking-tight">Assets</h1>
 
       <Card>
         <CardHeader>
@@ -81,25 +65,11 @@ export default function PortalAssetsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="rounded-lg border-2 border-dashed p-8 text-center">
-            <ImageIcon className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              Accepted formats: JPG, PNG, GIF, WebP
-            </p>
-            <label className="mt-3 inline-block cursor-pointer">
-              <Button variant="outline" size="sm" disabled={uploading} asChild>
-                <span>
-                  {uploading ? "Uploading..." : "Choose File"}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleUpload}
-                  />
-                </span>
-              </Button>
-            </label>
-          </div>
+          <ImageUpload
+            preset="clientAsset"
+            onUpload={handleUpload}
+            uploading={uploading}
+          />
         </CardContent>
       </Card>
 

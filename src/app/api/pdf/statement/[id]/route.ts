@@ -21,6 +21,7 @@ export async function GET(
     convex.query(api.billing.queries.getStatementData, {
       contactId: id as Id<"contacts">,
       orgId,
+      now: Date.now(),
     }),
     convex.query(api.settings.queries.getOrgSettings, { orgId }),
   ]);

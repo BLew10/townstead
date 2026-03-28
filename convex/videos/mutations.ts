@@ -1,5 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { requireAuth } from "../auth.helpers";
 
 export const create = mutation({
   args: {
@@ -12,10 +13,7 @@ export const create = mutation({
     communityIds: v.optional(v.array(v.id("communities"))),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const orgId = identity.orgId as string;
-    if (!orgId) throw new Error("No organization selected");
+    const { orgId } = await requireAuth(ctx);
 
     return await ctx.db.insert("videos", {
       ...args,
@@ -37,10 +35,7 @@ export const update = mutation({
     communityIds: v.optional(v.array(v.id("communities"))),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const orgId = identity.orgId as string;
-    if (!orgId) throw new Error("No organization selected");
+    const { orgId } = await requireAuth(ctx);
 
     const doc = await ctx.db.get(args.id);
     if (!doc || doc.orgId !== orgId) throw new Error("Not found");
@@ -57,10 +52,7 @@ export const update = mutation({
 export const softDelete = mutation({
   args: { id: v.id("videos") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const orgId = identity.orgId as string;
-    if (!orgId) throw new Error("No organization selected");
+    const { orgId } = await requireAuth(ctx);
 
     const doc = await ctx.db.get(args.id);
     if (!doc || doc.orgId !== orgId) throw new Error("Not found");

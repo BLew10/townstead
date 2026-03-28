@@ -1,6 +1,8 @@
 import { mutation, MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { Doc } from "../_generated/dataModel";
+import { requirePublicAuth, requirePermission, requireCreateAction } from "../auth.helpers";
+import { PERMISSIONS } from "../permissions";
 
 async function resolveOrg(ctx: MutationCtx, orgSlug: string): Promise<Doc<"tenantBranding">> {
   const branding = await ctx.db
@@ -22,10 +24,18 @@ export const submitEvent = mutation({
     endTime: v.optional(v.string()),
     location: v.optional(v.string()),
     categoryId: v.optional(v.id("categories")),
-    submittedBy: v.string(),
+    communityIds: v.optional(v.array(v.id("communities"))),
   },
   handler: async (ctx, args) => {
+    const { userId } = await requirePublicAuth(ctx);
     const branding = await resolveOrg(ctx, args.orgSlug);
+
+    const { needsApproval } = await requireCreateAction(
+      ctx,
+      userId,
+      branding.orgId,
+      "events"
+    );
 
     return await ctx.db.insert("events", {
       name: args.name,
@@ -36,8 +46,9 @@ export const submitEvent = mutation({
       endTime: args.endTime,
       location: args.location,
       categoryId: args.categoryId,
-      submittedBy: args.submittedBy,
-      isApproved: false,
+      communityIds: args.communityIds,
+      submittedBy: userId,
+      isApproved: !needsApproval,
       orgId: branding.orgId,
       isDeleted: false,
     });
@@ -47,13 +58,21 @@ export const submitEvent = mutation({
 export const claimCoupon = mutation({
   args: {
     couponId: v.id("coupons"),
-    userId: v.string(),
   },
   handler: async (ctx, args) => {
+    const { userId } = await requirePublicAuth(ctx);
+
     const coupon = await ctx.db.get(args.couponId);
     if (!coupon || coupon.isDeleted === true) {
       throw new Error("Coupon not found");
     }
+
+    await requirePermission(
+      ctx,
+      userId,
+      coupon.orgId,
+      PERMISSIONS.COUPONS_CLAIM
+    );
 
     if (coupon.endDate < Date.now()) {
       throw new Error("Coupon has expired");
@@ -61,7 +80,7 @@ export const claimCoupon = mutation({
 
     const existingClaim = await ctx.db
       .query("couponClaims")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
       .filter((q) => q.eq(q.field("couponId"), args.couponId))
       .unique();
 
@@ -82,7 +101,7 @@ export const claimCoupon = mutation({
 
     return await ctx.db.insert("couponClaims", {
       couponId: args.couponId,
-      userId: args.userId,
+      userId,
       claimedAt: Date.now(),
     });
   },

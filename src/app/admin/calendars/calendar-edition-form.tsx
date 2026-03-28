@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useOrg } from "@/hooks/use-org";
 import {
@@ -26,9 +26,18 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
-import type { Doc } from "../../../../convex/_generated/dataModel";
+import { useState, useEffect, useMemo } from "react";
+import type { Doc, Id } from "../../../../convex/_generated/dataModel";
+
+const NONE_VALUE = "__none__";
 
 interface CalendarEditionFormProps {
   open: boolean;
@@ -46,34 +55,66 @@ export function CalendarEditionForm({
   const updateMutation = useMutation(api.calendarEditions.mutations.update);
   const [isPending, setIsPending] = useState(false);
 
+  const communities = useQuery(
+    api.communities.queries.list,
+    orgId ? { orgId } : "skip"
+  );
+
+  const currentCommunityId = useMemo(() => {
+    if (!editing || !communities) return undefined;
+    const match = communities.find((c) =>
+      c.calendarEditionIds.includes(editing._id)
+    );
+    return match?._id;
+  }, [editing, communities]);
+
   const form = useForm<CalendarEditionFormValues>({
     resolver: zodResolver(calendarEditionSchema),
-    defaultValues: { name: "", code: "" },
+    defaultValues: { name: "", code: "", communityId: undefined },
   });
 
   useEffect(() => {
     if (editing) {
-      form.reset({ name: editing.name, code: editing.code });
+      form.reset({
+        name: editing.name,
+        code: editing.code,
+        communityId: currentCommunityId ?? undefined,
+      });
     } else {
-      form.reset({ name: "", code: "" });
+      form.reset({ name: "", code: "", communityId: undefined });
     }
-  }, [editing, form]);
+  }, [editing, currentCommunityId, form]);
 
   const onSubmit = async (values: CalendarEditionFormValues) => {
     if (!orgId) return;
     setIsPending(true);
     try {
+      const selectedCommunityId = values.communityId as
+        | Id<"communities">
+        | undefined;
+
       if (editing) {
+        const wasAssigned = !!currentCommunityId;
+        const isNowUnassigned = !selectedCommunityId;
+        const changed = selectedCommunityId !== currentCommunityId;
+
         await updateMutation({
           id: editing._id,
           name: values.name,
           code: values.code,
+          ...(changed && selectedCommunityId
+            ? { communityId: selectedCommunityId }
+            : {}),
+          ...(wasAssigned && isNowUnassigned && changed
+            ? { removeCommunity: true }
+            : {}),
         });
       } else {
         await createMutation({
           orgId,
           name: values.name,
           code: values.code,
+          ...(selectedCommunityId ? { communityId: selectedCommunityId } : {}),
         });
       }
       toast.success("Calendar edition saved");
@@ -122,6 +163,38 @@ export function CalendarEditionForm({
                 </FormItem>
               )}
             />
+            {communities && communities.length > 0 && (
+              <FormField
+                control={form.control}
+                name="communityId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Community</FormLabel>
+                    <Select
+                      onValueChange={(v) =>
+                        field.onChange(v === NONE_VALUE ? undefined : v)
+                      }
+                      value={field.value ?? NONE_VALUE}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a community" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={NONE_VALUE}>None</SelectItem>
+                        {communities.map((c) => (
+                          <SelectItem key={c._id} value={c._id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <DialogFooter>
               <Button type="submit" disabled={isPending}>
                 {isPending ? "Saving..." : "Save"}

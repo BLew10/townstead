@@ -17,9 +17,11 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { FileText, Download, Eye } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
+import { useStableNow } from "@/hooks/use-stable-now";
 
 export default function PortalInvoicesPage() {
-  const invoices = useQuery(api.portal.queries.getInvoices);
+  const now = useStableNow();
+  const invoices = useQuery(api.portal.queries.getInvoices, { now });
 
   return (
     <div className="space-y-6">

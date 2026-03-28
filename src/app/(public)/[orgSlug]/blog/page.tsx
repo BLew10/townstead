@@ -8,6 +8,8 @@ import { format } from "date-fns";
 import { CalendarDays, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCommunityFilter } from "@/hooks/use-community-filter";
+import { CommunityBadges } from "@/components/public/community-badge";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 
 export default function BlogPage({
@@ -16,6 +18,7 @@ export default function BlogPage({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = use(params);
+  const { communityId, communityMap } = useCommunityFilter(orgSlug);
   const [selectedCategory, setSelectedCategory] = useState<
     Id<"categories"> | undefined
   >(undefined);
@@ -23,6 +26,7 @@ export default function BlogPage({
   const posts = useQuery(api.public.queries.listBlogPosts, {
     orgSlug,
     categoryId: selectedCategory,
+    communityId,
   });
 
   const categories = useQuery(api.public.queries.listCategories, {
@@ -122,7 +126,10 @@ export default function BlogPage({
                       {post.excerpt}
                     </p>
                   )}
-                  <div className="mt-4 flex items-center gap-4 text-xs text-on-surface/70">
+                  <div className="mt-3">
+                    <CommunityBadges communityIds={post.communityIds} communityMap={communityMap} />
+                  </div>
+                  <div className="mt-3 flex items-center gap-4 text-xs text-on-surface/70">
                     {post.publishedAt && (
                       <span className="inline-flex items-center gap-1">
                         <CalendarDays className="size-3" />

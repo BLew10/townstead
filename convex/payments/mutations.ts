@@ -1,6 +1,28 @@
 import { mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
+import type { MutationCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import { allocatePayment } from "../billing/helpers";
+
+async function invalidateStatsCacheForPurchase(
+  ctx: MutationCtx,
+  purchaseId: Id<"purchases">
+) {
+  const purchase = await ctx.db.get(purchaseId);
+  if (!purchase || purchase.isDeleted) return;
+  for (const calendarEditionId of purchase.calendarEditionIds) {
+    await ctx.scheduler.runAfter(
+      0,
+      internal.dashboard.mutations.recomputeStatsCache,
+      {
+        orgId: purchase.orgId,
+        calendarEditionId,
+        year: purchase.year,
+      }
+    );
+  }
+}
 
 async function getAllocationsForPurchase(
   ctx: { db: any },
@@ -66,6 +88,8 @@ export const recordPayment = mutation({
       });
     }
 
+    await invalidateStatsCacheForPurchase(ctx, args.purchaseId);
+
     return paymentId;
   },
 });
@@ -116,6 +140,8 @@ export const updatePayment = mutation({
         orgId: payment.orgId,
       });
     }
+
+    await invalidateStatsCacheForPurchase(ctx, payment.purchaseId);
   },
 });
 
@@ -134,5 +160,7 @@ export const deletePayment = mutation({
     }
 
     await ctx.db.delete(args.id);
+
+    await invalidateStatsCacheForPurchase(ctx, payment.purchaseId);
   },
 });

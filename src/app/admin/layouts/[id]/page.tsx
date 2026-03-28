@@ -261,7 +261,10 @@ function PlacementForm({
                         onValueChange={field.onChange}
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select ad type" />
+                          <SelectValue placeholder="Select ad type">
+                            {advertisements?.find((ad) => ad._id === field.value)?.name ??
+                              "Select ad type"}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {advertisements?.map((ad) => (
@@ -474,7 +477,10 @@ function AssignmentPanel({
               onValueChange={(v) => setSelectedEdition(v ?? "")}
             >
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select edition" />
+                <SelectValue placeholder="Select edition">
+                  {editions?.find((ed) => ed._id === selectedEdition)?.name ??
+                    "Select edition"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {editions?.map((edition) => (

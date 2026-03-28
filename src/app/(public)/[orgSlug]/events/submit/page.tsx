@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useCommunityFilter } from "@/hooks/use-community-filter";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
 
 export default function SubmitEventPage({
@@ -83,6 +84,7 @@ function EventSubmissionForm({ orgSlug }: { orgSlug: string }) {
     orgSlug,
     type: "event",
   });
+  const { communities } = useCommunityFilter(orgSlug);
 
   const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState("");
@@ -93,6 +95,7 @@ function EventSubmissionForm({ orgSlug }: { orgSlug: string }) {
   const [endTime, setEndTime] = useState("");
   const [location, setLocation] = useState("");
   const [categoryId, setCategoryId] = useState<string>("");
+  const [selectedCommunityId, setSelectedCommunityId] = useState<string>("");
 
   const [errors, setErrors] = useState<{ name?: string; date?: string }>({});
 
@@ -120,7 +123,9 @@ function EventSubmissionForm({ orgSlug }: { orgSlug: string }) {
         endTime: endTime || undefined,
         location: location.trim() || undefined,
         categoryId: categoryId ? (categoryId as Id<"categories">) : undefined,
-        submittedBy: user.id,
+        communityIds: selectedCommunityId
+          ? [selectedCommunityId as Id<"communities">]
+          : undefined,
       });
       toast.success("Event submitted for review!");
       router.push(`/${orgSlug}/events`);
@@ -250,12 +255,41 @@ function EventSubmissionForm({ orgSlug }: { orgSlug: string }) {
                 }
               >
                 <SelectTrigger id="category">
-                  <SelectValue placeholder="Select a category" />
+                  <SelectValue placeholder="Select a category">
+                    {categories.find((cat) => cat._id === categoryId)?.name ??
+                      "Select a category"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map((cat) => (
                     <SelectItem key={cat._id} value={cat._id}>
                       {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {communities.length > 0 && (
+            <div className="space-y-1.5">
+              <Label htmlFor="community">Community</Label>
+              <Select
+                value={selectedCommunityId || null}
+                onValueChange={(val) =>
+                  setSelectedCommunityId(val ?? "")
+                }
+              >
+                <SelectTrigger id="community">
+                  <SelectValue placeholder="Select a community">
+                    {communities.find((c) => c._id === selectedCommunityId)?.name ??
+                      "Select a community"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {communities.map((c) => (
+                    <SelectItem key={c._id} value={c._id}>
+                      {c.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

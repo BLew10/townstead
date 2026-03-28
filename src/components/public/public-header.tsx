@@ -6,10 +6,12 @@ import { usePathname } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { SignInButton, UserButton, useAuth } from "@clerk/nextjs";
-import { Menu, X } from "lucide-react";
+import { Menu, X, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCommunityFilter } from "@/hooks/use-community-filter";
 
 const NAV_ITEMS = [
+  { label: "Home", segment: "" },
   { label: "Events", segment: "events" },
   { label: "Directory", segment: "directory" },
   { label: "Coupons", segment: "coupons" },
@@ -26,12 +28,17 @@ export function PublicHeader({ orgSlug }: PublicHeaderProps) {
   const pathname = usePathname();
   const { isSignedIn } = useAuth();
   const branding = useQuery(api.tenantBranding.queries.getBySlug, { orgSlug });
+  const { communitySlug, communities, setCommunity } =
+    useCommunityFilter(orgSlug);
 
   const siteName = branding?.siteName ?? "Community";
 
   function isActive(segment: string) {
+    if (segment === "") return pathname === `/${orgSlug}` || pathname === `/${orgSlug}/`;
     return pathname.startsWith(`/${orgSlug}/${segment}`);
   }
+
+  const showCommunityPicker = communities.length > 0;
 
   return (
     <nav className="fixed top-0 z-50 w-full bg-surface/80 glass-nav">
@@ -47,8 +54,8 @@ export function PublicHeader({ orgSlug }: PublicHeaderProps) {
         <div className="hidden items-center space-x-8 md:flex">
           {NAV_ITEMS.map(({ label, segment }) => (
             <Link
-              key={segment}
-              href={`/${orgSlug}/${segment}`}
+              key={label}
+              href={segment ? `/${orgSlug}/${segment}` : `/${orgSlug}`}
               className={cn(
                 "font-body text-sm font-semibold transition-all duration-300",
                 isActive(segment)
@@ -87,14 +94,52 @@ export function PublicHeader({ orgSlug }: PublicHeaderProps) {
         </div>
       </div>
 
+      {/* Community picker bar */}
+      {showCommunityPicker && (
+        <div className="border-t border-outline-variant/10 bg-surface/60 backdrop-blur-sm">
+          <div className="no-scrollbar mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-8 py-2">
+            <MapPin className="size-3.5 shrink-0 text-on-surface/40" strokeWidth={1.5} />
+            <button
+              type="button"
+              onClick={() => setCommunity(undefined)}
+              className={cn(
+                "shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+                !communitySlug
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-surface-container-low text-on-surface/70 hover:bg-surface-container hover:text-on-surface",
+              )}
+            >
+              All
+            </button>
+            {communities.map((c) => (
+              <button
+                key={c._id}
+                type="button"
+                onClick={() =>
+                  setCommunity(communitySlug === c.slug ? undefined : c.slug)
+                }
+                className={cn(
+                  "shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition-colors",
+                  communitySlug === c.slug
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-surface-container-low text-on-surface/70 hover:bg-surface-container hover:text-on-surface",
+                )}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Mobile nav */}
       {mobileOpen && (
         <div className="border-t border-outline-variant/20 bg-surface px-8 pb-8 pt-4 md:hidden">
           <div className="flex flex-col gap-1">
             {NAV_ITEMS.map(({ label, segment }) => (
               <Link
-                key={segment}
-                href={`/${orgSlug}/${segment}`}
+                key={label}
+                href={segment ? `/${orgSlug}/${segment}` : `/${orgSlug}`}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
                   "rounded-lg px-4 py-3 font-body text-sm font-semibold transition-colors",
@@ -107,6 +152,54 @@ export function PublicHeader({ orgSlug }: PublicHeaderProps) {
               </Link>
             ))}
           </div>
+
+          {/* Community picker in mobile nav */}
+          {showCommunityPicker && (
+            <div className="mt-4 border-t border-outline-variant/20 pt-4">
+              <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+                <MapPin className="size-3" />
+                Community
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCommunity(undefined);
+                    setMobileOpen(false);
+                  }}
+                  className={cn(
+                    "rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                    !communitySlug
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-surface-container-low text-on-surface/70",
+                  )}
+                >
+                  All
+                </button>
+                {communities.map((c) => (
+                  <button
+                    key={c._id}
+                    type="button"
+                    onClick={() => {
+                      setCommunity(
+                        communitySlug === c.slug ? undefined : c.slug,
+                      );
+                      setMobileOpen(false);
+                    }}
+                    className={cn(
+                      "rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                      communitySlug === c.slug
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-surface-container-low text-on-surface/70",
+                    )}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="mt-6 border-t border-outline-variant/20 pt-6">
             {isSignedIn ? (
               <UserButton />

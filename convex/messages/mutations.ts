@@ -1,5 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { requireAuth } from "../auth.helpers";
 
 export const send = mutation({
   args: {
@@ -8,10 +9,7 @@ export const send = mutation({
     senderRole: v.union(v.literal("admin"), v.literal("client")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-    const orgId = identity.orgId as string;
-    if (!orgId) throw new Error("No organization selected");
+    const { orgId } = await requireAuth(ctx);
 
     const contact = await ctx.db.get(args.contactId);
     if (!contact || contact.orgId !== orgId) {

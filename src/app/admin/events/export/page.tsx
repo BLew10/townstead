@@ -51,34 +51,34 @@ function clampYear(n: number): number {
 export default function EventsExportPage() {
   const { orgId, isReady } = useOrg();
   const [yearInput, setYearInput] = useState(String(currentYear));
-  const [editionSelect, setEditionSelect] = useState<string>("all");
+  const [communitySelect, setCommunitySelect] = useState<string>("all");
 
   const events = useQuery(
     api.events.queries.list,
     isReady ? { orgId: orgId! } : "skip"
   );
-  const editions = useQuery(
-    api.calendarEditions.queries.list,
+  const communities = useQuery(
+    api.communities.queries.list,
     isReady ? { orgId: orgId! } : "skip"
   );
 
   const year = clampYear(parseInt(yearInput, 10));
 
-  const editionId: Id<"calendarEditions"> | null =
-    editionSelect !== "all" ? (editionSelect as Id<"calendarEditions">) : null;
+  const communityId: Id<"communities"> | null =
+    communitySelect !== "all" ? (communitySelect as Id<"communities">) : null;
 
   const monthGroups = useMemo(() => {
     if (!events) return null;
-    return buildEventExportMonthGroups(events, year, editionId);
-  }, [events, year, editionId]);
+    return buildEventExportMonthGroups(events, year, communityId);
+  }, [events, year, communityId]);
 
   const handleDownloadPdf = () => {
     const params = new URLSearchParams({ year: String(year) });
-    if (editionId) params.set("calendarEditionId", editionId);
+    if (communityId) params.set("communityId", communityId);
     window.open(`/api/pdf/events-export?${params}`, "_blank");
   };
 
-  if (!isReady || events === undefined || editions === undefined) {
+  if (!isReady || events === undefined || communities === undefined) {
     return (
       <div className="space-y-6">
         <PageHeader title="Export event calendar" />
@@ -115,16 +115,21 @@ export default function EventsExportPage() {
           />
         </div>
         <div className="space-y-2">
-          <Label>Calendar edition</Label>
-          <Select value={editionSelect} onValueChange={(v) => setEditionSelect(v ?? "")}>
+          <Label>Community</Label>
+          <Select value={communitySelect} onValueChange={(v) => setCommunitySelect(v ?? "")}>
             <SelectTrigger className="w-56">
-              <SelectValue placeholder="All editions" />
+              <SelectValue placeholder="All communities">
+                {communitySelect === "all"
+                  ? "All communities"
+                  : (communities.find((c) => c._id === communitySelect)?.name ??
+                    "All communities")}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All editions</SelectItem>
-              {editions.map((ed) => (
-                <SelectItem key={ed._id} value={ed._id}>
-                  {ed.name}
+              <SelectItem value="all">All communities</SelectItem>
+              {communities.map((c) => (
+                <SelectItem key={c._id} value={c._id}>
+                  {c.name}
                 </SelectItem>
               ))}
             </SelectContent>
