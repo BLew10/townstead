@@ -4,7 +4,9 @@ import {
   computeLateFees,
   computeEarlyDiscount,
   computeBaseNet,
+  computeScheduleBase,
   computeAmountPaid,
+  computeAmountPaidWithPrepaid,
   computeIsPaid,
   isScheduledPaymentLate,
   computeScheduledPaymentPaid,
@@ -702,5 +704,173 @@ describe("generateScheduledPayments", () => {
       const total = result.reduce((sum, p) => sum + p.amount, 0);
       expect(total).toBe(net);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeScheduleBase
+// ---------------------------------------------------------------------------
+
+describe("computeScheduleBase", () => {
+  it("equals baseNet when no early discount", () => {
+    expect(
+      computeScheduleBase({ totalSale: 100000, discount1: 10000 })
+    ).toBe(90000);
+  });
+
+  it("subtracts flat early discount from baseNet", () => {
+    expect(
+      computeScheduleBase({
+        totalSale: 100000,
+        discount1: 10000,
+        earlyDiscountType: "flat",
+        earlyDiscountAmount: 5000,
+      })
+    ).toBe(85000);
+  });
+
+  it("subtracts percent early discount from baseNet", () => {
+    expect(
+      computeScheduleBase({
+        totalSale: 100000,
+        earlyDiscountType: "percent",
+        earlyDiscountAmount: 10,
+      })
+    ).toBe(90000);
+  });
+
+  it("handles all adjustments together", () => {
+    const result = computeScheduleBase({
+      totalSale: 200000,
+      discount1: 20000,
+      discount2: 10000,
+      additionalSale1: 5000,
+      additionalSale2: 3000,
+      trade: 8000,
+      earlyDiscountType: "flat",
+      earlyDiscountAmount: 10000,
+    });
+    // baseNet = 200000 - 20000 - 10000 + 5000 + 3000 - 8000 = 170000
+    // scheduleBase = 170000 - 10000 = 160000
+    expect(result).toBe(160000);
+  });
+
+  it("returns baseNet when earlyDiscountAmount is 0", () => {
+    expect(
+      computeScheduleBase({
+        totalSale: 100000,
+        earlyDiscountType: "flat",
+        earlyDiscountAmount: 0,
+      })
+    ).toBe(100000);
+  });
+
+  it("returns baseNet when earlyDiscountType is undefined", () => {
+    expect(
+      computeScheduleBase({
+        totalSale: 100000,
+        earlyDiscountAmount: 5000,
+      })
+    ).toBe(100000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeAmountPaidWithPrepaid
+// ---------------------------------------------------------------------------
+
+describe("computeAmountPaidWithPrepaid", () => {
+  it("matches computeAmountPaid when no prepaid payments exist", () => {
+    const allocations = [
+      makeAllocation("sp_1", 5000),
+      makeAllocation("sp_2", 3000),
+    ];
+    const payments = [
+      { _id: "pay_1" as Id<"payments">, amount: 8000 },
+    ];
+    const { amountPaid, prepaidAmount } = computeAmountPaidWithPrepaid(
+      allocations,
+      payments
+    );
+    expect(amountPaid).toBe(8000);
+    expect(prepaidAmount).toBe(0);
+  });
+
+  it("counts unallocated prepaid payments in amountPaid", () => {
+    const allocations: PaymentAllocationDoc[] = [];
+    const payments = [
+      { _id: "pay_1" as Id<"payments">, amount: 10000, isPrepaid: true },
+    ];
+    const { amountPaid, prepaidAmount } = computeAmountPaidWithPrepaid(
+      allocations,
+      payments
+    );
+    expect(amountPaid).toBe(10000);
+    expect(prepaidAmount).toBe(10000);
+  });
+
+  it("does not double-count fully allocated prepaid payments", () => {
+    const allocations = [
+      {
+        ...makeAllocation("sp_1", 10000),
+        paymentId: "pay_1" as Id<"payments">,
+      },
+    ];
+    const payments = [
+      { _id: "pay_1" as Id<"payments">, amount: 10000, isPrepaid: true },
+    ];
+    const { amountPaid, prepaidAmount } = computeAmountPaidWithPrepaid(
+      allocations,
+      payments
+    );
+    expect(amountPaid).toBe(10000);
+    expect(prepaidAmount).toBe(10000);
+  });
+
+  it("counts partially unallocated prepaid payments correctly", () => {
+    const allocations = [
+      {
+        ...makeAllocation("sp_1", 6000),
+        paymentId: "pay_1" as Id<"payments">,
+      },
+    ];
+    const payments = [
+      { _id: "pay_1" as Id<"payments">, amount: 10000, isPrepaid: true },
+    ];
+    const { amountPaid, prepaidAmount } = computeAmountPaidWithPrepaid(
+      allocations,
+      payments
+    );
+    // 6000 from allocation + 4000 unallocated
+    expect(amountPaid).toBe(10000);
+    expect(prepaidAmount).toBe(10000);
+  });
+
+  it("sums multiple prepaid payments", () => {
+    const allocations: PaymentAllocationDoc[] = [];
+    const payments = [
+      { _id: "pay_1" as Id<"payments">, amount: 5000, isPrepaid: true },
+      { _id: "pay_2" as Id<"payments">, amount: 3000, isPrepaid: true },
+    ];
+    const { amountPaid, prepaidAmount } = computeAmountPaidWithPrepaid(
+      allocations,
+      payments
+    );
+    expect(amountPaid).toBe(8000);
+    expect(prepaidAmount).toBe(8000);
+  });
+
+  it("combines allocated non-prepaid and unallocated prepaid", () => {
+    const allocations = [makeAllocation("sp_1", 20000)];
+    const payments = [
+      { _id: "pay_1" as Id<"payments">, amount: 20000 },
+      { _id: "pay_2" as Id<"payments">, amount: 10000, isPrepaid: true },
+    ];
+    const { amountPaid, prepaidAmount } = computeAmountPaidWithPrepaid(
+      allocations,
+      payments
+    );
+    expect(amountPaid).toBe(30000);
+    expect(prepaidAmount).toBe(10000);
   });
 });

@@ -42,7 +42,10 @@ export function SelectEditionYear({
   );
 
   const namesForIds = (ids: Id<"calendarEditions">[]) =>
-    ids.map((eid) => editions?.find((e) => e._id === eid)?.name ?? "");
+    ids.map((eid) => {
+      const e = editions?.find((ed) => ed._id === eid);
+      return e ? `${e.name} (${e.code})` : "";
+    });
 
   const toggleEdition = (
     id: Id<"calendarEditions">,
@@ -78,6 +81,25 @@ export function SelectEditionYear({
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label>Year</Label>
+          <Select
+            value={String(year)}
+            onValueChange={(v) => onYearChange(parseInt(v, 10))}
+          >
+            <SelectTrigger>
+              <SelectValue>{year}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {YEAR_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="space-y-2 sm:col-span-2">
           <Label>Calendar Editions</Label>
           <div className="space-y-2 rounded-md border p-4">
@@ -112,25 +134,6 @@ export function SelectEditionYear({
               Selected: {selectedLabels.join(", ")}
             </p>
           )}
-        </div>
-
-        <div className="space-y-2">
-          <Label>Year</Label>
-          <Select
-            value={String(year)}
-            onValueChange={(v) => onYearChange(parseInt(v, 10))}
-          >
-            <SelectTrigger>
-              <SelectValue>{year}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {YEAR_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
     </div>

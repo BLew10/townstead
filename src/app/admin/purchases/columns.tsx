@@ -27,7 +27,7 @@ interface PurchaseRow {
   invoiceNumber?: string;
   contactName: string;
   company: string;
-  editionName: string;
+  editionCode: string;
   year: number;
   net: number;
   amountPaid: number;
@@ -216,7 +216,7 @@ export function purchaseColumns({
       ),
     },
     {
-      accessorKey: "editionName",
+      accessorKey: "editionCode",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Edition" />
       ),

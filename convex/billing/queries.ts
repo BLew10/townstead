@@ -4,6 +4,8 @@ import { v } from "convex/values";
 import {
   computeNet,
   computeAmountPaid,
+  computeAmountPaidWithPrepaid,
+  computeIsPaid,
   computeLateFees,
   isScheduledPaymentLate,
   computeScheduledPaymentPaid,
@@ -18,15 +20,24 @@ export const listPayments = query({
     let payments: Doc<"payments">[];
 
     if (args.year) {
-      const yearStart = new Date(args.year, 0, 1).getTime();
-      const yearEnd = new Date(args.year + 1, 0, 1).getTime();
-      payments = await ctx.db
-        .query("payments")
-        .withIndex("by_orgId_and_date", (q) =>
-          q.eq("orgId", args.orgId).gte("date", yearStart)
+      const purchases = await ctx.db
+        .query("purchases")
+        .withIndex("by_orgId_and_year", (q) =>
+          q.eq("orgId", args.orgId).eq("year", args.year!)
         )
-        .filter((q) => q.lt(q.field("date"), yearEnd))
+        .filter((q) => q.neq(q.field("isDeleted"), true))
         .collect();
+
+      payments = [];
+      for (const purchase of purchases) {
+        const pp = await ctx.db
+          .query("payments")
+          .withIndex("by_purchaseId", (q) =>
+            q.eq("purchaseId", purchase._id)
+          )
+          .collect();
+        payments.push(...pp);
+      }
     } else {
       payments = await ctx.db
         .query("payments")
@@ -55,6 +66,7 @@ export const listPayments = query({
             ? `${contact.firstName} ${contact.lastName}`
             : "Unknown",
           company: contact?.company ?? "",
+          year: purchase?.year ?? 0,
         };
       })
     );
@@ -63,53 +75,157 @@ export const listPayments = query({
   },
 });
 
-export const listThisMonth = query({
+export const listOwedPayments = query({
   args: {
     orgId: v.string(),
     year: v.optional(v.number()),
     now: v.number(),
   },
   handler: async (ctx, args) => {
+    let purchases: Doc<"purchases">[];
+
+    if (args.year) {
+      purchases = await ctx.db
+        .query("purchases")
+        .withIndex("by_orgId_and_year", (q) =>
+          q.eq("orgId", args.orgId).eq("year", args.year!)
+        )
+        .filter((q) => q.neq(q.field("isDeleted"), true))
+        .collect();
+    } else {
+      purchases = await ctx.db
+        .query("purchases")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .filter((q) => q.neq(q.field("isDeleted"), true))
+        .collect();
+    }
+
+    const rows = await Promise.all(
+      purchases.map(async (purchase) => {
+        const contact = await ctx.db.get(purchase.contactId);
+
+        const terms = await ctx.db
+          .query("paymentTerms")
+          .withIndex("by_purchaseId", (q) =>
+            q.eq("purchaseId", purchase._id)
+          )
+          .first();
+
+        const scheduledPayments = await ctx.db
+          .query("scheduledPayments")
+          .withIndex("by_purchaseId", (q) =>
+            q.eq("purchaseId", purchase._id)
+          )
+          .collect();
+
+        const allAllocations: Doc<"paymentAllocations">[] = [];
+        for (const sp of scheduledPayments) {
+          const spAllocs = await ctx.db
+            .query("paymentAllocations")
+            .withIndex("by_scheduledPaymentId", (q) =>
+              q.eq("scheduledPaymentId", sp._id)
+            )
+            .collect();
+          allAllocations.push(...spAllocs);
+        }
+
+        const purchasePayments = await ctx.db
+          .query("payments")
+          .withIndex("by_purchaseId", (q) =>
+            q.eq("purchaseId", purchase._id)
+          )
+          .collect();
+
+        const net = terms
+          ? computeNet(terms, scheduledPayments, allAllocations, args.now)
+          : 0;
+        const { amountPaid } = computeAmountPaidWithPrepaid(
+          allAllocations,
+          purchasePayments
+        );
+        if (computeIsPaid(net, amountPaid)) return null;
+
+        const balance = Math.max(0, net - amountPaid);
+
+        const sortedSp = [...scheduledPayments].sort(
+          (a, b) => a.dueDate - b.dueDate
+        );
+        let nextDueDate: number | null = null;
+        let nextDueIsLate = false;
+        for (const sp of sortedSp) {
+          const spPaid = computeScheduledPaymentPaid(sp._id, allAllocations);
+          if (spPaid < sp.amount) {
+            nextDueDate = sp.dueDate;
+            nextDueIsLate = isScheduledPaymentLate(sp, allAllocations, args.now);
+            break;
+          }
+        }
+
+        return {
+          _id: purchase._id,
+          purchaseId: purchase._id,
+          contactName: contact
+            ? `${contact.firstName} ${contact.lastName}`
+            : "Unknown",
+          company: contact?.company ?? "",
+          contactEmail: contact?.email ?? null,
+          contactId: purchase.contactId,
+          year: purchase.year,
+          nextDueDate,
+          nextDueIsLate,
+          balance,
+          invoiceNumber: purchase.invoiceNumber ?? null,
+        };
+      })
+    );
+
+    return rows
+      .filter((row): row is NonNullable<typeof row> => row !== null)
+      .sort((a, b) =>
+        (a.company || a.contactName).localeCompare(b.company || b.contactName)
+      );
+  },
+});
+
+export const listThisMonth = query({
+  args: {
+    orgId: v.string(),
+    now: v.number(),
+  },
+  handler: async (ctx, args) => {
     const now = args.now;
     const currentDate = new Date(now);
-    const targetYear = args.year ?? currentDate.getFullYear();
     const currentMonth = currentDate.getMonth() + 1;
     const currentYear = currentDate.getFullYear();
 
-    const scheduledPayments = await ctx.db
+    const currentYearPayments = await ctx.db
       .query("scheduledPayments")
       .withIndex("by_orgId_and_year", (q) =>
-        q.eq("orgId", args.orgId).eq("year", targetYear)
+        q.eq("orgId", args.orgId).eq("year", currentYear)
       )
       .collect();
 
-    // Also get overdue from previous years if no year filter
-    let overdueFromPast: Doc<"scheduledPayments">[] = [];
-    if (!args.year) {
-      const allSp = await ctx.db
-        .query("scheduledPayments")
-        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
-        .collect();
-      overdueFromPast = allSp.filter(
-        (sp) => sp.year < currentYear && sp.dueDate < now
-      );
-    }
-
-    const allSp = [...scheduledPayments, ...overdueFromPast];
-    const uniqueSp = Array.from(
-      new Map(allSp.map((sp) => [sp._id, sp])).values()
+    const allOrgPayments = await ctx.db
+      .query("scheduledPayments")
+      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .collect();
+    const pastDueCandidates = allOrgPayments.filter(
+      (sp) => sp.dueDate < now && sp.year < currentYear
     );
 
-    // Filter to this month's payments or overdue ones
-    const filtered = uniqueSp.filter((sp) => {
-      if (sp.dueDate < now) return true; // overdue — always show
+    const combined = [...currentYearPayments, ...pastDueCandidates];
+    const uniqueSp = Array.from(
+      new Map(combined.map((sp) => [sp._id, sp])).values()
+    );
+
+    const candidates = uniqueSp.filter((sp) => {
       if (sp.year === currentYear && sp.month === currentMonth) return true;
-      if (args.year && sp.year === args.year) return true; // year filter shows all
+      if (sp.dueDate < now) return true;
       return false;
     });
 
     const enriched = await Promise.all(
-      filtered.map(async (sp) => {
+      candidates.map(async (sp) => {
         const purchase = await ctx.db.get(sp.purchaseId);
         if (!purchase || purchase.isDeleted) return null;
 
@@ -156,8 +272,15 @@ export const listThisMonth = query({
       })
     );
 
+    const isThisMonth = (row: { year: number; month: number }) =>
+      row.year === currentYear && row.month === currentMonth;
+
     return enriched
-      .filter((row): row is NonNullable<typeof row> => row !== null)
+      .filter((row): row is NonNullable<typeof row> => {
+        if (row === null) return false;
+        if (isThisMonth(row)) return true;
+        return row.status !== "paid";
+      })
       .sort((a, b) => a.dueDate - b.dueDate);
   },
 });
@@ -221,10 +344,9 @@ export const getCashFlowReport = query({
 
       for (const sp of scheduledPayments) {
         const monthIdx = sp.month - 1;
-        if (monthIdx >= 0 && monthIdx < 12) {
+        if (sp.year === args.year && monthIdx >= 0 && monthIdx < 12) {
           months[monthIdx].projected += sp.amount;
 
-          // Actual = sum of allocations for this scheduled payment
           const spPaid = allAllocations
             .filter((a) => a.scheduledPaymentId === sp._id)
             .reduce((sum, a) => sum + a.amount, 0);
@@ -400,21 +522,10 @@ export const getInvoiceData = query({
     const net = terms
       ? computeNet(terms, scheduledPayments, allAllocations, args.now)
       : 0;
-    let amountPaid = computeAmountPaid(allAllocations);
-
-    // Prepaid payments from migration may lack allocations — still count them
-    let prepaidAmount = 0;
-    for (const p of payments) {
-      if (!p.isPrepaid) continue;
-      const allocated = allAllocations
-        .filter((a) => a.paymentId === p._id)
-        .reduce((sum, a) => sum + a.amount, 0);
-      const unallocated = p.amount - allocated;
-      if (unallocated > 0) {
-        amountPaid += unallocated;
-      }
-      prepaidAmount += p.amount;
-    }
+    const { amountPaid, prepaidAmount } = computeAmountPaidWithPrepaid(
+      allAllocations,
+      payments
+    );
 
     const enrichedScheduledPayments = scheduledPayments
       .sort((a, b) => a.dueDate - b.dueDate)
@@ -496,10 +607,20 @@ export const getStatementData = query({
           allAllocations.push(...spAllocs);
         }
 
+        const purchasePayments = await ctx.db
+          .query("payments")
+          .withIndex("by_purchaseId", (q) =>
+            q.eq("purchaseId", purchase._id)
+          )
+          .collect();
+
         const net = terms
           ? computeNet(terms, scheduledPayments, allAllocations, now)
           : 0;
-        const amountPaid = computeAmountPaid(allAllocations);
+        const { amountPaid } = computeAmountPaidWithPrepaid(
+          allAllocations,
+          purchasePayments
+        );
         const balance = Math.max(0, net - amountPaid);
         overallBalance += balance;
 
@@ -604,9 +725,14 @@ export const getStatementDataByPurchase = query({
     const net = terms
       ? computeNet(terms, scheduledPayments, allAllocations, args.now)
       : 0;
-    const amountPaid = computeAmountPaid(allAllocations);
+    const { amountPaid } = computeAmountPaidWithPrepaid(
+      allAllocations,
+      payments
+    );
 
-    const prepaidPayment = payments.find((p) => p.isPrepaid);
+    const prepaidTotal = payments
+      .filter((p) => p.isPrepaid)
+      .reduce((sum, p) => sum + p.amount, 0);
 
     // Compute late fee per occurrence
     let lateFeePerOccurrence = 0;
@@ -623,8 +749,7 @@ export const getStatementDataByPurchase = query({
       : 0;
 
     // Starting balance = net minus late fees minus prepaid (we add late fees back as ledger entries)
-    const startingBalance =
-      net - totalLateFees + (prepaidPayment?.amount ?? 0);
+    const startingBalance = net - totalLateFees + prepaidTotal;
 
     // Build running-balance ledger entries
     type LedgerEntry = {
@@ -681,7 +806,7 @@ export const getStatementDataByPurchase = query({
       }
     }
 
-    // Next unpaid scheduled payment
+    // Next unpaid scheduled payment that is NOT already counted in pastDueAmount
     const sortedSp = [...scheduledPayments].sort(
       (a, b) => a.dueDate - b.dueDate
     );
@@ -690,9 +815,11 @@ export const getStatementDataByPurchase = query({
     for (const sp of sortedSp) {
       const spPaid = computeScheduledPaymentPaid(sp._id, allAllocations);
       if (spPaid < sp.amount) {
-        nextPaymentDueDate = sp.dueDate;
-        nextPaymentAmount = sp.amount - spPaid;
-        break;
+        if (!isScheduledPaymentLate(sp, allAllocations, args.now)) {
+          nextPaymentDueDate = sp.dueDate;
+          nextPaymentAmount = sp.amount - spPaid;
+          break;
+        }
       }
     }
 

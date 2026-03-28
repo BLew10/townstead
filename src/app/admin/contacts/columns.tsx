@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Eye, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Eye, MoreHorizontal, Pencil, ShoppingCart, Trash2 } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useState } from "react";
@@ -71,6 +71,14 @@ function ActionsCell({
           <DropdownMenuItem onClick={() => onEdit(row.original)}>
             <Pencil className="mr-2 h-4 w-4" />
             Edit
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() =>
+              router.push(`/admin/purchases/new?contactId=${row.original._id}`)
+            }
+          >
+            <ShoppingCart className="mr-2 h-4 w-4" />
+            Add Purchase
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

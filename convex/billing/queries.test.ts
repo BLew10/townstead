@@ -5,6 +5,7 @@ import schema from "../schema";
 import { modules } from "../test.setup";
 
 const ORG = "test_org";
+const NOW = 1710000000000;
 
 describe("listPayments", () => {
   it("returns enriched payments with contact info, sorted by date desc", async () => {
@@ -75,21 +76,28 @@ describe("listPayments", () => {
         isDeleted: false,
         searchText: "Acme Jane Doe",
       });
-      const purchaseId = await ctx.db.insert("purchases", {
+      const purchase2026 = await ctx.db.insert("purchases", {
         contactId,
         calendarEditionIds: [],
         year: 2026,
         orgId: ORG,
         isDeleted: false,
       });
+      const purchase2025 = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [],
+        year: 2025,
+        orgId: ORG,
+        isDeleted: false,
+      });
       await ctx.db.insert("payments", {
-        purchaseId,
+        purchaseId: purchase2026,
         amount: 5000,
         date: new Date(2026, 5, 15).getTime(),
         orgId: ORG,
       });
       await ctx.db.insert("payments", {
-        purchaseId,
+        purchaseId: purchase2025,
         amount: 3000,
         date: new Date(2025, 11, 15).getTime(),
         orgId: ORG,
@@ -765,6 +773,225 @@ describe("getStatementDataByPurchase", () => {
     expect(result!.balance).toBe(70000);
   });
 
+  it("does not double-count late unpaid installment in totalAmountDue (BUG 1 regression)", async () => {
+    const t = convexTest(schema, modules);
+    const FUTURE_NOW = new Date(2026, 5, 1).getTime();
+
+    const ids = await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "Late Corp",
+        firstName: "Eve",
+        lastName: "Late",
+        orgId: ORG,
+      });
+      const purchaseId = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [],
+        year: 2026,
+        orgId: ORG,
+      });
+      await ctx.db.insert("paymentTerms", {
+        purchaseId,
+        totalSale: 100000,
+        lateFeeType: "flat" as const,
+        lateFeeAmount: 2500,
+        orgId: ORG,
+      });
+      // One past-due unpaid installment (before FUTURE_NOW)
+      await ctx.db.insert("scheduledPayments", {
+        purchaseId,
+        dueDate: new Date(2026, 0, 1).getTime(),
+        amount: 50000,
+        month: 1,
+        year: 2026,
+        orgId: ORG,
+      });
+      // One future unpaid installment (after FUTURE_NOW)
+      await ctx.db.insert("scheduledPayments", {
+        purchaseId,
+        dueDate: new Date(2099, 6, 1).getTime(),
+        amount: 50000,
+        month: 7,
+        year: 2099,
+        orgId: ORG,
+      });
+      return { purchaseId };
+    });
+
+    const result = await t.query(
+      api.billing.queries.getStatementDataByPurchase,
+      { purchaseId: ids.purchaseId, orgId: ORG, now: FUTURE_NOW }
+    );
+
+    expect(result).not.toBeNull();
+    // pastDueAmount = 50000 (unpaid) + 2500 (late fee) = 52500
+    expect(result!.pastDueAmount).toBe(52500);
+    // nextPaymentAmount should be the FUTURE one (50000), not the late one again
+    expect(result!.nextPaymentAmount).toBe(50000);
+    // totalAmountDue should NOT double-count the late installment
+    expect(result!.totalAmountDue).toBe(102500);
+  });
+
+  it("does not double-count when only late installments exist", async () => {
+    const t = convexTest(schema, modules);
+    const FUTURE_NOW = new Date(2026, 5, 1).getTime();
+
+    const ids = await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "All Late Corp",
+        firstName: "Frank",
+        lastName: "Overdue",
+        orgId: ORG,
+      });
+      const purchaseId = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [],
+        year: 2025,
+        orgId: ORG,
+      });
+      await ctx.db.insert("paymentTerms", {
+        purchaseId,
+        totalSale: 50000,
+        lateFeeType: "flat" as const,
+        lateFeeAmount: 2500,
+        orgId: ORG,
+      });
+      await ctx.db.insert("scheduledPayments", {
+        purchaseId,
+        dueDate: new Date(2025, 0, 1).getTime(),
+        amount: 50000,
+        month: 1,
+        year: 2025,
+        orgId: ORG,
+      });
+      return { purchaseId };
+    });
+
+    const result = await t.query(
+      api.billing.queries.getStatementDataByPurchase,
+      { purchaseId: ids.purchaseId, orgId: ORG, now: FUTURE_NOW }
+    );
+
+    expect(result).not.toBeNull();
+    expect(result!.pastDueAmount).toBe(52500);
+    // No future installment, nextPaymentAmount should be 0
+    expect(result!.nextPaymentAmount).toBe(0);
+    expect(result!.totalAmountDue).toBe(52500);
+  });
+
+  it("includes unallocated prepaid in balance (BUG 2 regression)", async () => {
+    const t = convexTest(schema, modules);
+
+    const ids = await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "Prepaid Statement Corp",
+        firstName: "Grace",
+        lastName: "Prepay",
+        orgId: ORG,
+      });
+      const purchaseId = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [],
+        year: 2026,
+        orgId: ORG,
+      });
+      await ctx.db.insert("paymentTerms", {
+        purchaseId,
+        totalSale: 100000,
+        orgId: ORG,
+      });
+      await ctx.db.insert("scheduledPayments", {
+        purchaseId,
+        dueDate: new Date(2027, 0, 1).getTime(),
+        amount: 100000,
+        month: 1,
+        year: 2027,
+        orgId: ORG,
+      });
+      await ctx.db.insert("payments", {
+        purchaseId,
+        amount: 40000,
+        date: new Date(2026, 0, 1).getTime(),
+        isPrepaid: true,
+        orgId: ORG,
+      });
+      return { purchaseId };
+    });
+
+    const result = await t.query(
+      api.billing.queries.getStatementDataByPurchase,
+      { purchaseId: ids.purchaseId, orgId: ORG, now: 1710000000000 }
+    );
+
+    expect(result).not.toBeNull();
+    // Balance should reflect unallocated prepaid: 100000 - 40000 = 60000
+    expect(result!.balance).toBe(60000);
+  });
+
+  it("sums multiple prepaid payments (BUG 7 regression)", async () => {
+    const t = convexTest(schema, modules);
+
+    const ids = await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "Multi Prepaid Corp",
+        firstName: "Hank",
+        lastName: "Multi",
+        orgId: ORG,
+      });
+      const purchaseId = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [],
+        year: 2026,
+        orgId: ORG,
+      });
+      await ctx.db.insert("paymentTerms", {
+        purchaseId,
+        totalSale: 100000,
+        orgId: ORG,
+      });
+      await ctx.db.insert("scheduledPayments", {
+        purchaseId,
+        dueDate: new Date(2027, 0, 1).getTime(),
+        amount: 100000,
+        month: 1,
+        year: 2027,
+        orgId: ORG,
+      });
+      await ctx.db.insert("payments", {
+        purchaseId,
+        amount: 25000,
+        date: new Date(2025, 6, 1).getTime(),
+        isPrepaid: true,
+        orgId: ORG,
+      });
+      await ctx.db.insert("payments", {
+        purchaseId,
+        amount: 15000,
+        date: new Date(2025, 9, 1).getTime(),
+        isPrepaid: true,
+        orgId: ORG,
+      });
+      return { purchaseId };
+    });
+
+    const result = await t.query(
+      api.billing.queries.getStatementDataByPurchase,
+      { purchaseId: ids.purchaseId, orgId: ORG, now: 1710000000000 }
+    );
+
+    expect(result).not.toBeNull();
+    // Both prepaid payments (25000 + 15000 = 40000) should be counted
+    expect(result!.balance).toBe(60000);
+    // startingBalance should subtract both prepaids from net
+    expect(result!.startingBalance).toBe(net_minus_prepaids());
+
+    function net_minus_prepaids() {
+      // net = 100000, no late fees, startingBalance = net - lateFees + prepaidTotal
+      // = 100000 - 0 + 40000 = 140000
+      return 140000;
+    }
+  });
+
   it("excludes prepaid payments from ledger entries", async () => {
     const t = convexTest(schema, modules);
 
@@ -811,5 +1038,367 @@ describe("getStatementDataByPurchase", () => {
 
     expect(result).not.toBeNull();
     expect(result!.ledgerEntries).toHaveLength(0);
+  });
+});
+
+describe("getStatementData", () => {
+  it("includes unallocated prepaid in per-purchase balance (BUG 2 regression)", async () => {
+    const t = convexTest(schema, modules);
+
+    const ids = await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "Statement Prepaid Corp",
+        firstName: "Ivy",
+        lastName: "Stmt",
+        orgId: ORG,
+        isDeleted: false,
+        searchText: "Statement Prepaid Corp Ivy Stmt",
+      });
+      const purchaseId = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [],
+        year: 2026,
+        orgId: ORG,
+        isDeleted: false,
+      });
+      await ctx.db.insert("paymentTerms", {
+        purchaseId,
+        totalSale: 100000,
+        orgId: ORG,
+      });
+      await ctx.db.insert("scheduledPayments", {
+        purchaseId,
+        dueDate: new Date(2027, 0, 1).getTime(),
+        amount: 100000,
+        month: 1,
+        year: 2027,
+        orgId: ORG,
+      });
+      await ctx.db.insert("payments", {
+        purchaseId,
+        amount: 30000,
+        date: new Date(2026, 0, 1).getTime(),
+        isPrepaid: true,
+        orgId: ORG,
+      });
+      return { contactId, purchaseId };
+    });
+
+    const result = await t.query(api.billing.queries.getStatementData, {
+      contactId: ids.contactId,
+      orgId: ORG,
+      now: NOW,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.purchases).toHaveLength(1);
+    expect(result!.purchases[0].amountPaid).toBe(30000);
+    expect(result!.purchases[0].balance).toBe(70000);
+    expect(result!.overallBalance).toBe(70000);
+  });
+});
+
+describe("listThisMonth", () => {
+  const MARCH_2026 = new Date(2026, 2, 15).getTime();
+
+  async function seedContact(t: ReturnType<typeof convexTest>, orgId = ORG) {
+    return await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "Test Co",
+        firstName: "Jane",
+        lastName: "Doe",
+        email: "jane@test.com",
+        orgId,
+        isDeleted: false,
+        searchText: "Test Co Jane Doe",
+      });
+      return contactId;
+    });
+  }
+
+  async function seedPurchaseWithSchedule(
+    t: ReturnType<typeof convexTest>,
+    contactId: any,
+    sp: { dueDate: number; amount: number; month: number; year: number },
+    orgId = ORG
+  ) {
+    return await t.run(async (ctx) => {
+      const purchaseId = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [],
+        year: sp.year,
+        invoiceNumber: `${sp.year}-0001`,
+        orgId,
+        isDeleted: false,
+      });
+      const spId = await ctx.db.insert("scheduledPayments", {
+        purchaseId,
+        dueDate: sp.dueDate,
+        amount: sp.amount,
+        month: sp.month,
+        year: sp.year,
+        orgId,
+      });
+      return { purchaseId, spId };
+    });
+  }
+
+  it("excludes fully paid past-month items (regression)", async () => {
+    const t = convexTest(schema, modules);
+    const contactId = await seedContact(t);
+
+    const { spId } = await seedPurchaseWithSchedule(t, contactId, {
+      dueDate: new Date(2024, 6, 15).getTime(),
+      amount: 50000,
+      month: 7,
+      year: 2024,
+    });
+
+    await t.run(async (ctx) => {
+      const paymentId = await ctx.db.insert("payments", {
+        purchaseId: (await ctx.db.get(spId))!.purchaseId,
+        amount: 50000,
+        date: new Date(2024, 6, 10).getTime(),
+        orgId: ORG,
+      });
+      await ctx.db.insert("paymentAllocations", {
+        paymentId,
+        scheduledPaymentId: spId,
+        amount: 50000,
+        orgId: ORG,
+      });
+    });
+
+    const results = await t.query(api.billing.queries.listThisMonth, {
+      orgId: ORG,
+      now: MARCH_2026,
+    });
+
+    expect(results).toHaveLength(0);
+  });
+
+  it("includes unpaid overdue items from past months", async () => {
+    const t = convexTest(schema, modules);
+    const contactId = await seedContact(t);
+
+    await seedPurchaseWithSchedule(t, contactId, {
+      dueDate: new Date(2024, 6, 15).getTime(),
+      amount: 50000,
+      month: 7,
+      year: 2024,
+    });
+
+    const results = await t.query(api.billing.queries.listThisMonth, {
+      orgId: ORG,
+      now: MARCH_2026,
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0].status).toBe("overdue");
+    expect(results[0].amount).toBe(50000);
+  });
+
+  it("includes current month items regardless of status", async () => {
+    const t = convexTest(schema, modules);
+    const contactId = await seedContact(t);
+
+    const { spId } = await seedPurchaseWithSchedule(t, contactId, {
+      dueDate: new Date(2026, 2, 1).getTime(),
+      amount: 30000,
+      month: 3,
+      year: 2026,
+    });
+
+    await t.run(async (ctx) => {
+      const paymentId = await ctx.db.insert("payments", {
+        purchaseId: (await ctx.db.get(spId))!.purchaseId,
+        amount: 30000,
+        date: new Date(2026, 2, 1).getTime(),
+        orgId: ORG,
+      });
+      await ctx.db.insert("paymentAllocations", {
+        paymentId,
+        scheduledPaymentId: spId,
+        amount: 30000,
+        orgId: ORG,
+      });
+    });
+
+    const results = await t.query(api.billing.queries.listThisMonth, {
+      orgId: ORG,
+      now: MARCH_2026,
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0].status).toBe("paid");
+  });
+
+  it("excludes future months from current year", async () => {
+    const t = convexTest(schema, modules);
+    const contactId = await seedContact(t);
+
+    await seedPurchaseWithSchedule(t, contactId, {
+      dueDate: new Date(2026, 5, 1).getTime(),
+      amount: 40000,
+      month: 6,
+      year: 2026,
+    });
+
+    const results = await t.query(api.billing.queries.listThisMonth, {
+      orgId: ORG,
+      now: MARCH_2026,
+    });
+
+    expect(results).toHaveLength(0);
+  });
+
+  it("tenant isolation — org B cannot see org A data", async () => {
+    const t = convexTest(schema, modules);
+    const contactId = await seedContact(t);
+
+    await seedPurchaseWithSchedule(t, contactId, {
+      dueDate: new Date(2026, 2, 1).getTime(),
+      amount: 50000,
+      month: 3,
+      year: 2026,
+    });
+
+    const results = await t.query(api.billing.queries.listThisMonth, {
+      orgId: "org_other",
+      now: MARCH_2026,
+    });
+
+    expect(results).toHaveLength(0);
+  });
+
+  it("excludes deleted purchases", async () => {
+    const t = convexTest(schema, modules);
+    const contactId = await seedContact(t);
+
+    await t.run(async (ctx) => {
+      const purchaseId = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [],
+        year: 2026,
+        orgId: ORG,
+        isDeleted: true,
+      });
+      await ctx.db.insert("scheduledPayments", {
+        purchaseId,
+        dueDate: new Date(2026, 2, 1).getTime(),
+        amount: 50000,
+        month: 3,
+        year: 2026,
+        orgId: ORG,
+      });
+    });
+
+    const results = await t.query(api.billing.queries.listThisMonth, {
+      orgId: ORG,
+      now: MARCH_2026,
+    });
+
+    expect(results).toHaveLength(0);
+  });
+
+  it("returns empty array when no scheduled payments exist", async () => {
+    const t = convexTest(schema, modules);
+
+    const results = await t.query(api.billing.queries.listThisMonth, {
+      orgId: ORG,
+      now: MARCH_2026,
+    });
+
+    expect(results).toHaveLength(0);
+  });
+
+  it("sorts results by dueDate ascending", async () => {
+    const t = convexTest(schema, modules);
+    const contactId = await seedContact(t);
+
+    await seedPurchaseWithSchedule(t, contactId, {
+      dueDate: new Date(2026, 2, 20).getTime(),
+      amount: 20000,
+      month: 3,
+      year: 2026,
+    });
+    await seedPurchaseWithSchedule(t, contactId, {
+      dueDate: new Date(2026, 2, 5).getTime(),
+      amount: 10000,
+      month: 3,
+      year: 2026,
+    });
+
+    const results = await t.query(api.billing.queries.listThisMonth, {
+      orgId: ORG,
+      now: MARCH_2026,
+    });
+
+    expect(results).toHaveLength(2);
+    expect(results[0].dueDate).toBeLessThan(results[1].dueDate);
+    expect(results[0].amount).toBe(10000);
+    expect(results[1].amount).toBe(20000);
+  });
+});
+
+describe("getCashFlowReport", () => {
+  it("only buckets scheduled payments from the report year (BUG 6 regression)", async () => {
+    const t = convexTest(schema, modules);
+
+    const ids = await t.run(async (ctx) => {
+      const contactId = await ctx.db.insert("contacts", {
+        company: "Cashflow Corp",
+        firstName: "Jack",
+        lastName: "Flow",
+        orgId: ORG,
+        isDeleted: false,
+        searchText: "Cashflow Corp Jack Flow",
+      });
+      const editionId = await ctx.db.insert("calendarEditions", {
+        name: "Test Edition",
+        code: "TE",
+        orgId: ORG,
+      });
+      const purchaseId = await ctx.db.insert("purchases", {
+        contactId,
+        calendarEditionIds: [editionId],
+        year: 2026,
+        orgId: ORG,
+        isDeleted: false,
+      });
+      // Scheduled payment in Dec 2026 (report year)
+      await ctx.db.insert("scheduledPayments", {
+        purchaseId,
+        dueDate: new Date(2026, 11, 1).getTime(),
+        amount: 50000,
+        month: 12,
+        year: 2026,
+        orgId: ORG,
+      });
+      // Scheduled payment in Jan 2027 (next year — should NOT appear in 2026 report)
+      await ctx.db.insert("scheduledPayments", {
+        purchaseId,
+        dueDate: new Date(2027, 0, 1).getTime(),
+        amount: 50000,
+        month: 1,
+        year: 2027,
+        orgId: ORG,
+      });
+      return { editionId };
+    });
+
+    const result = await t.query(api.billing.queries.getCashFlowReport, {
+      orgId: ORG,
+      calendarEditionId: ids.editionId,
+      year: 2026,
+    });
+
+    expect(result.rows).toHaveLength(1);
+    // December (index 11) should have 50000 projected
+    expect(result.rows[0].months[11].projected).toBe(50000);
+    // January (index 0) should be 0 since the Jan payment is 2027
+    expect(result.rows[0].months[0].projected).toBe(0);
+    // Year total should only include the 2026 payment
+    expect(result.rows[0].yearTotal.projected).toBe(50000);
   });
 });

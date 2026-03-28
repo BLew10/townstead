@@ -3,8 +3,9 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useOrg } from "@/hooks/use-org";
+import { useStableNow } from "@/hooks/use-stable-now";
 import { DataTable } from "@/components/shared/data-table";
-import { paymentColumns, type PaymentRow } from "./columns";
+import { owedPaymentColumns, type OwedPaymentRow } from "./columns";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -21,26 +22,27 @@ import { useDefaultYear } from "@/hooks/use-default-year";
 const currentYear = new Date().getFullYear();
 const yearOptions = Array.from({ length: 12 }, (_, i) => currentYear + 2 - i);
 
-export default function PaymentsPage() {
+export default function BillingPaymentsPage() {
   const { orgId, isReady } = useOrg();
+  const now = useStableNow();
   const { defaultYear, setDefaultYear } = useDefaultYear();
   const [selectedYear, setSelectedYear] = useState<number | undefined>(
     defaultYear
   );
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
-  const payments = useQuery(
-    api.billing.queries.listPayments,
-    isReady ? { orgId: orgId!, year: selectedYear } : "skip"
+  const owedPayments = useQuery(
+    api.billing.queries.listOwedPayments,
+    isReady ? { orgId: orgId!, year: selectedYear, now } : "skip"
   );
 
-  const rows = (payments ?? []) as PaymentRow[];
+  const rows = (owedPayments ?? []) as OwedPaymentRow[];
 
   const selectedBulkRows = useMemo(() => {
     return rows.filter((r) => rowSelection[r._id]);
   }, [rows, rowSelection]);
 
-  if (!isReady || payments === undefined) {
+  if (!isReady || owedPayments === undefined) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-48" />
@@ -86,17 +88,18 @@ export default function PaymentsPage() {
       </div>
 
       <DataTable
-        columns={paymentColumns}
+        columns={owedPaymentColumns}
         data={rows}
         searchKey="contactName"
         searchPlaceholder="Search by contact..."
-        emptyTitle="No payments found"
-        emptyDescription="No payment records match the current filters."
+        emptyTitle="No owed payments"
+        emptyDescription="All purchases are fully paid."
         enableRowSelection
         getRowId={(row) => row._id}
         rowSelection={rowSelection}
         onRowSelectionChange={setRowSelection}
         noPagination
+        initialSorting={[{ id: "contactName", desc: false }]}
       />
     </div>
   );

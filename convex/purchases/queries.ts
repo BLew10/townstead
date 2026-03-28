@@ -4,19 +4,31 @@ import { v } from "convex/values";
 import {
   computeNet,
   computeAmountPaid,
+  computeAmountPaidWithPrepaid,
   computeIsPaid,
   computeLateFees,
   isScheduledPaymentLate,
   computeScheduledPaymentPaid,
 } from "../billing/helpers";
 
-async function getEditionNames(ctx: { db: any }, editionIds: any[]) {
-  const names: string[] = [];
+async function getEditionCodesSorted(ctx: { db: any }, editionIds: any[]) {
+  const editions = [];
   for (const id of editionIds) {
     const edition = await ctx.db.get(id);
-    if (edition) names.push(edition.name);
+    if (edition) editions.push(edition);
   }
-  return names;
+  editions.sort((a: any, b: any) => a.code.localeCompare(b.code));
+  return editions.map((e: any) => e.code as string);
+}
+
+async function getEditionNames(ctx: { db: any }, editionIds: any[]) {
+  const editions = [];
+  for (const id of editionIds) {
+    const edition = await ctx.db.get(id);
+    if (edition) editions.push(edition);
+  }
+  editions.sort((a: any, b: any) => a.name.localeCompare(b.name));
+  return editions.map((e: any) => e.name as string);
 }
 
 export const list = query({
@@ -32,7 +44,7 @@ export const list = query({
       purchases.map(async (purchase) => {
         const contact = await ctx.db.get(purchase.contactId);
 
-        const editionNames = await getEditionNames(
+        const editionCodes = await getEditionCodesSorted(
           ctx,
           purchase.calendarEditionIds
         );
@@ -62,10 +74,20 @@ export const list = query({
           allAllocations.push(...spAllocations);
         }
 
+        const purchasePayments = await ctx.db
+          .query("payments")
+          .withIndex("by_purchaseId", (q) =>
+            q.eq("purchaseId", purchase._id)
+          )
+          .collect();
+
         const net = terms
           ? computeNet(terms, scheduledPayments, allAllocations, args.now)
           : 0;
-        const amountPaid = computeAmountPaid(allAllocations);
+        const { amountPaid } = computeAmountPaidWithPrepaid(
+          allAllocations,
+          purchasePayments
+        );
         const isPaid = computeIsPaid(net, amountPaid);
         const hasLate = scheduledPayments.some((sp) =>
           isScheduledPaymentLate(sp, allAllocations, args.now)
@@ -77,7 +99,7 @@ export const list = query({
             ? `${contact.firstName} ${contact.lastName}`
             : "Unknown",
           company: contact?.company ?? "",
-          editionName: editionNames.join(", ") || "Unknown",
+          editionCode: editionCodes.join(", ") || "Unknown",
           net,
           amountPaid,
           isPaid,
@@ -180,7 +202,10 @@ export const getDetail = query({
     const net = terms
       ? computeNet(terms, scheduledPayments, allAllocations, args.now)
       : 0;
-    const amountPaid = computeAmountPaid(allAllocations);
+    const { amountPaid } = computeAmountPaidWithPrepaid(
+      allAllocations,
+      payments
+    );
     const isPaid = computeIsPaid(net, amountPaid);
     const lateFees = terms
       ? computeLateFees(terms, scheduledPayments, allAllocations, args.now)
@@ -221,7 +246,7 @@ export const listByContact = query({
 
     const enriched = await Promise.all(
       purchases.map(async (purchase) => {
-        const editionNames = await getEditionNames(
+        const editionCodes = await getEditionCodesSorted(
           ctx,
           purchase.calendarEditionIds
         );
@@ -251,15 +276,25 @@ export const listByContact = query({
           allAllocations.push(...spAllocs);
         }
 
+        const purchasePayments = await ctx.db
+          .query("payments")
+          .withIndex("by_purchaseId", (q) =>
+            q.eq("purchaseId", purchase._id)
+          )
+          .collect();
+
         const net = terms
           ? computeNet(terms, scheduledPayments, allAllocations, args.now)
           : 0;
-        const amountPaid = computeAmountPaid(allAllocations);
+        const { amountPaid } = computeAmountPaidWithPrepaid(
+          allAllocations,
+          purchasePayments
+        );
         const isPaid = computeIsPaid(net, amountPaid);
 
         return {
           ...purchase,
-          editionName: editionNames.join(", ") || "Unknown",
+          editionCode: editionCodes.join(", ") || "Unknown",
           net,
           amountPaid,
           isPaid,

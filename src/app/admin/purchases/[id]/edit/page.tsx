@@ -165,7 +165,7 @@ export default function EditPurchasePage() {
         contactId: detail.contactId,
         contactLabel,
         calendarEditionIds: detail.calendarEditionIds,
-        editionNames: detail.editions.map((e) => e.name),
+        editionNames: detail.editions.map((e) => `${e.name} (${e.code})`),
         year: detail.year,
         adSelections,
         slotAssignments,

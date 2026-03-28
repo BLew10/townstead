@@ -82,8 +82,7 @@ export function computeNet(
 }
 
 /**
- * Base net before late fees or early discounts — used to split
- * scheduled payment amounts at purchase creation time.
+ * Base net before late fees or early discounts.
  */
 export function computeBaseNet(terms: {
   totalSale: number;
@@ -103,8 +102,57 @@ export function computeBaseNet(terms: {
   );
 }
 
+/**
+ * The amount scheduled payments must sum to. Equals baseNet minus
+ * early discount because early discount is an unconditional upfront
+ * deduction (per spec), identical to a regular discount.
+ */
+export function computeScheduleBase(terms: {
+  totalSale: number;
+  discount1?: number;
+  discount2?: number;
+  additionalSale1?: number;
+  additionalSale2?: number;
+  trade?: number;
+  earlyDiscountType?: string;
+  earlyDiscountAmount?: number;
+}): number {
+  const base = computeBaseNet(terms);
+  if (!terms.earlyDiscountType || !terms.earlyDiscountAmount) return base;
+  const earlyDiscount =
+    terms.earlyDiscountType === "flat"
+      ? terms.earlyDiscountAmount
+      : Math.round(terms.totalSale * (terms.earlyDiscountAmount / 100));
+  return base - earlyDiscount;
+}
+
 export function computeAmountPaid(allocations: PaymentAllocationDoc[]): number {
   return allocations.reduce((sum, a) => sum + a.amount, 0);
+}
+
+/**
+ * Like computeAmountPaid but also counts prepaid payments that may lack
+ * allocations (common in migration data). Returns both the adjusted
+ * amountPaid and the total prepaid amount for display purposes.
+ */
+export function computeAmountPaidWithPrepaid(
+  allocations: PaymentAllocationDoc[],
+  payments: Array<{ _id: Id<"payments">; amount: number; isPrepaid?: boolean }>
+): { amountPaid: number; prepaidAmount: number } {
+  let amountPaid = computeAmountPaid(allocations);
+  let prepaidAmount = 0;
+  for (const p of payments) {
+    if (!p.isPrepaid) continue;
+    const allocated = allocations
+      .filter((a) => a.paymentId === p._id)
+      .reduce((sum, a) => sum + a.amount, 0);
+    const unallocated = p.amount - allocated;
+    if (unallocated > 0) {
+      amountPaid += unallocated;
+    }
+    prepaidAmount += p.amount;
+  }
+  return { amountPaid, prepaidAmount };
 }
 
 export function computeIsPaid(net: number, amountPaid: number): boolean {

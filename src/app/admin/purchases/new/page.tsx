@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo } from "react";
-import { useMutation } from "convex/react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "../../../../../convex/_generated/api";
 import { toast } from "sonner";
 import { useOrg } from "@/hooks/use-org";
@@ -20,6 +20,7 @@ import { ReviewConfirm } from "./steps/review-confirm";
 import type { PaymentTermsFormValues } from "@/lib/validators";
 import { dollarsToCents } from "@/lib/utils";
 import type { Id } from "../../../../../convex/_generated/dataModel";
+import { User } from "lucide-react";
 
 function paymentTermsToCents(terms: PaymentTermsFormValues) {
   return {
@@ -96,11 +97,19 @@ const defaultPaymentTerms: PaymentTermsFormValues = {
 export default function NewPurchasePage() {
   const { orgId } = useOrg();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const prefillContactId = searchParams.get("contactId");
   const createPurchase = useMutation(api.purchases.mutations.create);
   const paymentTermsRef = useRef<PaymentTermsStepRef>(null);
 
+  const prefillContact = useQuery(
+    api.contacts.queries.getById,
+    prefillContactId ? { id: prefillContactId } : "skip"
+  );
+
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [prefilled, setPrefilled] = useState(false);
 
   const [formState, setFormState] = useState<PurchaseFormState>({
     contactId: null,
@@ -112,6 +121,19 @@ export default function NewPurchasePage() {
     slotAssignments: [],
     paymentTerms: defaultPaymentTerms,
   });
+
+  useEffect(() => {
+    if (prefillContact && !prefilled) {
+      const label = `${prefillContact.company ? prefillContact.company + " — " : ""}${prefillContact.firstName} ${prefillContact.lastName}`;
+      setFormState((prev) => ({
+        ...prev,
+        contactId: prefillContact._id,
+        contactLabel: label,
+      }));
+      setCurrentStep(1);
+      setPrefilled(true);
+    }
+  }, [prefillContact, prefilled]);
 
   const suggestedTotal = useMemo(
     () => formState.adSelections.reduce((sum, sel) => sum + (sel.charge ?? 0), 0),
@@ -147,17 +169,26 @@ export default function NewPurchasePage() {
         if (formState.paymentTerms.totalSale <= 0)
           return "Total sale must be greater than zero.";
         if (formState.paymentTerms.splitEqually === false) {
-          const net =
-            formState.paymentTerms.totalSale -
-            (formState.paymentTerms.discount1 ?? 0) -
-            (formState.paymentTerms.discount2 ?? 0) +
-            (formState.paymentTerms.additionalSale1 ?? 0) +
-            (formState.paymentTerms.additionalSale2 ?? 0) -
-            (formState.paymentTerms.trade ?? 0);
-          const customTotal = (
-            formState.paymentTerms.customSchedule ?? []
-          ).reduce((s, e) => s + (e.amount ?? 0), 0);
-          if (net > 0 && Math.abs(customTotal - net) > 0.01)
+          const t = formState.paymentTerms;
+          let scheduleBase =
+            t.totalSale -
+            (t.discount1 ?? 0) -
+            (t.discount2 ?? 0) +
+            (t.additionalSale1 ?? 0) +
+            (t.additionalSale2 ?? 0) -
+            (t.trade ?? 0);
+          if (t.earlyDiscountType && t.earlyDiscountAmount) {
+            const ed =
+              t.earlyDiscountType === "flat"
+                ? t.earlyDiscountAmount
+                : t.totalSale * (t.earlyDiscountAmount / 100);
+            scheduleBase -= ed;
+          }
+          const customTotal = (t.customSchedule ?? []).reduce(
+            (s, e) => s + (e.amount ?? 0),
+            0
+          );
+          if (scheduleBase > 0 && Math.abs(customTotal - scheduleBase) > 0.01)
             return "Custom schedule amounts must equal the net total.";
         }
         return null;
@@ -260,6 +291,27 @@ export default function NewPurchasePage() {
         title="New Purchase"
         description="Create a new ad purchase for a contact"
       />
+
+      {(formState.contactId || formState.year) && (
+        <div className="flex items-center gap-4 rounded-lg border bg-muted/50 px-4 py-2.5 text-sm">
+          {formState.contactId && formState.contactLabel && (
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="text-muted-foreground">Contact:</span>
+              <span className="font-medium">{formState.contactLabel}</span>
+            </div>
+          )}
+          {formState.contactId && formState.year && (
+            <span className="text-muted-foreground/40">|</span>
+          )}
+          {formState.year && (
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Year:</span>
+              <span className="font-medium">{formState.year}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       <StepForm
         steps={STEPS}

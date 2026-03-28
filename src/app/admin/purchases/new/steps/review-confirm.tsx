@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { computeBaseNet, generateScheduledPayments } from "../../../../../../convex/billing/helpers";
+import { computeScheduleBase, generateScheduledPayments } from "../../../../../../convex/billing/helpers";
 import { dollarsToCents, centsToDollars } from "@/lib/utils";
 import type { PaymentTermsFormValues } from "@/lib/validators";
 import type { AdSelection } from "./select-ad-types";
@@ -42,17 +42,19 @@ export function ReviewConfirm({
     editionName: editionNameMap.get(editionId) ?? "Unknown",
     ads: adSelections.filter((a) => a.calendarEditionId === editionId),
   })).filter((group) => group.ads.length > 0);
-  const baseNet = computeBaseNet({
+  const scheduleBase = computeScheduleBase({
     totalSale: paymentTerms.totalSale ?? 0,
     discount1: paymentTerms.discount1,
     discount2: paymentTerms.discount2,
     additionalSale1: paymentTerms.additionalSale1,
     additionalSale2: paymentTerms.additionalSale2,
     trade: paymentTerms.trade,
+    earlyDiscountType: paymentTerms.earlyDiscountType,
+    earlyDiscountAmount: paymentTerms.earlyDiscountAmount,
   });
 
   const scheduledPaymentsCents = generateScheduledPayments({
-    baseNet: dollarsToCents(baseNet),
+    baseNet: dollarsToCents(scheduleBase),
     dueDayOfMonth: paymentTerms.dueDayOfMonth ?? 1,
     splitEqually: paymentTerms.splitEqually ?? true,
     startMonth: paymentTerms.scheduleStartMonth ?? 1,

@@ -300,7 +300,7 @@ export default function ContactDetailPage() {
                         <TableCell className="font-medium">
                           {purchase.invoiceNumber ?? "—"}
                         </TableCell>
-                        <TableCell>{purchase.editionName}</TableCell>
+                        <TableCell>{purchase.editionCode}</TableCell>
                         <TableCell>{purchase.year}</TableCell>
                         <TableCell>{formatCurrency(purchase.net)}</TableCell>
                         <TableCell>{formatCurrency(purchase.amountPaid)}</TableCell>

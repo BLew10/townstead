@@ -7,31 +7,18 @@ import { useStableNow } from "@/hooks/use-stable-now";
 import { DataTable } from "@/components/shared/data-table";
 import { thisMonthColumns, type ThisMonthRow } from "./columns";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useMemo, useState } from "react";
 import type { RowSelectionState } from "@tanstack/react-table";
 import { BillingBulkEmailMenu } from "@/components/admin/billing-bulk-email-menu";
 
-const currentYear = new Date().getFullYear();
-const yearOptions = Array.from({ length: 10 }, (_, i) => currentYear - i);
-
 export default function ThisMonthPage() {
   const { orgId, isReady } = useOrg();
   const now = useStableNow();
-  const [selectedYear, setSelectedYear] = useState<number | undefined>(
-    undefined
-  );
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const data = useQuery(
     api.billing.queries.listThisMonth,
-    isReady ? { orgId: orgId!, year: selectedYear, now } : "skip"
+    isReady ? { orgId: orgId!, now } : "skip"
   );
 
   const rows = (data ?? []) as ThisMonthRow[];
@@ -57,39 +44,16 @@ export default function ThisMonthPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <Select
-            value={selectedYear?.toString() ?? "current"}
-            onValueChange={(val) =>
-              setSelectedYear(
-                !val || val === "current" ? undefined : parseInt(val, 10)
-              )
-            }
-          >
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Current Month" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="current">Current Month</SelectItem>
-              {yearOptions.map((year) => (
-                <SelectItem key={year} value={year.toString()}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <BillingBulkEmailMenu
-            selectedRows={selectedBulkRows.map((r) => ({
-              purchaseId: r.purchaseId,
-              contactId: r.contactId,
-              contactEmail: r.contactEmail,
-              displayName: r.company || r.contactName,
-              invoiceNumber: r.invoiceNumber,
-            }))}
-            onComplete={() => setRowSelection({})}
-          />
-        </div>
+        <BillingBulkEmailMenu
+          selectedRows={selectedBulkRows.map((r) => ({
+            purchaseId: r.purchaseId,
+            contactId: r.contactId,
+            contactEmail: r.contactEmail,
+            displayName: r.company || r.contactName,
+            invoiceNumber: r.invoiceNumber,
+          }))}
+          onComplete={() => setRowSelection({})}
+        />
 
         <div className="flex items-center gap-2 text-sm">
           {overdueCount > 0 && (
@@ -111,7 +75,7 @@ export default function ThisMonthPage() {
         searchKey="contactName"
         searchPlaceholder="Search by contact..."
         emptyTitle="No scheduled payments"
-        emptyDescription="No payments due or overdue for the selected period."
+        emptyDescription="No payments due or overdue this month."
         enableRowSelection
         getRowId={(row) => row._id}
         rowSelection={rowSelection}

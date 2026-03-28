@@ -23,7 +23,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   layouts: "Layouts",
   "address-books": "Address Books",
   payments: "Payments",
-  "this-month": "This Month",
+  "this-month": "Due This Month",
   "cash-flow": "Cash Flow",
   invoice: "Invoice",
   statement: "Statement",

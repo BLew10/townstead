@@ -18,6 +18,7 @@ export interface PaymentRow {
   contactEmail: string | null;
   contactName: string;
   company: string;
+  year: number;
 }
 
 export const paymentColumns: ColumnDef<PaymentRow>[] = [

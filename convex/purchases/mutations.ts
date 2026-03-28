@@ -5,7 +5,7 @@ import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import {
   generateInvoiceNumber,
-  computeBaseNet,
+  computeScheduleBase,
   generateScheduledPayments,
 } from "../billing/helpers";
 
@@ -160,9 +160,9 @@ export const create = mutation({
       }
     }
 
-    const baseNet = computeBaseNet(args.paymentTerms);
+    const scheduleBase = computeScheduleBase(args.paymentTerms);
     const scheduledPaymentInputs = generateScheduledPayments({
-      baseNet,
+      baseNet: scheduleBase,
       dueDayOfMonth: args.paymentTerms.dueDayOfMonth ?? 1,
       splitEqually: args.paymentTerms.splitEqually ?? true,
       startMonth: args.paymentTerms.scheduleStartMonth ?? 1,
@@ -259,9 +259,9 @@ export const update = mutation({
         await ctx.db.delete(sp._id);
       }
 
-      const baseNet = computeBaseNet(args.paymentTerms);
+      const scheduleBase = computeScheduleBase(args.paymentTerms);
       const scheduledPaymentInputs = generateScheduledPayments({
-        baseNet,
+        baseNet: scheduleBase,
         dueDayOfMonth: args.paymentTerms.dueDayOfMonth ?? 1,
         splitEqually: args.paymentTerms.splitEqually ?? true,
         startMonth: args.paymentTerms.scheduleStartMonth ?? 1,

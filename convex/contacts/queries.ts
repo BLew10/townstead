@@ -13,9 +13,11 @@ export const list = query({
 });
 
 export const getById = query({
-  args: { id: v.id("contacts") },
+  args: { id: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const normalizedId = ctx.db.normalizeId("contacts", args.id);
+    if (!normalizedId) return null;
+    return await ctx.db.get(normalizedId);
   },
 });
 

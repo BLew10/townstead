@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { ChevronDown, Eye, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -209,34 +209,52 @@ export function BillingBulkEmailMenu({
                     </p>
                   )}
                   <ul className="max-h-48 overflow-y-auto rounded-md border bg-muted/30 p-3 text-foreground">
-                    {jobs.map((j) => (
-                      <li
-                        key={
-                          kind === "invoice"
-                            ? j.purchaseId
-                            : (j.contactId ?? j.purchaseId)
-                        }
-                        className="border-b border-border/60 py-1.5 last:border-0"
-                      >
-                        <span className="font-medium">{j.displayName}</span>
-                        {j.invoiceNumber ? (
-                          <span className="text-muted-foreground">
-                            {" "}
-                            · Invoice {j.invoiceNumber}
-                          </span>
-                        ) : null}
-                        <br />
-                        <span
-                          className={
-                            j.contactEmail?.trim()
-                              ? "text-muted-foreground"
-                              : "text-destructive"
+                    {jobs.map((j) => {
+                      const previewUrl =
+                        kind === "invoice"
+                          ? `/api/pdf/invoice/${j.purchaseId}`
+                          : `/api/pdf/purchase-statement/${j.purchaseId}`;
+
+                      return (
+                        <li
+                          key={
+                            kind === "invoice"
+                              ? j.purchaseId
+                              : (j.contactId ?? j.purchaseId)
                           }
+                          className="flex items-start justify-between gap-2 border-b border-border/60 py-1.5 last:border-0"
                         >
-                          {j.contactEmail?.trim() || "No email on file"}
-                        </span>
-                      </li>
-                    ))}
+                          <div className="min-w-0 flex-1">
+                            <span className="font-medium">{j.displayName}</span>
+                            {j.invoiceNumber ? (
+                              <span className="text-muted-foreground">
+                                {" "}
+                                · Invoice {j.invoiceNumber}
+                              </span>
+                            ) : null}
+                            <br />
+                            <span
+                              className={
+                                j.contactEmail?.trim()
+                                  ? "text-muted-foreground"
+                                  : "text-destructive"
+                              }
+                            >
+                              {j.contactEmail?.trim() || "No email on file"}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 shrink-0 gap-1 px-2 text-xs"
+                            onClick={() => window.open(previewUrl, "_blank")}
+                          >
+                            <Eye className="h-3 w-3" />
+                            Preview
+                          </Button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </>
               )}

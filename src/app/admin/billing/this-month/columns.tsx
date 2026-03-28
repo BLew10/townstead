@@ -5,9 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "@/components/shared/data-table-column-header";
 import { RecordPaymentSheet } from "@/components/admin/record-payment-sheet";
+import { PaymentScheduleModal } from "@/components/admin/payment-schedule-modal";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import Link from "next/link";
-import { DollarSign } from "lucide-react";
+import { DollarSign, CalendarDays } from "lucide-react";
 import { useState } from "react";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 
@@ -32,24 +33,49 @@ const statusConfig = {
   upcoming: { label: "Upcoming", variant: "secondary" as const },
 } as const;
 
-export const thisMonthColumns: ColumnDef<ThisMonthRow>[] = [
-  {
-    accessorKey: "contactName",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Contact" />
-    ),
-    cell: ({ row }) => (
-      <div>
-        <p className="font-medium">
-          {row.original.company || row.original.contactName}
-        </p>
+function ContactCell({ row }: { row: { original: ThisMonthRow } }) {
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const displayName = row.original.company || row.original.contactName;
+
+  return (
+    <div className="flex items-start gap-1">
+      <div className="flex-1">
+        <p className="font-medium">{displayName}</p>
         {row.original.company && (
           <p className="text-xs text-muted-foreground">
             {row.original.contactName}
           </p>
         )}
       </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-6 w-6 shrink-0 p-0"
+        onClick={(e) => {
+          e.stopPropagation();
+          setScheduleOpen(true);
+        }}
+        title="View payment schedule"
+      >
+        <CalendarDays className="h-3.5 w-3.5" />
+      </Button>
+      <PaymentScheduleModal
+        purchaseId={row.original.purchaseId}
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
+        title={`Payment Schedule — ${displayName}`}
+      />
+    </div>
+  );
+}
+
+export const thisMonthColumns: ColumnDef<ThisMonthRow>[] = [
+  {
+    accessorKey: "contactName",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Contact" />
     ),
+    cell: ({ row }) => <ContactCell row={row} />,
   },
   {
     accessorKey: "invoiceNumber",

@@ -147,5 +147,5 @@ When payment terms are saved, generate scheduled payments:
 
 ## Invoice Number Format
 
-`YY-NNNN` where YY = last 2 digits of year, NNNN = sequential **per org per year**.
+`YYNNNN` where YY = last 2 digits of year, NNNN = sequential **per org per year** (no hyphen).
 Generated atomically in a Convex mutation using the `by_orgId_and_invoiceNumber` index to prevent duplicates.

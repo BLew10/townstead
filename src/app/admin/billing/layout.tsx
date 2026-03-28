@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const billingTabs = [
-  { label: "Payments", href: "/admin/billing/payments" },
-  { label: "This Month", href: "/admin/billing/this-month" },
+  { label: "Owed Payments", href: "/admin/billing/payments" },
+  { label: "Due This Month", href: "/admin/billing/this-month" },
   { label: "Cash Flow", href: "/admin/billing/cash-flow" },
 ];
 

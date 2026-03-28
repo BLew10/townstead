@@ -1,0 +1,99 @@
+---
+description: Billing calculation formulas, invariants, and patterns. Reference when modifying any billing code.
+globs:
+  - convex/billing/**
+  - convex/purchases/**
+  - src/app/admin/purchases/**
+  - src/lib/pdf/invoice.ts
+  - src/lib/email/send-invoice.ts
+alwaysApply: false
+---
+
+# Billing Calculations Reference
+
+All billing computations live in `convex/billing/helpers.ts`. Every consumer MUST use these shared helpers — never inline billing math.
+
+## Formula Definitions
+
+### `computeBaseNet(terms)`
+```
+baseNet = totalSale - discount1 - discount2 + additionalSale1 + additionalSale2 - trade
+```
+Net amount before late fees or early discounts.
+
+### `computeEarlyDiscount(terms)`
+```
+earlyDiscount = flat ? earlyDiscountAmount : round(totalSale × earlyDiscountAmount / 100)
+```
+Per spec: an upfront line-item subtraction, NOT conditional on payment timing. Always applied when present.
+
+### `computeScheduleBase(terms)`
+```
+scheduleBase = baseNet - earlyDiscount
+```
+The amount scheduled payments must sum to. Use this (not `baseNet`) when generating or validating scheduled payment schedules.
+
+### `computeNet(terms, scheduledPayments, allocations, now)`
+```
+net = baseNet + lateFees - earlyDiscount
+```
+Total amount owed including time-dependent late fees.
+
+### `computeAmountPaid(allocations)`
+```
+amountPaid = Σ allocation.amount
+```
+Sum of all payment allocation amounts.
+
+### `computeAmountPaidWithPrepaid(allocations, payments)`
+```
+amountPaid = Σ allocation.amount + Σ unallocated prepaid amounts
+prepaidAmount = Σ prepaid payment amounts
+```
+Use this instead of `computeAmountPaid` in all queries that compute balance. Migration data may have prepaid payments without allocations.
+
+### `balance`
+```
+balance = max(0, net - amountPaid)
+```
+
+### `computeLateFees(terms, scheduledPayments, allocations, now)`
+```
+lateFees = lateCount × (flat ? lateFeeAmount : round(totalSale × lateFeeAmount / 100))
+```
+Where `lateCount` = number of scheduled payments where `isScheduledPaymentLate` returns true.
+
+### `isScheduledPaymentLate(sp, allocations, now)`
+Returns `true` when: `!lateFeeWaived && dueDate < now && paidAmount < sp.amount`.
+Returns `false` when `lateFeeWaived` is true (even if past due and unpaid).
+
+## Key Invariants
+
+1. **Schedule sum invariant:** Scheduled payments MUST sum to `scheduleBase` (= baseNet - earlyDiscount), NOT `baseNet`. Violating this causes customer overpayment.
+
+2. **Prepaid handling:** `amountPaid` MUST include unallocated prepaid payment amounts. Always use `computeAmountPaidWithPrepaid` when computing balance in queries.
+
+3. **Integer cents:** All monetary values stored as integer cents. `formatCurrency(cents)` for display only. Use `toBe()` in tests, never `toBeCloseTo()`.
+
+4. **Derived state — NEVER stored:**
+   - `amountPaid` — always computed from allocations + prepaid
+   - `isPaid` — always computed as `amountPaid >= net`
+   - `net` — always computed from terms + late fees + early discount
+   - `isLate` — always computed from due date + payment status
+   - `lateFees` — always computed from late count + fee configuration
+   - `balance` — always computed as `max(0, net - amountPaid)`
+
+5. **Allocation order:** Payments are allocated to earliest unpaid scheduled payment first. Overpayment remainder is implicit (not allocated to any scheduled payment).
+
+6. **Double-counting prevention:** When computing `totalAmountDue` from `pastDueAmount + nextPaymentAmount`, the next payment loop must skip late installments already counted in `pastDueAmount`.
+
+7. **Cash flow year filter:** When bucketing scheduled payments by month, always check `sp.year === reportYear` to prevent cross-year contamination.
+
+## Where Helpers Are Used
+
+| Helper | Consumers |
+|--------|-----------|
+| `computeAmountPaidWithPrepaid` | `getInvoiceData`, `getStatementData`, `getStatementDataByPurchase`, `purchases/getDetail`, `purchases/list`, `purchases/listByContact`, `listOwedPayments` |
+| `computeScheduleBase` | `purchases/mutations.create`, `purchases/mutations.update`, `review-confirm.tsx`, `page.tsx` (wizard validation) |
+| `computeNet` | All balance-displaying queries |
+| `generateScheduledPayments` | Purchase creation/update mutations, review-confirm preview |
