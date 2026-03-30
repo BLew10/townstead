@@ -252,13 +252,15 @@ export default function ContactDetailPage() {
       />
 
       <Tabs defaultValue="info">
-        <TabsList>
-          <TabsTrigger value="info" className="data-[state=active]:text-blue-700 data-[state=active]:dark:text-blue-400">Info</TabsTrigger>
-          <TabsTrigger value="purchases" className="data-[state=active]:text-emerald-700 data-[state=active]:dark:text-emerald-400">Purchases</TabsTrigger>
-          <TabsTrigger value="payments" className="data-[state=active]:text-amber-700 data-[state=active]:dark:text-amber-400">Payments</TabsTrigger>
-          <TabsTrigger value="portal" className="data-[state=active]:text-violet-700 data-[state=active]:dark:text-violet-400">Portal Access</TabsTrigger>
-          <TabsTrigger value="assets" className="data-[state=active]:text-rose-700 data-[state=active]:dark:text-rose-400">Assets</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList>
+            <TabsTrigger value="info" className="data-[state=active]:text-blue-700 data-[state=active]:dark:text-blue-400">Info</TabsTrigger>
+            <TabsTrigger value="purchases" className="data-[state=active]:text-emerald-700 data-[state=active]:dark:text-emerald-400">Purchases</TabsTrigger>
+            <TabsTrigger value="payments" className="data-[state=active]:text-amber-700 data-[state=active]:dark:text-amber-400">Payments</TabsTrigger>
+            <TabsTrigger value="portal" className="data-[state=active]:text-violet-700 data-[state=active]:dark:text-violet-400">Portal Access</TabsTrigger>
+            <TabsTrigger value="assets" className="data-[state=active]:text-rose-700 data-[state=active]:dark:text-rose-400">Assets</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="info">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">

@@ -237,7 +237,7 @@ export function CouponForm({
             <Label htmlFor="businessContactId">Business</Label>
             <Select
               value={businessContactId}
-              onValueChange={setBusinessContactId}
+              onValueChange={(val) => setBusinessContactId(val ?? "")}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a business">

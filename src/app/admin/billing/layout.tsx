@@ -26,7 +26,7 @@ export default function BillingLayout({
         </p>
       </div>
 
-      <nav className="flex gap-1 border-b">
+      <nav className="flex gap-1 overflow-x-auto border-b">
         {billingTabs.map((tab) => (
           <Link
             key={tab.href}

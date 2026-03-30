@@ -145,7 +145,7 @@ export default function AdminDashboardPage() {
       {/* Header + filters */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between print:hidden">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Select
             value={editionId ?? ""}
             onValueChange={(val) => setSelectedEditionId(val ?? "")}

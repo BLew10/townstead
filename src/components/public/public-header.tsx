@@ -63,7 +63,7 @@ export function PublicHeader({ orgSlug }: PublicHeaderProps) {
   return (
     <>
       <nav className="sticky top-0 z-50 w-full bg-surface/80 glass-nav">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-8">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 md:px-8">
           <Link
             href={buildHref("")}
             className="flex items-center gap-3"
@@ -135,7 +135,7 @@ export function PublicHeader({ orgSlug }: PublicHeaderProps) {
 
         {/* Mobile nav */}
         {mobileOpen && (
-          <div className="border-t border-outline-variant/20 bg-surface px-8 pb-8 pt-4 md:hidden">
+          <div className="border-t border-outline-variant/20 bg-surface px-4 pb-8 pt-4 sm:px-6 md:hidden">
             <div className="flex flex-col gap-1">
               {NAV_ITEMS.map(({ label, segment }) => (
                 <Link
@@ -219,7 +219,7 @@ export function PublicHeader({ orgSlug }: PublicHeaderProps) {
       {/* Community picker — rendered outside nav so it's always in document flow */}
       {showCommunityPicker && (
         <div className="sticky top-20 z-40 border-b border-outline-variant/10 bg-surface/90 backdrop-blur-sm">
-          <div className="no-scrollbar mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-8 py-2">
+          <div className="no-scrollbar mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 py-2 sm:px-6 md:px-8">
             <MapPin
               className="size-3.5 shrink-0 text-on-surface/40"
               strokeWidth={1.5}

@@ -74,7 +74,7 @@ export function PublicFooter({ orgSlug }: PublicFooterProps) {
 
   return (
     <footer className="mt-24 w-full rounded-t-[3rem] bg-surface-container-low">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-12 px-8 py-20 md:grid-cols-4">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-12 px-4 py-12 sm:px-6 sm:py-20 md:grid-cols-4 md:px-8">
         {/* Brand column */}
         <div className="md:col-span-1">
           <Link
@@ -172,7 +172,7 @@ export function PublicFooter({ orgSlug }: PublicFooterProps) {
       </div>
 
       {/* Bottom bar */}
-      <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 border-t border-on-surface/5 px-8 py-10 md:flex-row">
+      <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 border-t border-on-surface/5 px-4 py-10 sm:px-6 md:flex-row md:px-8">
         <p className="text-xs text-on-surface/50">
           &copy; {year} {siteName}. All rights reserved.
         </p>

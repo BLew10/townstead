@@ -59,9 +59,9 @@ export default function OrgHomePage({
           />
         )}
         <div className="absolute inset-0 bg-linear-to-r from-on-surface/80 via-on-surface/40 to-transparent" />
-        <div className="relative z-10 mx-auto w-full max-w-7xl px-8">
+        <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 md:px-8">
           <div className="max-w-2xl">
-            <h1 className="mb-8 font-headline text-6xl italic leading-tight text-white md:text-7xl">
+            <h1 className="mb-8 font-headline text-4xl italic leading-tight text-white sm:text-5xl md:text-6xl lg:text-7xl">
               Discover the{" "}
               <span className="font-bold not-italic">
                 {branding.siteName ?? "Community"}
@@ -70,7 +70,7 @@ export default function OrgHomePage({
             {branding.tagline && (
               <p className="mb-8 text-lg text-white/70">{branding.tagline}</p>
             )}
-            <div className="editorial-shadow flex max-w-xl items-center rounded-xl bg-surface-container-lowest/10 p-2 backdrop-blur-md">
+            <div className="editorial-shadow flex max-w-xl flex-col rounded-xl bg-surface-container-lowest/10 p-2 backdrop-blur-md sm:flex-row sm:items-center">
               <div className="flex flex-1 items-center gap-3 px-4">
                 <Search className="size-5 text-white/70" strokeWidth={1.5} />
                 <Link
@@ -82,7 +82,7 @@ export default function OrgHomePage({
               </div>
               <Link
                 href={buildHref("events")}
-                className="rounded-lg bg-secondary px-8 py-4 font-bold text-secondary-foreground transition-colors hover:bg-secondary/80"
+                className="rounded-lg bg-secondary px-8 py-4 text-center font-bold text-secondary-foreground transition-colors hover:bg-secondary/80"
               >
                 Search
               </Link>
@@ -93,13 +93,13 @@ export default function OrgHomePage({
 
       {/* ── Featured Events ── */}
       {featuredEvents.length > 0 && (
-        <section className="mx-auto max-w-7xl px-8 py-24">
+        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-24 md:px-8">
           <div className="mb-12 flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <div className="max-w-xl">
               <span className="mb-3 block text-xs font-bold uppercase tracking-widest text-primary">
                 What&apos;s Happening
               </span>
-              <h2 className="font-headline text-5xl italic text-on-surface">
+              <h2 className="font-headline text-3xl italic text-on-surface sm:text-4xl md:text-5xl">
                 Featured Local Events
               </h2>
             </div>
@@ -164,18 +164,18 @@ export default function OrgHomePage({
 
       {/* ── Deals & Coupons ── */}
       {activeCoupons.length > 0 && (
-        <section className="overflow-hidden bg-surface-container-low py-24">
-          <div className="mx-auto mb-12 max-w-7xl px-8">
-            <h2 className="font-headline text-4xl italic text-on-surface">
+        <section className="overflow-hidden bg-surface-container-low py-12 sm:py-24">
+          <div className="mx-auto mb-12 max-w-7xl px-4 sm:px-6 md:px-8">
+            <h2 className="font-headline text-3xl italic text-on-surface sm:text-4xl">
               Member Exclusive Deals
             </h2>
           </div>
-          <div className="no-scrollbar flex gap-6 overflow-x-auto px-8 pb-8">
+          <div className="no-scrollbar flex gap-6 overflow-x-auto px-4 pb-8 sm:px-6 md:px-8">
             {activeCoupons.map((coupon) => (
               <Link
                 key={coupon._id}
                 href={buildHref(`coupons/${coupon._id}`)}
-                className="editorial-shadow flex min-w-[400px] items-center gap-6 rounded-lg bg-surface-container-lowest p-8"
+                className="editorial-shadow flex min-w-[300px] items-center gap-6 rounded-lg bg-surface-container-lowest p-4 sm:min-w-[400px] sm:p-8"
               >
                 <div className="flex size-24 shrink-0 items-center justify-center rounded-full bg-surface-container">
                   <span className="font-headline text-2xl italic text-primary">
@@ -202,9 +202,9 @@ export default function OrgHomePage({
 
       {/* ── Featured Businesses ── */}
       {featuredBusinesses.length > 0 && (
-        <section className="mx-auto max-w-7xl px-8 py-24">
+        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-24 md:px-8">
           <div className="mb-16 text-center">
-            <h2 className="mb-4 font-headline text-5xl italic text-on-surface">
+            <h2 className="mb-4 font-headline text-3xl italic text-on-surface sm:text-4xl md:text-5xl">
               Top Local Partners
             </h2>
             <p className="mx-auto max-w-xl font-body text-on-surface/60">
@@ -212,7 +212,7 @@ export default function OrgHomePage({
               to live, work, and play.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-4">
             {featuredBusinesses.slice(0, 8).map((biz) => (
               <div
                 key={biz._id}
@@ -239,10 +239,10 @@ export default function OrgHomePage({
 
       {/* ── Blog / Editorial Picks ── */}
       {recentPosts.length > 0 && (
-        <section className="bg-surface py-24">
-          <div className="mx-auto max-w-7xl px-8">
-            <div className="mb-16 flex items-end justify-between">
-              <h2 className="font-headline text-5xl italic text-on-surface">
+        <section className="bg-surface py-12 sm:py-24">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
+            <div className="mb-16 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <h2 className="font-headline text-3xl italic text-on-surface sm:text-4xl md:text-5xl">
                 Editorial Picks
               </h2>
               <Link
@@ -259,7 +259,7 @@ export default function OrgHomePage({
                   href={buildHref(`blog/${recentPosts[0].slug}`)}
                   className="group cursor-pointer md:col-span-7"
                 >
-                  <div className="editorial-shadow relative mb-8 h-[500px] overflow-hidden rounded-xl bg-surface-container-high">
+                  <div className="editorial-shadow relative mb-8 h-[300px] overflow-hidden rounded-xl bg-surface-container-high sm:h-[400px] md:h-[500px]">
                     {recentPosts[0].featuredImageUrl ? (
                       <Image
                         src={recentPosts[0].featuredImageUrl}
@@ -304,9 +304,9 @@ export default function OrgHomePage({
                   <Link
                     key={post._id}
                     href={buildHref(`blog/${post.slug}`)}
-                    className="group flex cursor-pointer gap-6"
+                    className="group flex cursor-pointer flex-col gap-4 sm:flex-row sm:gap-6"
                   >
-                    <div className="editorial-shadow relative size-32 shrink-0 overflow-hidden rounded-lg bg-surface-container-high">
+                    <div className="editorial-shadow relative aspect-video shrink-0 overflow-hidden rounded-lg bg-surface-container-high sm:aspect-square sm:size-32">
                       {post.featuredImageUrl ? (
                         <Image
                           src={post.featuredImageUrl}
@@ -348,14 +348,14 @@ export default function OrgHomePage({
 function HomepageSkeleton() {
   return (
     <div className="flex flex-col">
-      <div className="flex min-h-[600px] items-center bg-surface-container-high px-8">
+      <div className="flex min-h-[600px] items-center bg-surface-container-high px-4 sm:px-6 md:px-8">
         <div className="max-w-2xl space-y-6">
-          <Skeleton className="h-16 w-[500px]" />
-          <Skeleton className="h-6 w-[300px]" />
-          <Skeleton className="h-16 w-[500px] rounded-xl" />
+          <Skeleton className="h-16 w-full max-w-[500px]" />
+          <Skeleton className="h-6 w-full max-w-[300px]" />
+          <Skeleton className="h-16 w-full max-w-[500px] rounded-xl" />
         </div>
       </div>
-      <div className="mx-auto max-w-7xl space-y-24 px-8 py-24">
+      <div className="mx-auto max-w-7xl space-y-24 px-4 py-12 sm:px-6 sm:py-24 md:px-8">
         {[1, 2, 3].map((i) => (
           <div key={i} className="space-y-8">
             <Skeleton className="h-10 w-64" />

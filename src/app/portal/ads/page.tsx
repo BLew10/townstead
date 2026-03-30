@@ -51,8 +51,8 @@ export default function PortalAdsPage() {
               }
             >
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="min-w-0 truncate text-base">
                     {purchase.invoiceNumber
                       ? `Invoice #${purchase.invoiceNumber}`
                       : "Purchase"}

@@ -86,8 +86,8 @@ export function AdminBreadcrumbs({ overrides }: AdminBreadcrumbsProps = {}) {
   if (crumbs.length <= 1) return null;
 
   return (
-    <Breadcrumb className="mb-4 print:hidden">
-      <BreadcrumbList>
+    <Breadcrumb className="mb-4 overflow-hidden print:hidden">
+      <BreadcrumbList className="flex-nowrap overflow-x-auto">
         {crumbs.map((crumb, idx) => {
           const isLast = idx === crumbs.length - 1;
           return (

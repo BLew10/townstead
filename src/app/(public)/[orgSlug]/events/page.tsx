@@ -167,7 +167,26 @@ export default function EventsPage({
 
         {/* Main content */}
         <div className="min-w-0 flex-1 space-y-24">
-          {/* Calendar grid (hidden on mobile, list view instead) */}
+          {/* Mobile date picker */}
+          <div className="md:hidden">
+            <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-primary">
+              Filter by Date
+            </label>
+            <input
+              type="date"
+              value={selectedDate ? format(selectedDate, "yyyy-MM-dd") : ""}
+              onChange={(e) => {
+                if (e.target.value) {
+                  setSelectedDate(new Date(e.target.value + "T00:00:00"));
+                } else {
+                  setSelectedDate(null);
+                }
+              }}
+              className="h-10 w-full rounded-lg border-0 bg-surface-container-low px-3 text-sm text-on-surface outline-none ring-0 transition-colors focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+
+          {/* Calendar grid (desktop only) */}
           <div className="hidden md:block">
             <EventCalendar
               events={calendarEvents}
