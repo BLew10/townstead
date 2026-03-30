@@ -16,6 +16,25 @@ vi.mock("convex/react", () => ({
   useQuery: () => DEFAULT_BRANDING,
 }));
 
+vi.mock("@/hooks/use-community-filter", () => ({
+  useCommunityFilter: (orgSlug: string) => ({
+    communitySlug: undefined,
+    communityId: undefined,
+    activeCommunity: undefined,
+    communities: [],
+    communityMap: new Map(),
+    buildHref: (segment: string) =>
+      segment ? `/${orgSlug}/${segment}` : `/${orgSlug}`,
+    setCommunity: vi.fn(),
+  }),
+}));
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/test-org",
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 vi.mock("next/link", () => ({
   default: ({ children, href, ...props }: any) => (
     <a href={href} {...props}>

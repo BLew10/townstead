@@ -32,8 +32,7 @@ scripts/
     03-contacts.ts        # Flatten 4 tables → 1 document
     04-calendar-editions.ts
     05-advertisements.ts
-    06-layouts.ts         # layouts + adPlacements + calendarEditionLayouts
-    07-events.ts
+    06-events.ts
     08-purchases.ts       # Merge PurchaseOverview + PaymentOverview
     09-ad-purchases.ts    # adPurchases + adSlots
     10-scheduled-payments.ts  # Strip stored state

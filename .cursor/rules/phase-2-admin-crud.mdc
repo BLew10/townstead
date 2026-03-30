@@ -7,7 +7,7 @@ alwaysApply: false
 # Phase 2: Core Admin CRUD Pages
 
 ## Goal
-Build all admin management pages for calendars, advertisements, contacts, events, and layouts. Every entity follows the same pattern.
+Build all admin management pages for calendars, advertisements, contacts, and events. Every entity follows the same pattern.
 
 ## Build Order (by dependency)
 
@@ -53,16 +53,6 @@ Build all admin management pages for calendars, advertisements, contacts, events
 - Create/edit form: name, description, date, endDate (optional), startTime, endTime, isYearly toggle
 - Calendar edition multi-select (associate event with editions)
 - FullCalendar view as alternate to list view
-
-### 6. Layouts & Ad Placements
-- `convex/layouts/queries.ts` + `mutations.ts`
-- `convex/adPlacements/queries.ts` + `mutations.ts`
-- `convex/calendarEditionLayouts/queries.ts` + `mutations.ts`
-- `/admin/layouts` — list of layouts
-- `/admin/layouts/[id]` — layout builder:
-  - Visual canvas showing ad placement positions
-  - Add/edit/remove ad placements (x, y, width, height, position)
-  - Assign layout to calendar edition + year
 
 ## CRUD Pattern (follow for every entity)
 

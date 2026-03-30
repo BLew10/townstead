@@ -1,8 +1,17 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { Upload, X, ImageIcon, FileIcon } from "lucide-react";
+import ReactCrop, { type Crop, type PixelCrop } from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
+import { Upload, X, ImageIcon, FileIcon, Crop as CropIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
   type ImagePresetKey,
@@ -11,6 +20,37 @@ import {
   getAcceptString,
   MAX_FILE_SIZE_BYTES,
 } from "@/lib/image-validation";
+
+function getCroppedBlob(
+  image: HTMLImageElement,
+  crop: PixelCrop,
+  mimeType: string
+): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
+  canvas.width = crop.width * scaleX;
+  canvas.height = crop.height * scaleY;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(
+    image,
+    crop.x * scaleX,
+    crop.y * scaleY,
+    crop.width * scaleX,
+    crop.height * scaleY,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("Canvas toBlob failed"))),
+      mimeType,
+      0.92
+    );
+  });
+}
 
 interface ImageUploadProps {
   preset: ImagePresetKey;
@@ -30,12 +70,33 @@ export function ImageUpload({
   className,
 }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const cropImageRef = useRef<HTMLImageElement | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+
   const config = IMAGE_PRESETS[preset];
   const maxSizeMB = Math.round(MAX_FILE_SIZE_BYTES / (1024 * 1024));
+  const hasCrop = !!config.aspectRatio;
+
+  const finishUpload = useCallback(
+    async (file: File) => {
+      if (file.type.startsWith("image/")) {
+        const url = URL.createObjectURL(file);
+        setPreview(url);
+      } else {
+        setPreview(null);
+      }
+      await onUpload(file);
+    },
+    [onUpload]
+  );
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -47,17 +108,46 @@ export function ImageUpload({
         return;
       }
 
-      if (file.type.startsWith("image/")) {
+      if (hasCrop && file.type.startsWith("image/")) {
         const url = URL.createObjectURL(file);
-        setPreview(url);
-      } else {
-        setPreview(null);
+        setCropSrc(url);
+        setCropFile(file);
+        setCrop(undefined);
+        setCompletedCrop(undefined);
+        setCropDialogOpen(true);
+        return;
       }
 
-      await onUpload(file);
+      await finishUpload(file);
     },
-    [preset, onUpload]
+    [preset, hasCrop, finishUpload]
   );
+
+  const handleCropConfirm = useCallback(async () => {
+    if (!completedCrop || !cropImageRef.current || !cropFile) return;
+    try {
+      const blob = await getCroppedBlob(
+        cropImageRef.current,
+        completedCrop,
+        cropFile.type
+      );
+      const croppedFile = new File([blob], cropFile.name, { type: cropFile.type });
+      setCropDialogOpen(false);
+      if (cropSrc) URL.revokeObjectURL(cropSrc);
+      setCropSrc(null);
+      setCropFile(null);
+      await finishUpload(croppedFile);
+    } catch {
+      setError("Failed to crop image");
+    }
+  }, [completedCrop, cropFile, cropSrc, finishUpload]);
+
+  const handleCropCancel = useCallback(() => {
+    setCropDialogOpen(false);
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+    setCropFile(null);
+  }, [cropSrc]);
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -191,6 +281,76 @@ export function ImageUpload({
         <p className="text-sm text-destructive" role="alert">
           {error}
         </p>
+      )}
+
+      {hasCrop && (
+        <Dialog open={cropDialogOpen} onOpenChange={(open) => { if (!open) handleCropCancel(); }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CropIcon className="h-4 w-4" />
+                Crop Image
+              </DialogTitle>
+            </DialogHeader>
+            {cropSrc && (
+              <div className="flex justify-center overflow-hidden rounded-md bg-muted">
+                <ReactCrop
+                  crop={crop}
+                  onChange={(c) => setCrop(c)}
+                  onComplete={(c) => setCompletedCrop(c)}
+                  aspect={config.aspectRatio}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    ref={cropImageRef}
+                    src={cropSrc}
+                    alt="Crop preview"
+                    className="max-h-[60vh]"
+                    onLoad={(e) => {
+                      const img = e.currentTarget;
+                      const aspect = config.aspectRatio!;
+                      const imgAspect = img.width / img.height;
+                      let cropW: number, cropH: number;
+                      if (imgAspect > aspect) {
+                        cropH = img.height * 0.9;
+                        cropW = cropH * aspect;
+                      } else {
+                        cropW = img.width * 0.9;
+                        cropH = cropW / aspect;
+                      }
+                      const x = (img.width - cropW) / 2;
+                      const y = (img.height - cropH) / 2;
+                      const initial: Crop = {
+                        unit: "px",
+                        x,
+                        y,
+                        width: cropW,
+                        height: cropH,
+                      };
+                      setCrop(initial);
+                      setCompletedCrop({
+                        ...initial,
+                        unit: "px",
+                      });
+                    }}
+                  />
+                </ReactCrop>
+              </div>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleCropCancel}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleCropConfirm}
+                disabled={!completedCrop}
+              >
+                Crop &amp; Upload
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

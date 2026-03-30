@@ -59,7 +59,7 @@ Define the FULL schema in `convex/schema.ts` — all Phase 1 tables from @docs/S
 - Create proxy.ts protecting `/admin/*` and `/portal/*` (Next.js 16 uses `proxy` instead of `middleware`)
 
 ### 5. Create Admin Layout Shell
-- Sidebar with navigation links (Calendars, Contacts, Ads, Purchases, Billing, Events, Layouts, Dashboard)
+- Sidebar with navigation links (Calendars, Contacts, Ads, Purchases, Billing, Events, Dashboard)
 - Header with Clerk `UserButton` and org name
 - Main content area with `{children}`
 - Mobile-responsive: sidebar collapses to Sheet on small screens

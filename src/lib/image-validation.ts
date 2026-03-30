@@ -22,6 +22,7 @@ export interface ImagePreset {
   formatLabel: string;
   recommendation: string | null;
   maxSizeBytes: number;
+  aspectRatio?: number;
 }
 
 export const IMAGE_PRESETS = {
@@ -48,6 +49,19 @@ export const IMAGE_PRESETS = {
     formatLabel: "JPG, PNG, or WebP",
     recommendation: "Recommended: 1200 x 630 px (landscape)",
     maxSizeBytes: MAX_FILE_SIZE_BYTES,
+  },
+  hero: {
+    allowedTypes: IMAGE_MIME_TYPES,
+    formatLabel: "JPG, PNG, or WebP",
+    recommendation: "Recommended: 1920 x 800 px (wide landscape)",
+    maxSizeBytes: MAX_FILE_SIZE_BYTES,
+  },
+  event: {
+    allowedTypes: IMAGE_MIME_TYPES,
+    formatLabel: "JPG, PNG, or WebP",
+    recommendation: "Recommended: 800 x 420 px (landscape)",
+    maxSizeBytes: MAX_FILE_SIZE_BYTES,
+    aspectRatio: 800 / 420,
   },
   clientAsset: {
     allowedTypes: ASSET_MIME_TYPES,

@@ -55,6 +55,78 @@ export const submitEvent = mutation({
   },
 });
 
+export const submitBlog = mutation({
+  args: {
+    orgSlug: v.string(),
+    title: v.string(),
+    slug: v.string(),
+    content: v.string(),
+    excerpt: v.optional(v.string()),
+    categoryIds: v.optional(v.array(v.id("categories"))),
+    communityIds: v.optional(v.array(v.id("communities"))),
+  },
+  handler: async (ctx, args) => {
+    const { userId } = await requirePublicAuth(ctx);
+    const branding = await resolveOrg(ctx, args.orgSlug);
+
+    const { needsApproval } = await requireCreateAction(
+      ctx,
+      userId,
+      branding.orgId,
+      "blog"
+    );
+
+    return await ctx.db.insert("blogPosts", {
+      title: args.title,
+      slug: args.slug,
+      content: args.content,
+      excerpt: args.excerpt,
+      categoryIds: args.categoryIds,
+      communityIds: args.communityIds,
+      authorId: userId,
+      status: needsApproval ? "pending" : "published",
+      publishedAt: needsApproval ? undefined : Date.now(),
+      submittedBy: userId,
+      orgId: branding.orgId,
+      isDeleted: false,
+    });
+  },
+});
+
+export const submitVideo = mutation({
+  args: {
+    orgSlug: v.string(),
+    title: v.string(),
+    description: v.optional(v.string()),
+    url: v.optional(v.string()),
+    categoryId: v.optional(v.id("categories")),
+    communityIds: v.optional(v.array(v.id("communities"))),
+  },
+  handler: async (ctx, args) => {
+    const { userId } = await requirePublicAuth(ctx);
+    const branding = await resolveOrg(ctx, args.orgSlug);
+
+    const { needsApproval } = await requireCreateAction(
+      ctx,
+      userId,
+      branding.orgId,
+      "videos"
+    );
+
+    return await ctx.db.insert("videos", {
+      title: args.title,
+      description: args.description,
+      url: args.url,
+      categoryId: args.categoryId,
+      communityIds: args.communityIds,
+      submittedBy: userId,
+      isApproved: !needsApproval,
+      orgId: branding.orgId,
+      isDeleted: false,
+    });
+  },
+});
+
 export const claimCoupon = mutation({
   args: {
     couponId: v.id("coupons"),
@@ -78,14 +150,16 @@ export const claimCoupon = mutation({
       throw new Error("Coupon has expired");
     }
 
-    const existingClaim = await ctx.db
-      .query("couponClaims")
-      .withIndex("by_userId", (q) => q.eq("userId", userId))
-      .filter((q) => q.eq(q.field("couponId"), args.couponId))
-      .unique();
-
-    if (existingClaim) {
-      throw new Error("Coupon already claimed");
+    if (coupon.perUserLimit !== undefined) {
+      const userClaims = await ctx.db
+        .query("couponClaims")
+        .withIndex("by_couponId_and_userId", (q) =>
+          q.eq("couponId", args.couponId).eq("userId", userId)
+        )
+        .collect();
+      if (userClaims.length >= coupon.perUserLimit) {
+        throw new Error("Per-user claim limit reached");
+      }
     }
 
     if (coupon.quantityLimit !== undefined) {

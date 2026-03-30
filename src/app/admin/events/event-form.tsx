@@ -206,7 +206,7 @@ export function EventForm({
               <div className="space-y-1">
                 <Label>Event Image</Label>
                 <ImageUpload
-                  preset="card"
+                  preset="event"
                   onUpload={handleImageUpload}
                   onRemove={() => setImageFileId(undefined)}
                   currentImageUrl={existingImageUrl ?? null}

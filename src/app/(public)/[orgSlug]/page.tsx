@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { format } from "date-fns";
+import Image from "next/image";
 import { ArrowRight, Search, MapPin } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCommunityFilter } from "@/hooks/use-community-filter";
@@ -17,7 +18,7 @@ export default function OrgHomePage({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = use(params);
-  const { communityId, communityMap } = useCommunityFilter(orgSlug);
+  const { communityId, communityMap, buildHref, activeCommunity } = useCommunityFilter(orgSlug);
   const now = useStableNow();
   const data = useQuery(api.public.queries.getHomepageData, {
     orgSlug,
@@ -46,7 +47,17 @@ export default function OrgHomePage({
   return (
     <div className="flex flex-col">
       {/* ── Hero ── */}
-      <section className="relative flex min-h-[600px] items-center overflow-hidden bg-on-surface/80 pt-20">
+      <section className="relative flex min-h-[600px] items-center overflow-hidden bg-on-surface/80">
+        {(activeCommunity?.imageUrl ?? branding.heroImageUrl) && (
+          <Image
+            src={(activeCommunity?.imageUrl ?? branding.heroImageUrl)!}
+            alt=""
+            fill
+            className="object-cover"
+            priority
+            sizes="100vw"
+          />
+        )}
         <div className="absolute inset-0 bg-linear-to-r from-on-surface/80 via-on-surface/40 to-transparent" />
         <div className="relative z-10 mx-auto w-full max-w-7xl px-8">
           <div className="max-w-2xl">
@@ -63,14 +74,14 @@ export default function OrgHomePage({
               <div className="flex flex-1 items-center gap-3 px-4">
                 <Search className="size-5 text-white/70" strokeWidth={1.5} />
                 <Link
-                  href={`/${orgSlug}/events`}
+                  href={buildHref("events")}
                   className="w-full py-4 font-body text-white/60"
                 >
                   Find events, businesses, and deals near you
                 </Link>
               </div>
               <Link
-                href={`/${orgSlug}/events`}
+                href={buildHref("events")}
                 className="rounded-lg bg-secondary px-8 py-4 font-bold text-secondary-foreground transition-colors hover:bg-secondary/80"
               >
                 Search
@@ -93,7 +104,7 @@ export default function OrgHomePage({
               </h2>
             </div>
             <Link
-              href={`/${orgSlug}/events`}
+              href={buildHref("events")}
               className="group flex items-center gap-2 font-bold text-primary"
             >
               View all events
@@ -104,15 +115,25 @@ export default function OrgHomePage({
             {featuredEvents.slice(0, 3).map((event) => (
               <Link
                 key={event._id}
-                href={`/${orgSlug}/events/${event._id}`}
+                href={buildHref(`events/${event._id}`)}
                 className="group cursor-pointer"
               >
-                <div className="editorial-shadow relative mb-6 h-[400px] overflow-hidden rounded-lg bg-surface-container-high">
-                  <div className="flex h-full items-center justify-center text-on-surface-variant">
-                    <span className="font-headline text-2xl italic opacity-30">
-                      {event.name.charAt(0)}
-                    </span>
-                  </div>
+                <div className="editorial-shadow relative mb-6 aspect-40/21 overflow-hidden rounded-lg bg-surface-container-high">
+                  {event.imageUrl ? (
+                    <Image
+                      src={event.imageUrl}
+                      alt={event.name}
+                      fill
+                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-on-surface-variant">
+                      <span className="font-headline text-2xl italic opacity-30">
+                        {event.name.charAt(0)}
+                      </span>
+                    </div>
+                  )}
                   <div className="editorial-shadow absolute left-6 top-6 rounded-full bg-surface-container-lowest px-4 py-2 text-center">
                     <span className="block font-bold leading-tight text-primary">
                       {format(new Date(event.date), "d")}
@@ -153,7 +174,7 @@ export default function OrgHomePage({
             {activeCoupons.map((coupon) => (
               <Link
                 key={coupon._id}
-                href={`/${orgSlug}/coupons/${coupon._id}`}
+                href={buildHref(`coupons/${coupon._id}`)}
                 className="editorial-shadow flex min-w-[400px] items-center gap-6 rounded-lg bg-surface-container-lowest p-8"
               >
                 <div className="flex size-24 shrink-0 items-center justify-center rounded-full bg-surface-container">
@@ -225,7 +246,7 @@ export default function OrgHomePage({
                 Editorial Picks
               </h2>
               <Link
-                href={`/${orgSlug}/blog`}
+                href={buildHref("blog")}
                 className="font-bold text-primary"
               >
                 Read the Blog
@@ -235,15 +256,25 @@ export default function OrgHomePage({
               {/* Major post */}
               {recentPosts[0] && (
                 <Link
-                  href={`/${orgSlug}/blog/${recentPosts[0].slug}`}
+                  href={buildHref(`blog/${recentPosts[0].slug}`)}
                   className="group cursor-pointer md:col-span-7"
                 >
-                  <div className="editorial-shadow mb-8 h-[500px] overflow-hidden rounded-xl bg-surface-container-high">
-                    <div className="flex h-full items-center justify-center">
-                      <span className="font-headline text-6xl italic text-on-surface/10">
-                        {recentPosts[0].title.charAt(0)}
-                      </span>
-                    </div>
+                  <div className="editorial-shadow relative mb-8 h-[500px] overflow-hidden rounded-xl bg-surface-container-high">
+                    {recentPosts[0].featuredImageUrl ? (
+                      <Image
+                        src={recentPosts[0].featuredImageUrl}
+                        alt={recentPosts[0].title}
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover:scale-105"
+                        sizes="(max-width: 768px) 100vw, 58vw"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <span className="font-headline text-6xl italic text-on-surface/10">
+                          {recentPosts[0].title.charAt(0)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <h3 className="mb-6 font-headline text-4xl leading-tight transition-colors group-hover:text-primary">
                     {recentPosts[0].title}
@@ -272,15 +303,25 @@ export default function OrgHomePage({
                 {recentPosts.slice(1, 4).map((post) => (
                   <Link
                     key={post._id}
-                    href={`/${orgSlug}/blog/${post.slug}`}
+                    href={buildHref(`blog/${post.slug}`)}
                     className="group flex cursor-pointer gap-6"
                   >
-                    <div className="editorial-shadow size-32 shrink-0 overflow-hidden rounded-lg bg-surface-container-high">
-                      <div className="flex h-full items-center justify-center">
-                        <span className="font-headline text-2xl italic text-on-surface/10">
-                          {post.title.charAt(0)}
-                        </span>
-                      </div>
+                    <div className="editorial-shadow relative size-32 shrink-0 overflow-hidden rounded-lg bg-surface-container-high">
+                      {post.featuredImageUrl ? (
+                        <Image
+                          src={post.featuredImageUrl}
+                          alt={post.title}
+                          fill
+                          className="object-cover transition-transform duration-300 group-hover:scale-105"
+                          sizes="128px"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <span className="font-headline text-2xl italic text-on-surface/10">
+                            {post.title.charAt(0)}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <h4 className="mb-2 font-headline text-2xl transition-colors group-hover:text-primary">
@@ -307,7 +348,7 @@ export default function OrgHomePage({
 function HomepageSkeleton() {
   return (
     <div className="flex flex-col">
-      <div className="flex min-h-[600px] items-center bg-surface-container-high px-8 pt-20">
+      <div className="flex min-h-[600px] items-center bg-surface-container-high px-8">
         <div className="max-w-2xl space-y-6">
           <Skeleton className="h-16 w-[500px]" />
           <Skeleton className="h-6 w-[300px]" />

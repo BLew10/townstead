@@ -17,7 +17,7 @@ export default function CouponsPage({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = use(params);
-  const { communityId, communityMap } = useCommunityFilter(orgSlug);
+  const { communityId, communityMap, buildHref } = useCommunityFilter(orgSlug);
   const now = useStableNow();
 
   const coupons = useQuery(api.public.queries.listCoupons, {
@@ -103,7 +103,7 @@ export default function CouponsPage({
             return (
               <Link
                 key={coupon._id}
-                href={`/${orgSlug}/coupons/${coupon._id}`}
+                href={buildHref(`coupons/${coupon._id}`)}
                 className="group"
               >
                 <div className="h-full rounded-lg bg-surface-container-lowest editorial-shadow transition-all hover:bg-surface-container">
@@ -130,11 +130,15 @@ export default function CouponsPage({
                         {startFormatted} – {endFormatted}
                       </span>
                     </div>
-                    {coupon.quantityLimit !== undefined && (
+                    {coupon.isSoldOut ? (
+                      <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-destructive">
+                        Sold out
+                      </span>
+                    ) : coupon.quantityLimit !== undefined ? (
                       <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-primary">
                         Limited availability
                       </span>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </Link>

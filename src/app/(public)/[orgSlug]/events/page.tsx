@@ -10,6 +10,7 @@ import {
   startOfMonth,
   endOfMonth,
 } from "date-fns";
+import Image from "next/image";
 import { Search, CalendarDays, MapPin, Clock, Filter } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EventCalendar } from "@/components/public/event-calendar";
@@ -23,7 +24,7 @@ export default function EventsPage({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = use(params);
-  const { communityId, communityMap } = useCommunityFilter(orgSlug);
+  const { communityId, communityMap, buildHref } = useCommunityFilter(orgSlug);
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -215,31 +216,42 @@ export default function EventsPage({
                 {filteredEvents.map((event) => (
                   <Link
                     key={event._id}
-                    href={`/${orgSlug}/events/${event._id}`}
+                    href={buildHref(`events/${event._id}`)}
                   >
                     <div className="editorial-shadow rounded-lg bg-surface-container-lowest p-6 transition-colors hover:bg-surface-container">
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="font-headline line-clamp-1 text-xl italic text-on-surface">
-                            {event.name}
-                          </p>
-                          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-on-surface/70">
-                            <span className="inline-flex items-center gap-1">
-                              <Clock className="size-3.5 shrink-0" />
-                              {format(
-                                new Date(event.date),
-                                "EEE, MMM d · h:mm a",
-                              )}
-                            </span>
-                            {event.location && (
+                        <div className="flex items-start gap-4 min-w-0">
+                          {event.imageUrl && (
+                            <Image
+                              src={event.imageUrl}
+                              alt=""
+                              width={80}
+                              height={80}
+                              className="shrink-0 rounded-md object-cover"
+                            />
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-headline line-clamp-1 text-xl italic text-on-surface">
+                              {event.name}
+                            </p>
+                            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-on-surface/70">
                               <span className="inline-flex items-center gap-1">
-                                <MapPin className="size-3.5 shrink-0" />
-                                {event.location}
+                                <Clock className="size-3.5 shrink-0" />
+                                {format(
+                                  new Date(event.date),
+                                  "EEE, MMM d · h:mm a",
+                                )}
                               </span>
-                            )}
-                          </div>
-                          <div className="mt-2">
-                            <CommunityBadges communityIds={event.communityIds} communityMap={communityMap} />
+                              {event.location && (
+                                <span className="inline-flex items-center gap-1">
+                                  <MapPin className="size-3.5 shrink-0" />
+                                  {event.location}
+                                </span>
+                              )}
+                            </div>
+                            <div className="mt-2">
+                              <CommunityBadges communityIds={event.communityIds} communityMap={communityMap} />
+                            </div>
                           </div>
                         </div>
                         <span className="shrink-0 rounded-lg bg-surface-container-high px-3 py-2 text-center">

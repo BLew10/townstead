@@ -13,6 +13,14 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("convex/react", () => ({
+  useQuery: () => undefined,
+}));
+
+vi.mock("@/hooks/use-org", () => ({
+  useOrg: () => ({ orgId: null, isReady: false }),
+}));
+
 vi.mock("@/components/ui/scroll-area", () => ({
   ScrollArea: ({ children }: any) => <div>{children}</div>,
 }));
@@ -41,13 +49,13 @@ describe("AdminSidebar", () => {
     expect(screen.getByText("Advertisements")).toBeDefined();
     expect(screen.getByText("Purchases")).toBeDefined();
     expect(screen.getByText("Billing")).toBeDefined();
-    expect(screen.getByText("Layouts")).toBeDefined();
     expect(screen.getByText("Address Books")).toBeDefined();
   });
 
   it("renders community site collapsible group", () => {
     render(<AdminSidebar />);
     expect(screen.getByText("Community Site")).toBeDefined();
+    expect(screen.getByText("Approvals")).toBeDefined();
     expect(screen.getByText("Events")).toBeDefined();
     expect(screen.getByText("Communities")).toBeDefined();
     expect(screen.getByText("Blog")).toBeDefined();

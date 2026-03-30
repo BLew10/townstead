@@ -2,12 +2,14 @@
 
 import { use } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
 import { format } from "date-fns";
 import { ArrowLeft, CalendarDays, User } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { JsonLd } from "@/components/public/json-ld";
+import { useCommunityFilter } from "@/hooks/use-community-filter";
 
 export default function BlogPostPage({
   params,
@@ -15,6 +17,7 @@ export default function BlogPostPage({
   params: Promise<{ orgSlug: string; slug: string }>;
 }) {
   const { orgSlug, slug } = use(params);
+  const { buildHref } = useCommunityFilter(orgSlug);
 
   const post = useQuery(api.public.queries.getBlogPost, { orgSlug, slug });
 
@@ -29,7 +32,7 @@ export default function BlogPostPage({
     return (
       <div className="mx-auto max-w-3xl px-4 py-24 font-body text-on-surface sm:px-6 lg:px-8">
         <Link
-          href={`/${orgSlug}/blog`}
+          href={buildHref("blog")}
           className="mb-6 inline-flex items-center gap-1 text-sm font-bold text-primary transition-colors hover:text-primary/80"
         >
           <ArrowLeft className="size-4" />
@@ -50,7 +53,7 @@ export default function BlogPostPage({
   return (
     <div className="mx-auto max-w-3xl px-4 py-24 font-body text-on-surface sm:px-6 lg:px-8">
       <Link
-        href={`/${orgSlug}/blog`}
+        href={buildHref("blog")}
         className="mb-6 inline-flex items-center gap-1 text-sm font-bold text-primary transition-colors hover:text-primary/80"
       >
         <ArrowLeft className="size-4" />
@@ -65,6 +68,7 @@ export default function BlogPostPage({
             datePublished: new Date(post.publishedAt).toISOString(),
           }),
           ...(post.excerpt && { description: post.excerpt }),
+          ...(post.featuredImageUrl && { image: post.featuredImageUrl }),
         }}
       />
 
@@ -103,6 +107,19 @@ export default function BlogPostPage({
             </span>
           )}
         </div>
+
+        {post.featuredImageUrl && (
+          <div className="relative mt-8 aspect-video overflow-hidden rounded-xl">
+            <Image
+              src={post.featuredImageUrl}
+              alt={post.title}
+              fill
+              className="object-cover"
+              priority
+              sizes="(max-width: 768px) 100vw, 768px"
+            />
+          </div>
+        )}
 
         <div
           className="my-10 h-px bg-surface-container-high"

@@ -37,7 +37,7 @@ function makeTerms(
 }
 
 function makeSP(
-  overrides: Partial<ScheduledPaymentDoc> & {
+  overrides: Omit<Partial<ScheduledPaymentDoc>, "_id"> & {
     _id: string;
     dueDate: number;
     amount: number;

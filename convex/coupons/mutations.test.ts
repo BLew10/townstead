@@ -43,6 +43,36 @@ describe("coupons.mutations.create", () => {
     expect(coupon!.terms).toBe("While supplies last");
   });
 
+  it("inserts a coupon with perUserLimit", async () => {
+    const t = convexTest(schema, modules);
+    const asOrg1 = t.withIdentity({ orgId: "org_1" });
+
+    const contactId = await t.run(async (ctx) => {
+      return await ctx.db.insert("contacts", {
+        company: "Acme Corp",
+        firstName: "Jane",
+        lastName: "Doe",
+        orgId: "org_1",
+        isDeleted: false,
+      });
+    });
+
+    const couponId = await asOrg1.mutation(api.coupons.mutations.create, {
+      businessContactId: contactId,
+      title: "Limited Per User",
+      startDate: 1700000000000,
+      endDate: 1710000000000,
+      perUserLimit: 5,
+    });
+
+    const coupon = await t.run(async (ctx) => {
+      return await ctx.db.get(couponId);
+    });
+
+    expect(coupon!.perUserLimit).toBe(5);
+    expect(coupon!.quantityLimit).toBeUndefined();
+  });
+
   it("inserts a coupon with only required fields", async () => {
     const t = convexTest(schema, modules);
     const asOrg1 = t.withIdentity({ orgId: "org_1" });

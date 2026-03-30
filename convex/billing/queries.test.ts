@@ -1,4 +1,4 @@
-import { convexTest } from "convex-test";
+import { convexTest, type TestConvex } from "convex-test";
 import { describe, it, expect } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
@@ -1438,7 +1438,9 @@ describe("getStatementData", () => {
 describe("listThisMonth", () => {
   const MARCH_2026 = new Date(2026, 2, 15).getTime();
 
-  async function seedContact(t: ReturnType<typeof convexTest>, orgId = ORG) {
+  type TestInstance = TestConvex<typeof schema>;
+
+  async function seedContact(t: TestInstance, orgId = ORG) {
     return await t.run(async (ctx) => {
       const contactId = await ctx.db.insert("contacts", {
         company: "Test Co",
@@ -1454,7 +1456,7 @@ describe("listThisMonth", () => {
   }
 
   async function seedPurchaseWithSchedule(
-    t: ReturnType<typeof convexTest>,
+    t: TestInstance,
     contactId: any,
     sp: { dueDate: number; amount: number; month: number; year: number },
     orgId = ORG

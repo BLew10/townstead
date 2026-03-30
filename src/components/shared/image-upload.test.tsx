@@ -29,6 +29,13 @@ describe("ImageUpload", () => {
     ).toBeDefined();
   });
 
+  it("displays the recommendation text for event preset", () => {
+    render(<ImageUpload preset="event" onUpload={vi.fn()} />);
+    expect(
+      screen.getByText("Recommended: 800 x 420 px (landscape)")
+    ).toBeDefined();
+  });
+
   it("does not display recommendation text for clientAsset preset", () => {
     render(<ImageUpload preset="clientAsset" onUpload={vi.fn()} />);
     expect(screen.queryByText(/Recommended:/)).toBeNull();

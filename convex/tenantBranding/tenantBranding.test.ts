@@ -82,6 +82,63 @@ describe("tenantBranding", () => {
     expect(result).toBeNull();
   });
 
+  it("getBySlug returns resolved logoUrl and heroImageUrl as null when not set", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.mutation(api.tenantBranding.mutations.upsert, {
+      orgId: "org_1",
+      orgSlug: "url-test",
+      siteName: "URL Test Site",
+    });
+
+    const result = await t.query(api.tenantBranding.queries.getBySlug, {
+      orgSlug: "url-test",
+    });
+    expect(result).not.toBeNull();
+    expect(result!.logoUrl).toBeNull();
+    expect(result!.heroImageUrl).toBeNull();
+  });
+
+  it("getByOrgId returns resolved logoUrl and heroImageUrl as null when not set", async () => {
+    const t = convexTest(schema, modules);
+
+    await t.mutation(api.tenantBranding.mutations.upsert, {
+      orgId: "org_1",
+      orgSlug: "orgid-test",
+      siteName: "OrgId Test Site",
+    });
+
+    const result = await t.query(api.tenantBranding.queries.getByOrgId, {
+      orgId: "org_1",
+    });
+    expect(result).not.toBeNull();
+    expect(result!.logoUrl).toBeNull();
+    expect(result!.heroImageUrl).toBeNull();
+  });
+
+  it("upsert persists heroImage field", async () => {
+    const t = convexTest(schema, modules);
+
+    const storageId = await t.run(async (ctx) => {
+      return await ctx.storage.store(new Blob(["fake-image"], { type: "image/png" }));
+    });
+
+    await t.mutation(api.tenantBranding.mutations.upsert, {
+      orgId: "org_1",
+      orgSlug: "hero-test",
+      siteName: "Hero Test",
+      heroImage: storageId,
+    });
+
+    const result = await t.query(api.tenantBranding.queries.getBySlug, {
+      orgSlug: "hero-test",
+    });
+    expect(result).not.toBeNull();
+    expect(result!.heroImage).toBe(storageId);
+    expect(result!.heroImageUrl).not.toBeNull();
+    expect(typeof result!.heroImageUrl).toBe("string");
+  });
+
   it("upsert saves socialLinks correctly", async () => {
     const t = convexTest(schema, modules);
 

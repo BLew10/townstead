@@ -1,5 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { requireAuth, requirePermission } from "../auth.helpers";
+import { PERMISSIONS } from "../permissions";
 
 export const create = mutation({
   args: {
@@ -17,6 +19,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     return await ctx.db.insert("events", {
       ...args,
+      isApproved: true,
       isDeleted: false,
     });
   },
@@ -34,10 +37,40 @@ export const update = mutation({
     isYearly: v.optional(v.boolean()),
     communityIds: v.optional(v.array(v.id("communities"))),
     imageFileId: v.optional(v.id("_storage")),
+    isApproved: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { id, ...fields } = args;
     await ctx.db.patch(id, fields);
+  },
+});
+
+export const approve = mutation({
+  args: { id: v.id("events") },
+  handler: async (ctx, args) => {
+    const { userId, orgId } = await requireAuth(ctx);
+    await requirePermission(ctx, userId, orgId, PERMISSIONS.EVENTS_APPROVE);
+
+    const event = await ctx.db.get(args.id);
+    if (!event || event.orgId !== orgId) throw new Error("Not found");
+
+    await ctx.db.patch(args.id, { isApproved: true });
+  },
+});
+
+export const reject = mutation({
+  args: {
+    id: v.id("events"),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { userId, orgId } = await requireAuth(ctx);
+    await requirePermission(ctx, userId, orgId, PERMISSIONS.EVENTS_APPROVE);
+
+    const event = await ctx.db.get(args.id);
+    if (!event || event.orgId !== orgId) throw new Error("Not found");
+
+    await ctx.db.patch(args.id, { isDeleted: true });
   },
 });
 

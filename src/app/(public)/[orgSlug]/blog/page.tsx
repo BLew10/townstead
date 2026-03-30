@@ -2,6 +2,7 @@
 
 import { use, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { format } from "date-fns";
@@ -18,7 +19,7 @@ export default function BlogPage({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = use(params);
-  const { communityId, communityMap } = useCommunityFilter(orgSlug);
+  const { communityId, communityMap, buildHref } = useCommunityFilter(orgSlug);
   const [selectedCategory, setSelectedCategory] = useState<
     Id<"categories"> | undefined
   >(undefined);
@@ -101,9 +102,25 @@ export default function BlogPage({
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {posts.map((post) => (
-            <Link key={post._id} href={`/${orgSlug}/blog/${post.slug}`}>
+            <Link key={post._id} href={buildHref(`blog/${post.slug}`)}>
               <div className="group h-full overflow-hidden rounded-lg bg-surface-container-lowest editorial-shadow transition-all hover:bg-surface-container">
-                <div className="aspect-video bg-surface-container-high" />
+                <div className="relative aspect-video bg-surface-container-high">
+                  {post.featuredImageUrl ? (
+                    <Image
+                      src={post.featuredImageUrl}
+                      alt={post.title}
+                      fill
+                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <span className="font-headline text-4xl italic text-on-surface/10">
+                        {post.title.charAt(0)}
+                      </span>
+                    </div>
+                  )}
+                </div>
                 <div className="p-6">
                   <div className="mb-3 flex flex-wrap gap-1.5">
                     {post.categoryIds?.map((catId: Id<"categories">) => {

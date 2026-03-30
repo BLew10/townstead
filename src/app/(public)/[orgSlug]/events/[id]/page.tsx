@@ -2,6 +2,7 @@
 
 import { use } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
 import { format } from "date-fns";
@@ -15,6 +16,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { JsonLd } from "@/components/public/json-ld";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
+import { useCommunityFilter } from "@/hooks/use-community-filter";
 
 export default function EventDetailPage({
   params,
@@ -22,11 +24,12 @@ export default function EventDetailPage({
   params: Promise<{ orgSlug: string; id: string }>;
 }) {
   const { orgSlug, id } = use(params);
+  const { buildHref } = useCommunityFilter(orgSlug);
   const event = useQuery(api.public.queries.getEvent, {
     id: id as Id<"events">,
   });
 
-  if (event === undefined) return <EventDetailSkeleton orgSlug={orgSlug} />;
+  if (event === undefined) return <EventDetailSkeleton buildHref={buildHref} />;
 
   if (event === null) {
     return (
@@ -39,7 +42,7 @@ export default function EventDetailPage({
           This event may have been removed or doesn&apos;t exist.
         </p>
         <Link
-          href={`/${orgSlug}/events`}
+          href={buildHref("events")}
           className="mt-6 inline-flex items-center gap-1.5 text-sm font-bold text-primary transition-colors hover:text-primary/80"
         >
           <ArrowLeft className="size-3.5" />
@@ -68,12 +71,26 @@ export default function EventDetailPage({
       />
       {/* Back link */}
       <Link
-        href={`/${orgSlug}/events`}
+        href={buildHref("events")}
         className="mb-8 inline-flex items-center gap-1.5 text-sm font-bold text-primary transition-colors hover:text-primary/80"
       >
         <ArrowLeft className="size-3.5" />
         Back to Events
       </Link>
+
+      {/* Hero image */}
+      {event.imageUrl && (
+        <div className="relative mb-8 aspect-40/21 w-full overflow-hidden rounded-lg">
+          <Image
+            src={event.imageUrl}
+            alt={event.name}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 768px"
+            priority
+          />
+        </div>
+      )}
 
       {/* Date badge */}
       <div className="mb-6 inline-flex items-center gap-2 rounded-lg bg-surface-container-high px-4 py-2">
@@ -145,11 +162,15 @@ export default function EventDetailPage({
 /* Skeleton                                                            */
 /* ------------------------------------------------------------------ */
 
-function EventDetailSkeleton({ orgSlug }: { orgSlug: string }) {
+function EventDetailSkeleton({
+  buildHref,
+}: {
+  buildHref: (s: string) => string;
+}) {
   return (
     <div className="font-body mx-auto max-w-3xl px-4 py-12 text-on-surface md:py-24">
       <Link
-        href={`/${orgSlug}/events`}
+        href={buildHref("events")}
         className="mb-8 inline-flex items-center gap-1.5 text-sm font-bold text-primary transition-colors hover:text-primary/80"
       >
         <ArrowLeft className="size-3.5" />

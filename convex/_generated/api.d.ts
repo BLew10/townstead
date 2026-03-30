@@ -8,8 +8,6 @@
  * @module
  */
 
-import type * as adPlacements_mutations from "../adPlacements/mutations.js";
-import type * as adPlacements_queries from "../adPlacements/queries.js";
 import type * as adPricing_mutations from "../adPricing/mutations.js";
 import type * as adPricing_queries from "../adPricing/queries.js";
 import type * as adSlots_queries from "../adSlots/queries.js";
@@ -17,12 +15,11 @@ import type * as addressBooks_mutations from "../addressBooks/mutations.js";
 import type * as addressBooks_queries from "../addressBooks/queries.js";
 import type * as advertisements_mutations from "../advertisements/mutations.js";
 import type * as advertisements_queries from "../advertisements/queries.js";
+import type * as approvals_queries from "../approvals/queries.js";
 import type * as billing_helpers from "../billing/helpers.js";
 import type * as billing_queries from "../billing/queries.js";
 import type * as blog_mutations from "../blog/mutations.js";
 import type * as blog_queries from "../blog/queries.js";
-import type * as calendarEditionLayouts_mutations from "../calendarEditionLayouts/mutations.js";
-import type * as calendarEditionLayouts_queries from "../calendarEditionLayouts/queries.js";
 import type * as calendarEditions_mutations from "../calendarEditions/mutations.js";
 import type * as calendarEditions_queries from "../calendarEditions/queries.js";
 import type * as categories_mutations from "../categories/mutations.js";
@@ -40,8 +37,6 @@ import type * as dashboard_queries from "../dashboard/queries.js";
 import type * as events_mutations from "../events/mutations.js";
 import type * as events_queries from "../events/queries.js";
 import type * as files from "../files.js";
-import type * as layouts_mutations from "../layouts/mutations.js";
-import type * as layouts_queries from "../layouts/queries.js";
 import type * as migration from "../migration.js";
 import type * as migrations_migrateClientLinks from "../migrations/migrateClientLinks.js";
 import type * as orgPermissions_mutations from "../orgPermissions/mutations.js";
@@ -76,8 +71,6 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  "adPlacements/mutations": typeof adPlacements_mutations;
-  "adPlacements/queries": typeof adPlacements_queries;
   "adPricing/mutations": typeof adPricing_mutations;
   "adPricing/queries": typeof adPricing_queries;
   "adSlots/queries": typeof adSlots_queries;
@@ -85,12 +78,11 @@ declare const fullApi: ApiFromModules<{
   "addressBooks/queries": typeof addressBooks_queries;
   "advertisements/mutations": typeof advertisements_mutations;
   "advertisements/queries": typeof advertisements_queries;
+  "approvals/queries": typeof approvals_queries;
   "billing/helpers": typeof billing_helpers;
   "billing/queries": typeof billing_queries;
   "blog/mutations": typeof blog_mutations;
   "blog/queries": typeof blog_queries;
-  "calendarEditionLayouts/mutations": typeof calendarEditionLayouts_mutations;
-  "calendarEditionLayouts/queries": typeof calendarEditionLayouts_queries;
   "calendarEditions/mutations": typeof calendarEditions_mutations;
   "calendarEditions/queries": typeof calendarEditions_queries;
   "categories/mutations": typeof categories_mutations;
@@ -108,8 +100,6 @@ declare const fullApi: ApiFromModules<{
   "events/mutations": typeof events_mutations;
   "events/queries": typeof events_queries;
   files: typeof files;
-  "layouts/mutations": typeof layouts_mutations;
-  "layouts/queries": typeof layouts_queries;
   migration: typeof migration;
   "migrations/migrateClientLinks": typeof migrations_migrateClientLinks;
   "orgPermissions/mutations": typeof orgPermissions_mutations;

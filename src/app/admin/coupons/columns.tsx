@@ -126,6 +126,24 @@ export function columns({
       sortingFn: "basic",
     },
     {
+      id: "limits",
+      header: "Limits",
+      enableSorting: false,
+      cell: ({ row }) => {
+        const { quantityLimit, perUserLimit } = row.original;
+        return (
+          <div className="flex flex-wrap gap-1">
+            <Badge variant="outline">
+              {quantityLimit != null ? `${quantityLimit} total` : "Unlimited"}
+            </Badge>
+            {perUserLimit != null && (
+              <Badge variant="outline">{perUserLimit}/user</Badge>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       id: "status",
       header: "Status",
       enableSorting: false,

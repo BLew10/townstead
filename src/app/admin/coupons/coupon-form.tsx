@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { ImageUpload } from "@/components/shared/image-upload";
 import { toast } from "sonner";
 import { useState, useEffect, useCallback } from "react";
@@ -63,7 +64,10 @@ export function CouponForm({
   const [businessContactId, setBusinessContactId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [hasQuantityLimit, setHasQuantityLimit] = useState(false);
   const [quantityLimit, setQuantityLimit] = useState("");
+  const [hasPerUserLimit, setHasPerUserLimit] = useState(false);
+  const [perUserLimit, setPerUserLimit] = useState("");
   const [terms, setTerms] = useState("");
   const [selectedCommunityIds, setSelectedCommunityIds] = useState<string[]>(
     []
@@ -85,8 +89,13 @@ export function CouponForm({
       setBusinessContactId(editing.businessContactId);
       setStartDate(timestampToDateString(editing.startDate));
       setEndDate(timestampToDateString(editing.endDate));
+      setHasQuantityLimit(editing.quantityLimit != null);
       setQuantityLimit(
         editing.quantityLimit != null ? String(editing.quantityLimit) : ""
+      );
+      setHasPerUserLimit(editing.perUserLimit != null);
+      setPerUserLimit(
+        editing.perUserLimit != null ? String(editing.perUserLimit) : ""
       );
       setTerms(editing.terms ?? "");
       setSelectedCommunityIds(
@@ -103,7 +112,10 @@ export function CouponForm({
       setBusinessContactId("");
       setStartDate("");
       setEndDate("");
+      setHasQuantityLimit(false);
       setQuantityLimit("");
+      setHasPerUserLimit(false);
+      setPerUserLimit("");
       setTerms("");
       setSelectedCommunityIds([]);
       setImageFileId(undefined);
@@ -143,7 +155,14 @@ export function CouponForm({
         description: description || undefined,
         startDate: dateStringToTimestamp(startDate),
         endDate: dateStringToTimestamp(endDate),
-        quantityLimit: quantityLimit ? Number(quantityLimit) : undefined,
+        quantityLimit:
+          hasQuantityLimit && quantityLimit
+            ? Number(quantityLimit)
+            : undefined,
+        perUserLimit:
+          hasPerUserLimit && perUserLimit
+            ? Number(perUserLimit)
+            : undefined,
         terms: terms || undefined,
         communityIds:
           selectedCommunityIds.length > 0
@@ -259,16 +278,52 @@ export function CouponForm({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="quantityLimit">Quantity Limit</Label>
-            <Input
-              id="quantityLimit"
-              type="number"
-              placeholder="Unlimited"
-              value={quantityLimit}
-              onChange={(e) => setQuantityLimit(e.target.value)}
-              min={0}
-            />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="hasQuantityLimit">Total quantity limit</Label>
+              <Switch
+                id="hasQuantityLimit"
+                checked={hasQuantityLimit}
+                onCheckedChange={(checked) => {
+                  setHasQuantityLimit(checked);
+                  if (!checked) setQuantityLimit("");
+                }}
+              />
+            </div>
+            {hasQuantityLimit && (
+              <Input
+                id="quantityLimit"
+                type="number"
+                placeholder="Max total claims"
+                value={quantityLimit}
+                onChange={(e) => setQuantityLimit(e.target.value)}
+                min={1}
+              />
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="hasPerUserLimit">Per-user claim limit</Label>
+              <Switch
+                id="hasPerUserLimit"
+                checked={hasPerUserLimit}
+                onCheckedChange={(checked) => {
+                  setHasPerUserLimit(checked);
+                  if (!checked) setPerUserLimit("");
+                }}
+              />
+            </div>
+            {hasPerUserLimit && (
+              <Input
+                id="perUserLimit"
+                type="number"
+                placeholder="Max claims per user"
+                value={perUserLimit}
+                onChange={(e) => setPerUserLimit(e.target.value)}
+                min={1}
+              />
+            )}
           </div>
 
           <div className="space-y-2">

@@ -59,7 +59,6 @@ Core domain logic: calendar editions, ad types (day/non-day), ad slot purchasing
 
 - CRUD for calendar editions (name, code, soft-delete)
 - Year-based edition management
-- Layout assignment per edition per year
 
 ### 1.3 Advertisement Types
 
@@ -137,26 +136,20 @@ Core domain logic: calendar editions, ad types (day/non-day), ad slot purchasing
 - Click-to-view purchase details
 - Summary stats: total revenue, collection rate, outstanding balance, late payments
 
-### 1.9 Layouts
-
-- Layout builder for ad placement positions
-- Ad placements: x, y, width, height, position (top/bottom)
-- Layout assignment to edition + year (single join table)
-
-### 1.10 Events
+### 1.9 Events
 
 - Event CRUD: name, description, date, multi-day, start/end times
 - Yearly recurring (`isYearly` flag)
 - Many-to-many with calendar editions
 - Calendar export view for printing
 
-### 1.11 Email
+### 1.10 Email
 
 - Resend as provider (replacing Mailgun/Mailjet)
 - PDF attachment support for invoices
 - React Email for templates
 
-### 1.12 Print / Export
+### 1.11 Print / Export
 
 - Calendar inventory print view
 - Cash flow report PDF
@@ -260,9 +253,6 @@ All tables include `orgId` (Clerk organization ID) for tenant isolation.
 | `scheduledPayments` | purchaseId, dueDate, amount, month, year, lateFeeWaived |
 | `payments` | purchaseId, amount, date, method, checkNumber, isPrepaid |
 | `paymentAllocations` | paymentId, scheduledPaymentId, amount |
-| `layouts` | name, orgId |
-| `adPlacements` | layoutId, advertisementId, x, y, width, height, position |
-| `calendarEditionLayouts` | calendarEditionId, layoutId, year |
 | `events` | name, description, date, endDate, startTime, endTime, isYearly, calendarEditionIds[], orgId, isDeleted |
 
 ### Phase 2 Tables
@@ -325,13 +315,12 @@ Every query filter path gets an explicit Convex index:
 3. Contacts (flatten 4 tables → 1 document)
 4. Calendar editions
 5. Advertisements
-6. Layouts + ad placements + calendar edition layouts
-7. Events
-8. Purchases (merge PurchaseOverview + PaymentOverview)
-9. Ad purchases + ad slots
-10. Scheduled payments (strip stored state)
-11. Payments
-12. Payment allocations
+6. Events
+7. Purchases (merge PurchaseOverview + PaymentOverview)
+8. Ad purchases + ad slots
+9. Scheduled payments (strip stored state)
+10. Payments
+11. Payment allocations
 
 ### ID Mapping
 

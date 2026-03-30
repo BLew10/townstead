@@ -77,6 +77,36 @@ describe("validateFile", () => {
     });
   });
 
+  describe("event preset", () => {
+    it("accepts JPEG, PNG, WebP", () => {
+      expect(validateFile(makeFile("e.jpg", 100, "image/jpeg"), "event").valid).toBe(true);
+      expect(validateFile(makeFile("e.png", 100, "image/png"), "event").valid).toBe(true);
+      expect(validateFile(makeFile("e.webp", 100, "image/webp"), "event").valid).toBe(true);
+    });
+
+    it("rejects SVG", () => {
+      const result = validateFile(makeFile("e.svg", 100, "image/svg+xml"), "event");
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("Invalid file type");
+    });
+
+    it("rejects oversized files", () => {
+      const result = validateFile(makeFile("big.png", MAX_FILE_SIZE_BYTES + 1, "image/png"), "event");
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain("too large");
+    });
+
+    it("has correct aspect ratio", () => {
+      expect(IMAGE_PRESETS.event.aspectRatio).toBeCloseTo(800 / 420);
+    });
+
+    it("has correct recommendation text", () => {
+      expect(IMAGE_PRESETS.event.recommendation).toBe(
+        "Recommended: 800 x 420 px (landscape)"
+      );
+    });
+  });
+
   describe("featuredImage preset", () => {
     it("accepts standard image types", () => {
       expect(validateFile(makeFile("f.jpg", 100, "image/jpeg"), "featuredImage").valid).toBe(true);
@@ -135,6 +165,11 @@ describe("getAcceptString", () => {
 
   it("returns comma-separated MIME types for card", () => {
     const accept = getAcceptString("card");
+    expect(accept).toBe("image/jpeg,image/png,image/webp");
+  });
+
+  it("returns comma-separated MIME types for event", () => {
+    const accept = getAcceptString("event");
     expect(accept).toBe("image/jpeg,image/png,image/webp");
   });
 

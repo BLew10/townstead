@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { DataTableColumnHeader } from "@/components/shared/data-table-column-header";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import Link from "next/link";
-import { Info, CalendarDays } from "lucide-react";
+import { Info, CalendarDays, DollarSign } from "lucide-react";
 import { PaymentScheduleModal } from "@/components/admin/payment-schedule-modal";
+import { RecordPaymentSheet } from "@/components/admin/record-payment-sheet";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 
 export interface OwedPaymentRow {
   _id: string;
@@ -144,4 +146,29 @@ export const owedPaymentColumns: ColumnDef<OwedPaymentRow>[] = [
         "—"
       ),
   },
+  {
+    id: "actions",
+    cell: ({ row }) => <RecordPaymentAction row={row.original} />,
+  },
 ];
+
+function RecordPaymentAction({ row }: { row: OwedPaymentRow }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        <DollarSign className="mr-1.5 h-3.5 w-3.5" />
+        Record Payment
+      </Button>
+      <RecordPaymentSheet
+        open={open}
+        onOpenChange={setOpen}
+        purchaseId={row.purchaseId as Id<"purchases">}
+        contactName={row.contactName}
+        company={row.company}
+        invoiceNumber={row.invoiceNumber}
+      />
+    </>
+  );
+}

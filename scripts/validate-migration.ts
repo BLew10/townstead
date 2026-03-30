@@ -90,8 +90,7 @@ async function main() {
       (SELECT COUNT(*) FROM "CalendarEdition") AS calendar_editions,
       (SELECT COUNT(*) FROM "Advertisement") AS advertisements,
       (SELECT COUNT(*) FROM "AddressBook" WHERE "isDeleted" = false) AS address_books,
-      (SELECT COUNT(*) FROM "Event") AS events,
-      (SELECT COUNT(*) FROM "Layout") AS layouts
+      (SELECT COUNT(*) FROM "Event") AS events
   `);
   const v1 = v1Counts.rows[0];
 
@@ -109,7 +108,6 @@ async function main() {
     advertisements: "advertisements",
     addressBooks: "addressBooks",
     events: "events",
-    layouts: "layouts",
   };
 
   for (const [v2Table, mapKey] of Object.entries(tableMapping)) {
@@ -128,7 +126,6 @@ async function main() {
     { label: "Advertisements", v1Key: "advertisements", v2Key: "advertisements" },
     { label: "Address Books", v1Key: "address_books", v2Key: "addressBooks" },
     { label: "Events", v1Key: "events", v2Key: "events" },
-    { label: "Layouts", v1Key: "layouts", v2Key: "layouts" },
   ];
 
   for (const check of countChecks) {

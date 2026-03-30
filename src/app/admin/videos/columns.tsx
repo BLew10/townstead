@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, Check, X } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useState } from "react";
@@ -29,8 +29,13 @@ function ActionsCell({
   onEdit: (video: Video) => void;
 }) {
   const softDelete = useMutation(api.videos.mutations.softDelete);
+  const approveVideo = useMutation(api.videos.mutations.approve);
+  const rejectVideo = useMutation(api.videos.mutations.reject);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const isPending = row.original.isApproved === false;
 
   const handleDelete = async () => {
     setLoading(true);
@@ -45,6 +50,28 @@ function ActionsCell({
     }
   };
 
+  const handleApprove = async () => {
+    try {
+      await approveVideo({ id: row.original._id });
+      toast.success("Video approved");
+    } catch {
+      toast.error("Failed to approve video");
+    }
+  };
+
+  const handleReject = async () => {
+    setLoading(true);
+    try {
+      await rejectVideo({ id: row.original._id });
+      toast.success("Video rejected");
+    } catch {
+      toast.error("Failed to reject video");
+    } finally {
+      setLoading(false);
+      setRejectOpen(false);
+    }
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -54,6 +81,21 @@ function ActionsCell({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {isPending && (
+            <>
+              <DropdownMenuItem onClick={handleApprove}>
+                <Check className="mr-2 h-4 w-4" />
+                Approve
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setRejectOpen(true)}
+                className="text-destructive"
+              >
+                <X className="mr-2 h-4 w-4" />
+                Reject
+              </DropdownMenuItem>
+            </>
+          )}
           <DropdownMenuItem onClick={() => onEdit(row.original)}>
             <Pencil className="mr-2 h-4 w-4" />
             Edit
@@ -75,6 +117,16 @@ function ActionsCell({
         description={`Are you sure you want to delete "${row.original.title}"? This action cannot be undone.`}
         onConfirm={handleDelete}
         confirmLabel="Delete"
+        variant="destructive"
+        loading={loading}
+      />
+      <ConfirmDialog
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
+        title="Reject Video"
+        description={`Are you sure you want to reject "${row.original.title}"? This will remove the submission.`}
+        onConfirm={handleReject}
+        confirmLabel="Reject"
         variant="destructive"
         loading={loading}
       />
@@ -103,6 +155,26 @@ export function columns({
       cell: ({ row }) => (
         <span className="font-medium">{row.original.title}</span>
       ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      enableSorting: false,
+      cell: ({ row }) => {
+        const approved = row.original.isApproved;
+        if (approved === false) {
+          return (
+            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-500/20 dark:text-amber-300">
+              Pending
+            </Badge>
+          );
+        }
+        return (
+          <Badge className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-500/20 dark:text-green-300">
+            Approved
+          </Badge>
+        );
+      },
     },
     {
       accessorKey: "url",

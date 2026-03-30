@@ -2,6 +2,14 @@ import { query, QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { Doc, Id } from "../_generated/dataModel";
 
+async function resolveImageUrl(
+  ctx: QueryCtx,
+  imageFileId?: Id<"_storage">
+): Promise<string | null> {
+  if (!imageFileId) return null;
+  return await ctx.storage.getUrl(imageFileId);
+}
+
 async function resolveOrg(ctx: QueryCtx, orgSlug: string): Promise<Doc<"tenantBranding"> | null> {
   return await ctx.db
     .query("tenantBranding")
@@ -24,11 +32,40 @@ export const listCommunities = query({
     if (!branding) return [];
     const orgId = branding.orgId;
 
-    return await ctx.db
+    const communities = await ctx.db
       .query("communities")
       .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
       .filter((q) => q.neq(q.field("isDeleted"), true))
       .collect();
+
+    return await Promise.all(
+      communities.map(async (c) => ({
+        ...c,
+        imageUrl: await resolveImageUrl(ctx, c.imageFileId),
+      })),
+    );
+  },
+});
+
+export const getCommunityBySlug = query({
+  args: { orgSlug: v.string(), communitySlug: v.string() },
+  handler: async (ctx, args) => {
+    const branding = await resolveOrg(ctx, args.orgSlug);
+    if (!branding) return null;
+
+    const community = await ctx.db
+      .query("communities")
+      .withIndex("by_orgId_and_slug", (q) =>
+        q.eq("orgId", branding.orgId).eq("slug", args.communitySlug),
+      )
+      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .unique();
+
+    if (!community) return null;
+    return {
+      ...community,
+      imageUrl: await resolveImageUrl(ctx, community.imageFileId),
+    };
   },
 });
 
@@ -86,12 +123,33 @@ export const getHomepageData = query({
       .order("desc")
       .take(10);
 
+    const slicedEvents = filterByCommunity(allEvents, args.communityId).slice(0, 5);
+    const featuredEvents = await Promise.all(
+      slicedEvents.map(async (e) => ({
+        ...e,
+        imageUrl: await resolveImageUrl(ctx, e.imageFileId),
+      }))
+    );
+
+    const [logoUrl, heroImageUrl] = await Promise.all([
+      resolveImageUrl(ctx, branding.logo),
+      resolveImageUrl(ctx, branding.heroImage),
+    ]);
+
+    const slicedPosts = filterByCommunity(recentPosts, args.communityId).slice(0, 3);
+    const enrichedPosts = await Promise.all(
+      slicedPosts.map(async (p) => ({
+        ...p,
+        featuredImageUrl: await resolveImageUrl(ctx, p.featuredImageFileId),
+      })),
+    );
+
     return {
-      branding,
-      featuredEvents: filterByCommunity(allEvents, args.communityId).slice(0, 5),
+      branding: { ...branding, logoUrl, heroImageUrl },
+      featuredEvents,
       featuredBusinesses: allContacts,
       activeCoupons: filterByCommunity(activeCoupons, args.communityId).slice(0, 6),
-      recentPosts: filterByCommunity(recentPosts, args.communityId).slice(0, 3),
+      recentPosts: enrichedPosts,
     };
   },
 });
@@ -148,9 +206,15 @@ export const listEvents = query({
     events = filterByCommunity(events, args.communityId);
 
     if (args.categoryId) {
-      return events.filter((e) => e.categoryId === args.categoryId);
+      events = events.filter((e) => e.categoryId === args.categoryId);
     }
-    return events;
+
+    return await Promise.all(
+      events.map(async (e) => ({
+        ...e,
+        imageUrl: await resolveImageUrl(ctx, e.imageFileId),
+      }))
+    );
   },
 });
 
@@ -160,7 +224,10 @@ export const getEvent = query({
     const event = await ctx.db.get(args.id);
     if (!event || event.isDeleted === true) return null;
     if (event.isApproved === false) return null;
-    return event;
+    return {
+      ...event,
+      imageUrl: await resolveImageUrl(ctx, event.imageFileId),
+    };
   },
 });
 
@@ -255,7 +322,51 @@ export const listCoupons = query({
       )
       .collect();
 
-    return filterByCommunity(coupons, args.communityId);
+    const filtered = filterByCommunity(coupons, args.communityId);
+
+    const enriched = await Promise.all(
+      filtered.map(async (coupon) => {
+        if (coupon.quantityLimit === undefined) {
+          return { ...coupon, claimCount: 0, isSoldOut: false };
+        }
+        const claims = await ctx.db
+          .query("couponClaims")
+          .withIndex("by_couponId", (q) => q.eq("couponId", coupon._id))
+          .collect();
+        return {
+          ...coupon,
+          claimCount: claims.length,
+          isSoldOut: claims.length >= coupon.quantityLimit,
+        };
+      })
+    );
+
+    return enriched;
+  },
+});
+
+export const getCouponClaimInfo = query({
+  args: { couponId: v.id("coupons") },
+  handler: async (ctx, args) => {
+    const totalClaims = await ctx.db
+      .query("couponClaims")
+      .withIndex("by_couponId", (q) => q.eq("couponId", args.couponId))
+      .collect();
+
+    let userClaims = 0;
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity) {
+      const userId = identity.subject;
+      const claims = await ctx.db
+        .query("couponClaims")
+        .withIndex("by_couponId_and_userId", (q) =>
+          q.eq("couponId", args.couponId).eq("userId", userId)
+        )
+        .collect();
+      userClaims = claims.length;
+    }
+
+    return { totalClaims: totalClaims.length, userClaims };
   },
 });
 
@@ -291,11 +402,17 @@ export const listBlogPosts = query({
     posts = filterByCommunity(posts, args.communityId);
 
     if (args.categoryId) {
-      return posts.filter((p) =>
+      posts = posts.filter((p) =>
         p.categoryIds?.includes(args.categoryId!)
       );
     }
-    return posts;
+
+    return await Promise.all(
+      posts.map(async (p) => ({
+        ...p,
+        featuredImageUrl: await resolveImageUrl(ctx, p.featuredImageFileId),
+      })),
+    );
   },
 });
 
@@ -319,7 +436,11 @@ export const getBlogPost = query({
       )
       .unique();
 
-    return post;
+    if (!post) return null;
+    return {
+      ...post,
+      featuredImageUrl: await resolveImageUrl(ctx, post.featuredImageFileId),
+    };
   },
 });
 
@@ -337,7 +458,12 @@ export const listVideos = query({
     let videos = await ctx.db
       .query("videos")
       .withIndex("by_orgId", (q) => q.eq("orgId", orgId))
-      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .filter((q) =>
+        q.and(
+          q.neq(q.field("isDeleted"), true),
+          q.neq(q.field("isApproved"), false)
+        )
+      )
       .collect();
 
     videos = filterByCommunity(videos, args.communityId);
@@ -438,6 +564,19 @@ export const getSitemapData = query({
     );
 
     return results;
+  },
+});
+
+export const listPublicSites = query({
+  args: {},
+  handler: async (ctx) => {
+    const tenants = await ctx.db.query("tenantBranding").collect();
+    return tenants.map((t) => ({
+      orgSlug: t.orgSlug,
+      siteName: t.siteName ?? null,
+      tagline: t.tagline ?? null,
+      logo: t.logo ?? null,
+    }));
   },
 });
 

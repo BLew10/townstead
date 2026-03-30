@@ -5,10 +5,13 @@ import schema from "../schema";
 import { modules } from "../test.setup";
 import { PERMISSIONS } from "../permissions";
 
+const _factory = () => convexTest(schema, modules);
+type TestInstance = ReturnType<typeof _factory>;
+
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 async function seedContact(
-  t: ReturnType<typeof convexTest>,
+  t: TestInstance,
   orgId: string,
   overrides: Partial<{ firstName: string; lastName: string; company: string; email: string }> = {}
 ) {

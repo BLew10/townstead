@@ -75,39 +75,6 @@ export const insertAdvertisement = mutation({
   handler: async (ctx, args) => ctx.db.insert("advertisements", args),
 });
 
-export const insertLayout = mutation({
-  args: {
-    name: v.string(),
-    orgId: v.string(),
-    isDeleted: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => ctx.db.insert("layouts", args),
-});
-
-export const insertAdPlacement = mutation({
-  args: {
-    layoutId: v.id("layouts"),
-    advertisementId: v.id("advertisements"),
-    x: v.number(),
-    y: v.number(),
-    width: v.number(),
-    height: v.number(),
-    position: v.optional(v.union(v.literal("top"), v.literal("bottom"))),
-    orgId: v.string(),
-  },
-  handler: async (ctx, args) => ctx.db.insert("adPlacements", args),
-});
-
-export const insertCalendarEditionLayout = mutation({
-  args: {
-    calendarEditionId: v.id("calendarEditions"),
-    layoutId: v.id("layouts"),
-    year: v.number(),
-    orgId: v.string(),
-  },
-  handler: async (ctx, args) => ctx.db.insert("calendarEditionLayouts", args),
-});
-
 export const insertCommunity = mutation({
   args: {
     name: v.string(),

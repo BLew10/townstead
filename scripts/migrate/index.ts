@@ -16,7 +16,6 @@ import step02 from "./02-contacts";
 import step03 from "./03-calendar-editions";
 import step03b from "./03b-communities";
 import step04 from "./04-advertisements";
-import step05 from "./05-layouts";
 import step06 from "./06-events";
 import step07 from "./07-purchases";
 import step08 from "./08-ad-purchases";
@@ -30,7 +29,6 @@ const steps: MigrationStep[] = [
   step03,
   step03b,
   step04,
-  step05,
   step06,
   step07,
   step08,
@@ -49,7 +47,7 @@ async function main() {
 
   log("orchestrator", `Starting migration with ${steps.length} steps`);
   log("orchestrator", `Org ID: ${orgId}`);
-  log("orchestrator", `Existing mappings loaded: ${["addressBooks", "contacts", "calendarEditions", "communities", "advertisements", "layouts", "events", "purchases", "paymentTerms", "adPurchases", "adSlots", "scheduledPayments", "payments", "paymentAllocations"].map((t) => `${t}=${idMap.getTableSize(t)}`).join(", ")}`);
+  log("orchestrator", `Existing mappings loaded: ${["addressBooks", "contacts", "calendarEditions", "communities", "advertisements", "events", "purchases", "paymentTerms", "adPurchases", "adSlots", "scheduledPayments", "payments", "paymentAllocations"].map((t) => `${t}=${idMap.getTableSize(t)}`).join(", ")}`);
 
   const startTime = Date.now();
 
@@ -82,8 +80,7 @@ async function main() {
   // Final summary
   const tables = [
     "addressBooks", "contacts", "calendarEditions", "communities", "advertisements",
-    "layouts", "adPlacements", "calendarEditionLayouts", "events",
-    "purchases", "paymentTerms", "adPurchases", "adSlots",
+    "events", "purchases", "paymentTerms", "adPurchases", "adSlots",
     "scheduledPayments", "payments", "paymentAllocations",
   ];
   log("orchestrator", "\nFinal record counts:");

@@ -4,6 +4,7 @@ import type { ComponentType, SVGProps } from "react";
 import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { useCommunityFilter } from "@/hooks/use-community-filter";
 
 interface PublicFooterProps {
   orgSlug: string;
@@ -58,6 +59,7 @@ const SOCIAL_CONFIG: Record<string, { label: string; icon: ComponentType<SVGProp
 
 export function PublicFooter({ orgSlug }: PublicFooterProps) {
   const branding = useQuery(api.tenantBranding.queries.getBySlug, { orgSlug });
+  const { buildHref } = useCommunityFilter(orgSlug);
 
   const siteName = branding?.siteName ?? "Community";
   const footerText = branding?.footerText;
@@ -118,7 +120,7 @@ export function PublicFooter({ orgSlug }: PublicFooterProps) {
             {QUICK_LINKS.map(({ label, segment }) => (
               <li key={segment}>
                 <Link
-                  href={`/${orgSlug}/${segment}`}
+                  href={buildHref(segment)}
                   className="block text-sm text-on-surface/70 transition-all duration-200 hover:translate-x-1 hover:text-primary"
                 >
                   {label}

@@ -20,7 +20,7 @@ What to build:
 3. Initialize Convex and define the FULL schema in convex/schema.ts — all tables from the spec with all indexes. Every table gets orgId for multi-tenancy. Every content table gets isDeleted.
 4. Set up Clerk authentication with ConvexProviderWithClerk integration in root layout
 5. Create proxy.ts (Next.js 16 uses proxy instead of middleware) protecting /admin/* and /portal/* routes
-6. Build admin layout shell: sidebar navigation (Calendars, Contacts, Advertisements, Purchases, Billing, Events, Layouts, Dashboard), header with Clerk UserButton, main content area
+6. Build admin layout shell: sidebar navigation (Calendars, Contacts, Advertisements, Purchases, Billing, Events, Dashboard), header with Clerk UserButton, main content area
 7. Install shadcn/ui components: Button, Input, Card, Dialog, Table, Form, Select, Tabs, Badge, DropdownMenu, Sheet, Tooltip, Calendar, Popover, Command, Separator, Skeleton, Textarea, Label, Switch, Checkbox, RadioGroup, Avatar, ScrollArea
 8. Create shared utilities: src/lib/types.ts, src/lib/validators.ts (Zod schemas), src/lib/utils.ts (cn, date/currency formatters), src/lib/file-storage.ts
 9. Create reusable components: DataTable (TanStack Table wrapper), PageHeader, ConfirmDialog, EmptyState, TableSkeleton
@@ -42,7 +42,7 @@ Critical rules:
 Build Phase 2: Core Admin CRUD pages for Planner App v2. The Phase 1 foundation (Next.js 15 + Convex + Clerk + shadcn/ui + admin layout) is already in place.
 
 Reference these files for full context:
-- @docs/SPEC.md — sections 1.2 (Calendar Editions), 1.3 (Advertisement Types), 1.4 (Contacts/CRM), 1.9 (Layouts), 1.10 (Events), plus schema in section 5
+- @docs/SPEC.md — sections 1.2 (Calendar Editions), 1.3 (Advertisement Types), 1.4 (Contacts/CRM), 1.9 (Events), plus schema in section 5
 - @.cursor/rules/phase-2-admin-crud.mdc — exact build order, CRUD patterns, and page structure
 
 What to build (in dependency order):
@@ -56,8 +56,6 @@ What to build (in dependency order):
 4. Contacts / CRM — convex/contacts/ queries + mutations with full-text search index, /admin/contacts page with searchable TanStack Table (company, name, email), create/edit form with sections (basic info, address embedded object, telecom embedded object, address book multi-select), /admin/contacts/[id] detail page with tabs (Info, Purchases, Payments — purchase/payment tabs will be populated in Phase 3), soft-delete with email nullification
 
 5. Events — convex/events/ queries + mutations, /admin/events page with list + FullCalendar alternate view, create/edit form (name, description, date, endDate, startTime, endTime, isYearly toggle, calendar edition multi-select)
-
-6. Layouts & Ad Placements — convex/layouts/ + convex/adPlacements/ + convex/calendarEditionLayouts/ queries + mutations, /admin/layouts page with list, /admin/layouts/[id] layout builder with visual ad placement positioning (x, y, width, height, position), layout-to-edition+year assignment
 
 Every entity follows the same pattern:
 - Convex queries extract orgId server-side from ctx.auth.getUserIdentity() — never accept orgId as a client argument
@@ -264,8 +262,7 @@ What to build:
    03-contacts.ts (FLATTEN 4 v1 tables into 1 Convex document: Contact + ContactAddress + ContactTelecom + ContactInfo)
    04-calendar-editions.ts
    05-advertisements.ts
-   06-layouts.ts (layouts + adPlacements + calendarEditionLayouts)
-   07-events.ts (map calendarEdition many-to-many)
+   06-events.ts (map calendarEdition many-to-many)
    08-purchases.ts (MERGE v1 PurchaseOverview + PaymentOverview into purchases + paymentTerms)
    09-ad-purchases.ts (adPurchases + adSlots, map from v1 AdvertisementPurchase + AdvertisementPurchaseSlot)
    10-scheduled-payments.ts (STRIP stored state — only migrate dueDate, amount, month, year, lateFeeWaived)

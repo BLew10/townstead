@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, Check, X } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useState } from "react";
@@ -37,8 +37,13 @@ const statusColors: Record<string, string> = {
 
 function ActionsCell({ row }: { row: { original: BlogPost } }) {
   const softDelete = useMutation(api.blog.mutations.softDelete);
+  const approveBlog = useMutation(api.blog.mutations.approve);
+  const rejectBlog = useMutation(api.blog.mutations.reject);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const isPending = row.original.status === "pending";
 
   const handleDelete = async () => {
     setLoading(true);
@@ -53,6 +58,28 @@ function ActionsCell({ row }: { row: { original: BlogPost } }) {
     }
   };
 
+  const handleApprove = async () => {
+    try {
+      await approveBlog({ id: row.original._id });
+      toast.success("Blog post approved and published");
+    } catch {
+      toast.error("Failed to approve blog post");
+    }
+  };
+
+  const handleReject = async () => {
+    setLoading(true);
+    try {
+      await rejectBlog({ id: row.original._id });
+      toast.success("Blog post rejected");
+    } catch {
+      toast.error("Failed to reject blog post");
+    } finally {
+      setLoading(false);
+      setRejectOpen(false);
+    }
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -62,6 +89,21 @@ function ActionsCell({ row }: { row: { original: BlogPost } }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {isPending && (
+            <>
+              <DropdownMenuItem onClick={handleApprove}>
+                <Check className="mr-2 h-4 w-4" />
+                Approve
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setRejectOpen(true)}
+                className="text-destructive"
+              >
+                <X className="mr-2 h-4 w-4" />
+                Reject
+              </DropdownMenuItem>
+            </>
+          )}
           <DropdownMenuItem
             onClick={() => window.location.href = `/admin/blog/${row.original._id}/edit`}
           >
@@ -84,6 +126,16 @@ function ActionsCell({ row }: { row: { original: BlogPost } }) {
         description={`Are you sure you want to delete "${row.original.title}"? This action cannot be undone.`}
         onConfirm={handleDelete}
         confirmLabel="Delete"
+        variant="destructive"
+        loading={loading}
+      />
+      <ConfirmDialog
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
+        title="Reject Blog Post"
+        description={`Are you sure you want to reject "${row.original.title}"? It will be moved back to draft status.`}
+        onConfirm={handleReject}
+        confirmLabel="Reject"
         variant="destructive"
         loading={loading}
       />

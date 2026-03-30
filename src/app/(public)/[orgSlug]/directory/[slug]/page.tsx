@@ -19,6 +19,7 @@ import { JsonLd } from "@/components/public/json-ld";
 import { BusinessMap } from "@/components/public/business-map";
 import { formatDate } from "@/lib/utils";
 import { useStableNow } from "@/hooks/use-stable-now";
+import { useCommunityFilter } from "@/hooks/use-community-filter";
 
 export default function BusinessDetailPage({
   params,
@@ -26,6 +27,7 @@ export default function BusinessDetailPage({
   params: Promise<{ orgSlug: string; slug: string }>;
 }) {
   const { orgSlug, slug } = use(params);
+  const { buildHref } = useCommunityFilter(orgSlug);
   const now = useStableNow();
 
   const business = useQuery(api.public.queries.getDirectoryBusiness, {
@@ -70,7 +72,7 @@ export default function BusinessDetailPage({
     return (
       <div className="font-body mx-auto max-w-4xl px-4 py-12 text-on-surface sm:px-6 lg:px-8 md:py-24">
         <Link
-          href={`/${orgSlug}/directory`}
+          href={buildHref("directory")}
           className="mb-8 inline-flex items-center gap-1 text-sm font-bold text-primary transition-colors hover:text-primary/80"
         >
           <ArrowLeft className="size-4" />
@@ -132,7 +134,7 @@ export default function BusinessDetailPage({
       />
 
       <Link
-        href={`/${orgSlug}/directory`}
+        href={buildHref("directory")}
         className="mb-8 inline-flex items-center gap-1 text-sm font-bold text-primary transition-colors hover:text-primary/80"
       >
         <ArrowLeft className="size-4" />
@@ -188,7 +190,7 @@ export default function BusinessDetailPage({
                 {relatedCoupons.map((coupon) => (
                   <Link
                     key={coupon._id}
-                    href={`/${orgSlug}/coupons/${coupon._id}`}
+                    href={buildHref(`coupons/${coupon._id}`)}
                   >
                     <div className="editorial-shadow h-full rounded-lg bg-surface-container-lowest p-5 transition-colors hover:bg-surface-container">
                       <h3 className="font-headline text-base italic text-on-surface">

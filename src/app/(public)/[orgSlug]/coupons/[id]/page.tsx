@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCommunityFilter } from "@/hooks/use-community-filter";
 
 export default function CouponDetailPage({
   params,
@@ -25,6 +26,7 @@ export default function CouponDetailPage({
   params: Promise<{ orgSlug: string; id: string }>;
 }) {
   const { orgSlug, id } = use(params);
+  const { buildHref } = useCommunityFilter(orgSlug);
   const { user } = useUser();
   const { isSignedIn } = useAuth();
   const [claiming, setClaiming] = useState(false);
@@ -45,7 +47,20 @@ export default function CouponDetailPage({
     [coupon, businesses]
   );
 
+  const claimInfo = useQuery(api.public.queries.getCouponClaimInfo, 
+    coupon ? { couponId: coupon._id } : "skip"
+  );
   const claimCoupon = useMutation(api.public.mutations.claimCoupon);
+
+  const isSoldOut =
+    coupon?.quantityLimit !== undefined &&
+    claimInfo !== undefined &&
+    claimInfo.totalClaims >= coupon.quantityLimit;
+
+  const isUserLimitReached =
+    coupon?.perUserLimit !== undefined &&
+    claimInfo !== undefined &&
+    claimInfo.userClaims >= coupon.perUserLimit;
 
   const handleClaim = useCallback(async () => {
     if (!user || !coupon) return;
@@ -80,7 +95,7 @@ export default function CouponDetailPage({
     return (
       <div className="mx-auto max-w-4xl px-4 py-24 font-body text-on-surface sm:px-6 lg:px-8">
         <Link
-          href={`/${orgSlug}/coupons`}
+          href={buildHref("coupons")}
           className="mb-6 inline-flex items-center gap-1 text-sm font-bold text-primary transition-colors hover:text-primary/80"
         >
           <ArrowLeft className="size-4" />
@@ -105,7 +120,7 @@ export default function CouponDetailPage({
   return (
     <div className="mx-auto max-w-4xl px-4 py-24 font-body text-on-surface sm:px-6 lg:px-8">
       <Link
-        href={`/${orgSlug}/coupons`}
+        href={buildHref("coupons")}
         className="mb-6 inline-flex items-center gap-1 text-sm font-bold text-primary transition-colors hover:text-primary/80"
       >
         <ArrowLeft className="size-4" />
@@ -132,9 +147,19 @@ export default function CouponDetailPage({
                   Expired
                 </span>
               )}
+              {!isExpired && isSoldOut && (
+                <span className="rounded-lg bg-destructive/15 px-3 py-1.5 text-sm font-medium text-destructive">
+                  Sold Out
+                </span>
+              )}
               {coupon.quantityLimit !== undefined && (
                 <span className="rounded-lg bg-surface-container-high px-3 py-1.5 text-sm text-on-surface">
                   Limited to {coupon.quantityLimit} claims
+                </span>
+              )}
+              {coupon.perUserLimit !== undefined && (
+                <span className="rounded-lg bg-surface-container-high px-3 py-1.5 text-sm text-on-surface">
+                  Limit {coupon.perUserLimit} per person
                 </span>
               )}
             </div>
@@ -181,7 +206,7 @@ export default function CouponDetailPage({
                 <p className="font-medium text-on-surface">{business.company}</p>
                 {business.slug && (
                   <Link
-                    href={`/${orgSlug}/directory/${business.slug}`}
+                    href={buildHref(`directory/${business.slug}`)}
                     className="inline-flex items-center gap-1 text-sm font-bold text-primary transition-transform hover:translate-x-0.5"
                   >
                     View business
@@ -193,8 +218,30 @@ export default function CouponDetailPage({
           )}
 
           <div className="rounded-lg bg-surface-container-lowest p-6 editorial-shadow">
-            {!isExpired ? (
-              isSignedIn ? (
+            {isExpired ? (
+              <p className="text-center text-sm text-on-surface/70">
+                This coupon has expired
+              </p>
+            ) : isSoldOut ? (
+              <div className="text-center">
+                <p className="text-sm font-medium text-destructive">
+                  Sold out
+                </p>
+                <p className="mt-1 text-xs text-on-surface/50">
+                  All available claims have been redeemed
+                </p>
+              </div>
+            ) : isSignedIn ? (
+              isUserLimitReached ? (
+                <div className="text-center">
+                  <Button disabled variant="secondary" className="w-full">
+                    Claim Coupon
+                  </Button>
+                  <p className="mt-2 text-xs text-on-surface/50">
+                    You&apos;ve reached your claim limit
+                  </p>
+                </div>
+              ) : (
                 <Button
                   onClick={handleClaim}
                   disabled={claiming}
@@ -204,25 +251,21 @@ export default function CouponDetailPage({
                 >
                   {claiming ? "Claiming..." : "Claim Coupon"}
                 </Button>
-              ) : (
-                <div className="text-center">
-                  <p className="mb-3 text-sm text-on-surface/70">
-                    Sign in to claim this coupon
-                  </p>
-                  <SignInButton mode="modal">
-                    <Button
-                      variant="ghost"
-                      className="w-full bg-surface-container-high text-on-surface hover:bg-surface-container-highest"
-                    >
-                      Sign In
-                    </Button>
-                  </SignInButton>
-                </div>
               )
             ) : (
-              <p className="text-center text-sm text-on-surface/70">
-                This coupon has expired
-              </p>
+              <div className="text-center">
+                <p className="mb-3 text-sm text-on-surface/70">
+                  Sign in to claim this coupon
+                </p>
+                <SignInButton mode="modal">
+                  <Button
+                    variant="ghost"
+                    className="w-full bg-surface-container-high text-on-surface hover:bg-surface-container-highest"
+                  >
+                    Sign In
+                  </Button>
+                </SignInButton>
+              </div>
             )}
           </div>
         </div>

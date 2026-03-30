@@ -5,8 +5,9 @@ import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { Toggle } from "@/components/ui/toggle";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -26,11 +27,13 @@ import {
   Link as LinkIcon,
   Unlink,
   ImageIcon,
+  Loader2,
 } from "lucide-react";
 
 interface RichTextEditorProps {
   content: string;
   onChange: (html: string) => void;
+  onImageUpload?: (file: File) => Promise<string>;
   placeholder?: string;
   className?: string;
 }
@@ -63,7 +66,16 @@ function ToolbarButton({
   );
 }
 
-function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
+function EditorToolbar({
+  editor,
+  onImageUpload,
+}: {
+  editor: ReturnType<typeof useEditor>;
+  onImageUpload?: (file: File) => Promise<string>;
+}) {
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
   if (!editor) return null;
 
   const addLink = useCallback(() => {
@@ -77,11 +89,34 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
     editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
   }, [editor]);
 
+  const handleImageFileSelected = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = "";
+      if (!file || !onImageUpload) return;
+
+      setUploadingImage(true);
+      try {
+        const url = await onImageUpload(file);
+        editor.chain().focus().setImage({ src: url }).run();
+      } catch {
+        toast.error("Failed to upload image");
+      } finally {
+        setUploadingImage(false);
+      }
+    },
+    [editor, onImageUpload]
+  );
+
   const addImage = useCallback(() => {
+    if (onImageUpload) {
+      imageInputRef.current?.click();
+      return;
+    }
     const url = window.prompt("Enter image URL");
     if (!url) return;
     editor.chain().focus().setImage({ src: url }).run();
-  }, [editor]);
+  }, [editor, onImageUpload]);
 
   return (
     <div className="flex flex-wrap items-center gap-0.5 border-b border-border p-1.5">
@@ -210,10 +245,24 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
       <ToolbarButton
         pressed={false}
         onPressedChange={addImage}
+        disabled={uploadingImage}
         title="Add image"
       >
-        <ImageIcon className="size-4" />
+        {uploadingImage ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <ImageIcon className="size-4" />
+        )}
       </ToolbarButton>
+      {onImageUpload && (
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          onChange={handleImageFileSelected}
+          className="hidden"
+        />
+      )}
 
       <Separator orientation="vertical" className="mx-1 h-6" />
 
@@ -240,6 +289,7 @@ function EditorToolbar({ editor }: { editor: ReturnType<typeof useEditor> }) {
 export function RichTextEditor({
   content,
   onChange,
+  onImageUpload,
   placeholder = "Start writing...",
   className,
 }: RichTextEditorProps) {
@@ -284,7 +334,7 @@ export function RichTextEditor({
         className
       )}
     >
-      <EditorToolbar editor={editor} />
+      <EditorToolbar editor={editor} onImageUpload={onImageUpload} />
       <EditorContent editor={editor} />
     </div>
   );

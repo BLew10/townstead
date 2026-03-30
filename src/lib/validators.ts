@@ -124,10 +124,6 @@ export const eventSchema = z.object({
   communityIds: z.array(z.string()).optional(),
 });
 
-export const layoutSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-});
-
 export const addressBookSchema = z.object({
   name: z.string().min(1, "Name is required"),
   displayLevel: z.string().optional(),
@@ -140,16 +136,6 @@ export const categorySchema = z.object({
   }),
 });
 
-export const adPlacementSchema = z.object({
-  layoutId: z.string().min(1, "Layout is required"),
-  advertisementId: z.string().min(1, "Advertisement is required"),
-  x: z.number().min(0),
-  y: z.number().min(0),
-  width: z.number().min(1),
-  height: z.number().min(1),
-  position: z.enum(["top", "bottom"]).optional(),
-});
-
 // Type inference helpers
 export type CalendarEditionFormValues = z.infer<typeof calendarEditionSchema>;
 export type AdvertisementFormValues = z.infer<typeof advertisementSchema>;
@@ -158,7 +144,5 @@ export type PurchaseFormValues = z.infer<typeof purchaseSchema>;
 export type PaymentTermsFormValues = z.infer<typeof paymentTermsSchema>;
 export type PaymentFormValues = z.infer<typeof paymentSchema>;
 export type EventFormValues = z.infer<typeof eventSchema>;
-export type LayoutFormValues = z.infer<typeof layoutSchema>;
 export type AddressBookFormValues = z.infer<typeof addressBookSchema>;
 export type CategoryFormValues = z.infer<typeof categorySchema>;
-export type AdPlacementFormValues = z.infer<typeof adPlacementSchema>;

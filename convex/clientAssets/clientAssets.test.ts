@@ -4,7 +4,10 @@ import { api } from "../_generated/api";
 import schema from "../schema";
 import { modules } from "../test.setup";
 
-async function storeTestFile(t: ReturnType<typeof convexTest>) {
+const _factory = () => convexTest(schema, modules);
+type TestInstance = ReturnType<typeof _factory>;
+
+async function storeTestFile(t: TestInstance) {
   return await t.run(async (ctx) => {
     return await ctx.storage.store(new Blob(["test-content"]));
   });

@@ -2,6 +2,19 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../auth.helpers";
 
+const RESERVED_SLUGS = new Set([
+  "events", "directory", "coupons", "blog", "videos", "profile",
+  "admin", "portal", "auth", "api", "_next", "c",
+]);
+
+function validateSlug(slug: string) {
+  if (RESERVED_SLUGS.has(slug)) {
+    throw new Error(
+      `"${slug}" is a reserved name and cannot be used as a community slug`,
+    );
+  }
+}
+
 export const create = mutation({
   args: {
     name: v.string(),
@@ -12,6 +25,8 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const { orgId } = await requireAuth(ctx);
+
+    validateSlug(args.slug);
 
     const existing = await ctx.db
       .query("communities")
@@ -53,6 +68,7 @@ export const update = mutation({
     }
 
     if (updates.slug && updates.slug !== doc.slug) {
+      validateSlug(updates.slug as string);
       const existing = await ctx.db
         .query("communities")
         .withIndex("by_orgId_and_slug", (q) =>

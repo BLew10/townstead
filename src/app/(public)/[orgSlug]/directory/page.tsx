@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useCommunityFilter } from "@/hooks/use-community-filter";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 
 function useDebounce(value: string, delay: number) {
@@ -32,6 +33,7 @@ export default function DirectoryPage({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = use(params);
+  const { buildHref } = useCommunityFilter(orgSlug);
   const [searchInput, setSearchInput] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
@@ -154,7 +156,7 @@ export default function DirectoryPage({
           {sortedBusinesses.map((biz) => (
             <Link
               key={biz._id}
-              href={`/${orgSlug}/directory/${biz.slug ?? biz._id}`}
+              href={buildHref(`directory/${biz.slug ?? biz._id}`)}
               className="group"
             >
               <div

@@ -230,34 +230,6 @@ export default defineSchema({
     .index("by_paymentId", ["paymentId"])
     .index("by_scheduledPaymentId", ["scheduledPaymentId"]),
 
-  layouts: defineTable({
-    name: v.string(),
-    orgId: v.string(),
-    isDeleted: v.optional(v.boolean()),
-  }).index("by_orgId", ["orgId"]),
-
-  adPlacements: defineTable({
-    layoutId: v.id("layouts"),
-    advertisementId: v.id("advertisements"),
-    x: v.number(),
-    y: v.number(),
-    width: v.number(),
-    height: v.number(),
-    position: v.optional(v.union(v.literal("top"), v.literal("bottom"))),
-    orgId: v.string(),
-  })
-    .index("by_orgId", ["orgId"])
-    .index("by_layoutId", ["layoutId"]),
-
-  calendarEditionLayouts: defineTable({
-    calendarEditionId: v.id("calendarEditions"),
-    layoutId: v.id("layouts"),
-    year: v.number(),
-    orgId: v.string(),
-  })
-    .index("by_orgId", ["orgId"])
-    .index("by_calendarEditionId_and_year", ["calendarEditionId", "year"]),
-
   communities: defineTable({
     name: v.string(),
     slug: v.string(),
@@ -295,6 +267,7 @@ export default defineSchema({
     orgId: v.string(),
     orgSlug: v.string(),
     logo: v.optional(v.id("_storage")),
+    heroImage: v.optional(v.id("_storage")),
     primaryColor: v.optional(v.string()),
     siteName: v.optional(v.string()),
     tagline: v.optional(v.string()),
@@ -333,6 +306,7 @@ export default defineSchema({
     startDate: v.number(),
     endDate: v.number(),
     quantityLimit: v.optional(v.number()),
+    perUserLimit: v.optional(v.number()),
     terms: v.optional(v.string()),
     communityIds: v.optional(v.array(v.id("communities"))),
     orgId: v.string(),
@@ -347,7 +321,8 @@ export default defineSchema({
     claimedAt: v.number(),
   })
     .index("by_couponId", ["couponId"])
-    .index("by_userId", ["userId"]),
+    .index("by_userId", ["userId"])
+    .index("by_couponId_and_userId", ["couponId", "userId"]),
 
   blogPosts: defineTable({
     title: v.string(),
@@ -364,6 +339,7 @@ export default defineSchema({
       v.literal("published")
     ),
     publishedAt: v.optional(v.number()),
+    submittedBy: v.optional(v.string()),
     seoTitle: v.optional(v.string()),
     seoDescription: v.optional(v.string()),
     orgId: v.string(),
@@ -385,6 +361,8 @@ export default defineSchema({
     businessContactId: v.optional(v.id("contacts")),
     categoryId: v.optional(v.id("categories")),
     communityIds: v.optional(v.array(v.id("communities"))),
+    isApproved: v.optional(v.boolean()),
+    submittedBy: v.optional(v.string()),
     orgId: v.string(),
     isDeleted: v.optional(v.boolean()),
   })

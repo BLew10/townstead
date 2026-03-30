@@ -44,15 +44,12 @@ Next.js 15 + Convex + Clerk project from scratch.
 - Advertisement Types management (CRUD + day/non-day distinction + pricing)
 - Contacts/CRM (unified contact model, search, address books)
 - Events management (CRUD, recurring, calendar association)
-- Layouts & Ad Placements (layout builder, position management)
-
 ### Key Deliverables
 - [ ] `/admin/calendars` — Calendar editions list, create/edit dialog, soft-delete
 - [ ] `/admin/advertisements` — Ad types list, create/edit with pricing per month
 - [ ] `/admin/contacts` — Contact list with search, create/edit form (address, telecom embedded), address book tagging
 - [ ] `/admin/contacts/[id]` — Contact detail: info, purchase history, payment history
 - [ ] `/admin/events` — Events list, create/edit with multi-day and recurring support
-- [ ] `/admin/layouts` — Layout list, layout builder with ad placement positioning
 - [ ] All Convex queries/mutations for CRUD operations with server-side orgId from `ctx.auth.getUserIdentity()` (never client args)
 - [ ] TanStack Table integration for all list views (sort, filter, paginate)
 - [ ] Full-text search on contacts (company, name, email)

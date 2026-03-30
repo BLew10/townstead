@@ -13,6 +13,13 @@ export const PERMISSIONS = {
   BLOG_DELETE_OWN: "blog:delete_own",
   BLOG_APPROVE: "blog:approve",
 
+  // Videos — tiered actions
+  VIDEOS_SUBMIT: "videos:submit",
+  VIDEOS_CREATE: "videos:create",
+  VIDEOS_UPDATE_OWN: "videos:update_own",
+  VIDEOS_DELETE_OWN: "videos:delete_own",
+  VIDEOS_APPROVE: "videos:approve",
+
   // Coupons — binary
   COUPONS_CLAIM: "coupons:claim",
 
@@ -52,6 +59,13 @@ export const TIERED_DOMAINS = {
     deleteOwn: PERMISSIONS.BLOG_DELETE_OWN,
     approve: PERMISSIONS.BLOG_APPROVE,
   },
+  videos: {
+    submit: PERMISSIONS.VIDEOS_SUBMIT,
+    create: PERMISSIONS.VIDEOS_CREATE,
+    updateOwn: PERMISSIONS.VIDEOS_UPDATE_OWN,
+    deleteOwn: PERMISSIONS.VIDEOS_DELETE_OWN,
+    approve: PERMISSIONS.VIDEOS_APPROVE,
+  },
 } as const;
 
 export type TieredDomain = keyof typeof TIERED_DOMAINS;
@@ -66,10 +80,13 @@ export const DEFAULT_CONTACT_PERMISSIONS: Permission[] = [
   PERMISSIONS.EVENTS_UPDATE_OWN,
   PERMISSIONS.BLOG_SUBMIT,
   PERMISSIONS.BLOG_UPDATE_OWN,
+  PERMISSIONS.VIDEOS_SUBMIT,
+  PERMISSIONS.VIDEOS_UPDATE_OWN,
 ];
 
 export const DEFAULT_USER_PERMISSIONS: Permission[] = [
   PERMISSIONS.EVENTS_SUBMIT,
+  PERMISSIONS.VIDEOS_SUBMIT,
   PERMISSIONS.COUPONS_CLAIM,
 ];
 

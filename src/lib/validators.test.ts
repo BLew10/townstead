@@ -9,10 +9,8 @@ import {
   paymentTermsSchema,
   paymentSchema,
   eventSchema,
-  layoutSchema,
   addressBookSchema,
   categorySchema,
-  adPlacementSchema,
 } from "./validators";
 
 // ---------------------------------------------------------------------------
@@ -542,20 +540,6 @@ describe("eventSchema", () => {
 });
 
 // ---------------------------------------------------------------------------
-// layoutSchema
-// ---------------------------------------------------------------------------
-
-describe("layoutSchema", () => {
-  it("accepts valid layout", () => {
-    expect(() => layoutSchema.parse({ name: "Default" })).not.toThrow();
-  });
-
-  it("rejects empty name", () => {
-    expect(() => layoutSchema.parse({ name: "" })).toThrow();
-  });
-});
-
-// ---------------------------------------------------------------------------
 // addressBookSchema
 // ---------------------------------------------------------------------------
 
@@ -609,78 +593,3 @@ describe("categorySchema", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// adPlacementSchema
-// ---------------------------------------------------------------------------
-
-describe("adPlacementSchema", () => {
-  const validPlacement = {
-    layoutId: "l1",
-    advertisementId: "a1",
-    x: 0,
-    y: 0,
-    width: 100,
-    height: 50,
-  };
-
-  it("accepts valid placement", () => {
-    expect(() => adPlacementSchema.parse(validPlacement)).not.toThrow();
-  });
-
-  it("rejects negative x", () => {
-    expect(() =>
-      adPlacementSchema.parse({ ...validPlacement, x: -1 })
-    ).toThrow();
-  });
-
-  it("rejects negative y", () => {
-    expect(() =>
-      adPlacementSchema.parse({ ...validPlacement, y: -1 })
-    ).toThrow();
-  });
-
-  it("rejects zero width", () => {
-    expect(() =>
-      adPlacementSchema.parse({ ...validPlacement, width: 0 })
-    ).toThrow();
-  });
-
-  it("rejects zero height", () => {
-    expect(() =>
-      adPlacementSchema.parse({ ...validPlacement, height: 0 })
-    ).toThrow();
-  });
-
-  it("accepts x and y of zero", () => {
-    expect(() =>
-      adPlacementSchema.parse({ ...validPlacement, x: 0, y: 0 })
-    ).not.toThrow();
-  });
-
-  it("accepts optional position", () => {
-    expect(() =>
-      adPlacementSchema.parse({ ...validPlacement, position: "top" })
-    ).not.toThrow();
-    expect(() =>
-      adPlacementSchema.parse({ ...validPlacement, position: "bottom" })
-    ).not.toThrow();
-  });
-
-  it("rejects invalid position", () => {
-    expect(() =>
-      adPlacementSchema.parse({ ...validPlacement, position: "left" })
-    ).toThrow();
-  });
-
-  it("rejects empty layoutId", () => {
-    expect(() =>
-      adPlacementSchema.parse({ ...validPlacement, layoutId: "" })
-    ).toThrow();
-  });
-
-  it("rejects empty advertisementId", () => {
-    expect(() =>
-      adPlacementSchema.parse({ ...validPlacement, advertisementId: "" })
-    ).toThrow();
-  });
-});

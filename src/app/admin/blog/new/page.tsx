@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useConvex } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useOrg } from "@/hooks/use-org";
 import { toast } from "sonner";
@@ -41,6 +41,7 @@ function slugify(text: string): string {
 
 export default function NewBlogPostPage() {
   const router = useRouter();
+  const convex = useConvex();
   const { orgId, isReady } = useOrg();
   const createPost = useMutation(api.blog.mutations.create);
   const generateUploadUrl = useMutation(api.blog.mutations.generateUploadUrl);
@@ -111,6 +112,19 @@ export default function NewBlogPostPage() {
       setUploadingImage(false);
     }
   }, [generateUploadUrl]);
+
+  const handleEditorImageUpload = useCallback(async (file: File): Promise<string> => {
+    const uploadUrl = await generateUploadUrl();
+    const result = await fetch(uploadUrl, {
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    const { storageId } = await result.json();
+    const imageUrl = await convex.query(api.storage.getUrl, { storageId });
+    if (!imageUrl) throw new Error("Failed to get image URL");
+    return imageUrl;
+  }, [generateUploadUrl, convex]);
 
   function toggleCommunity(communityId: Id<"communities">) {
     setSelectedCommunities((prev) =>
@@ -219,6 +233,7 @@ export default function NewBlogPostPage() {
                 <RichTextEditor
                   content={content}
                   onChange={setContent}
+                  onImageUpload={handleEditorImageUpload}
                   placeholder="Write your blog post content here..."
                 />
               </div>

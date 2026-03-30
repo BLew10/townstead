@@ -7,8 +7,15 @@ import { PageHeader } from "@/components/shared/page-header";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, List, CalendarDays } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { columns } from "./columns";
 import { EventForm } from "./event-form";
 import { EventCalendar } from "./event-calendar";
@@ -27,6 +34,14 @@ export default function EventsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Doc<"events"> | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [statusFilter, setStatusFilter] = useState<"all" | "approved" | "pending">("all");
+
+  const filteredEvents = useMemo(() => {
+    if (!events) return [];
+    if (statusFilter === "all") return events;
+    if (statusFilter === "pending") return events.filter((e) => e.isApproved === false);
+    return events.filter((e) => e.isApproved !== false);
+  }, [events, statusFilter]);
 
   if (!isReady || events === undefined) {
     return (
@@ -49,6 +64,19 @@ export default function EventsPage() {
         description="Manage calendar events and holidays"
         actions={
           <div className="flex items-center gap-2">
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v as "all" | "approved" | "pending")}
+            >
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+              </SelectContent>
+            </Select>
             <div className="flex rounded-md border">
               <Button
                 variant={viewMode === "list" ? "secondary" : "ghost"}
@@ -85,7 +113,7 @@ export default function EventsPage() {
             onEdit: handleEdit,
             communities: communities ?? [],
           })}
-          data={events}
+          data={filteredEvents}
           searchKey="name"
           searchPlaceholder="Search events..."
           emptyTitle="No events"

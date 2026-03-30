@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Component, useState, useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { useOrg } from "@/hooks/use-org";
 import {
   SquaresFour,
   Calendar,
@@ -12,7 +15,6 @@ import {
   Money,
   CreditCard,
   CalendarDots,
-  GridNine,
   BookOpen,
   Globe,
   MapPin,
@@ -23,6 +25,7 @@ import {
   Palette,
   GearSix,
   CaretDown,
+  CheckCircle,
   type Icon,
 } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
@@ -48,11 +51,11 @@ const coreNavItems: NavItem[] = [
   { label: "Purchases", href: "/admin/purchases", icon: ShoppingCart, color: "text-emerald-500" },
   { label: "Payments", href: "/admin/payments", icon: Money, color: "text-lime-500" },
   { label: "Billing", href: "/admin/billing", icon: CreditCard, color: "text-rose-500" },
-  { label: "Layouts", href: "/admin/layouts", icon: GridNine, color: "text-cyan-500" },
   { label: "Address Books", href: "/admin/address-books", icon: BookOpen, color: "text-amber-500" },
 ];
 
 const communityNavItems: NavItem[] = [
+  { label: "Approvals", href: "/admin/approvals", icon: CheckCircle, color: "text-amber-500" },
   { label: "Events", href: "/admin/events", icon: CalendarDots, color: "text-pink-500" },
   { label: "Communities", href: "/admin/communities", icon: MapPin, color: "text-green-500" },
   { label: "Blog", href: "/admin/blog", icon: FileText, color: "text-slate-500" },
@@ -75,11 +78,13 @@ function NavLink({
   pathname,
   onClick,
   indented,
+  badge,
 }: {
   item: NavItem;
   pathname: string;
   onClick?: () => void;
   indented?: boolean;
+  badge?: number;
 }) {
   const active = isActive(pathname, item.href);
   return (
@@ -95,8 +100,67 @@ function NavLink({
       )}
     >
       <item.icon className={cn("size-5 shrink-0", item.color)} weight="duotone" />
-      {item.label}
+      <span className="flex-1">{item.label}</span>
+      {badge !== undefined && badge > 0 && (
+        <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-xs font-semibold text-white">
+          {badge}
+        </span>
+      )}
     </Link>
+  );
+}
+
+class QueryErrorBoundary extends Component<
+  { fallback: ReactNode; children: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    return this.state.hasError ? this.props.fallback : this.props.children;
+  }
+}
+
+function ApprovalBadgeInner({
+  pathname,
+  onClick,
+  indented,
+}: {
+  pathname: string;
+  onClick?: () => void;
+  indented?: boolean;
+}) {
+  const { isReady } = useOrg();
+  const counts = useQuery(api.approvals.queries.countPending, isReady ? {} : "skip");
+  const item = communityNavItems[0];
+
+  return (
+    <NavLink
+      item={item}
+      pathname={pathname}
+      onClick={onClick}
+      indented={indented}
+      badge={counts?.total}
+    />
+  );
+}
+
+function ApprovalBadgeNavLink(props: {
+  pathname: string;
+  onClick?: () => void;
+  indented?: boolean;
+}) {
+  const item = communityNavItems[0];
+  return (
+    <QueryErrorBoundary
+      fallback={
+        <NavLink item={item} pathname={props.pathname} onClick={props.onClick} indented={props.indented} />
+      }
+    >
+      <ApprovalBadgeInner {...props} />
+    </QueryErrorBoundary>
   );
 }
 
@@ -126,15 +190,24 @@ function CommunitySiteGroup({
         <CaretDown className="chevron size-4 transition-transform duration-200" weight="bold" />
       </CollapsibleTrigger>
       <CollapsibleContent className="flex flex-col gap-0.5 pt-0.5">
-        {communityNavItems.map((item) => (
-          <NavLink
-            key={item.href}
-            item={item}
-            pathname={pathname}
-            onClick={onClick}
-            indented
-          />
-        ))}
+        {communityNavItems.map((item) =>
+          item.href === "/admin/approvals" ? (
+            <ApprovalBadgeNavLink
+              key={item.href}
+              pathname={pathname}
+              onClick={onClick}
+              indented
+            />
+          ) : (
+            <NavLink
+              key={item.href}
+              item={item}
+              pathname={pathname}
+              onClick={onClick}
+              indented
+            />
+          )
+        )}
       </CollapsibleContent>
     </Collapsible>
   );
