@@ -43,7 +43,7 @@ export default function PortalPaymentsPage() {
         <Select
           value={selectedYear?.toString() ?? "all"}
           onValueChange={(v) =>
-            setSelectedYear(v === "all" ? undefined : parseInt(v))
+            v != null && setSelectedYear(v === "all" ? undefined : parseInt(v))
           }
         >
           <SelectTrigger className="w-32">
@@ -96,13 +96,13 @@ export default function PortalPaymentsPage() {
                     {payment.method ? (
                       <Badge
                         className={`capitalize ${
-                          {
+                          ({
                             check: "bg-emerald-100 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-500/20 dark:text-emerald-300",
                             credit_card: "bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-500/20 dark:text-blue-300",
                             cash: "bg-amber-100 text-amber-800 hover:bg-amber-100 dark:bg-amber-500/20 dark:text-amber-300",
                             trade: "bg-violet-100 text-violet-800 hover:bg-violet-100 dark:bg-violet-500/20 dark:text-violet-300",
                             ach: "bg-cyan-100 text-cyan-800 hover:bg-cyan-100 dark:bg-cyan-500/20 dark:text-cyan-300",
-                          }[payment.method] ?? "bg-muted text-muted-foreground"
+                          } as Record<string, string>)[payment.method] ?? "bg-muted text-muted-foreground"
                         }`}
                       >
                         {payment.method.replace("_", " ")}

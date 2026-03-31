@@ -23,7 +23,7 @@ function MapInner({ lat, lng, name }: { lat: number; lng: number; name: string }
     import("leaflet/dist/leaflet.css");
 
     import("leaflet").then((L) => {
-      delete (L.Icon.Default.prototype as Record<string, unknown>)._getIconUrl;
+      delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl:
           "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",

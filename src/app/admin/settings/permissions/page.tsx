@@ -18,7 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Shield, Save, CalendarDays, Newspaper, Ticket, LayoutDashboard, Building2 } from "lucide-react";
+import { Shield, Save, CalendarDays, Newspaper, Ticket, LayoutDashboard, Building2, Video } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface PermissionInfo {
@@ -69,6 +69,27 @@ const PERMISSION_META: Record<Permission, PermissionInfo> = {
   [PERMISSIONS.BLOG_APPROVE]: {
     label: "Approve Posts",
     description: "Review and approve/reject submitted blog posts",
+  },
+  [PERMISSIONS.VIDEOS_SUBMIT]: {
+    label: "Submit Videos",
+    description: "Submit videos for admin approval before publishing",
+  },
+  [PERMISSIONS.VIDEOS_CREATE]: {
+    label: "Create Videos (Auto-Approved)",
+    description: "Create videos that publish immediately without approval",
+    supersedes: PERMISSIONS.VIDEOS_SUBMIT,
+  },
+  [PERMISSIONS.VIDEOS_UPDATE_OWN]: {
+    label: "Edit Own Videos",
+    description: "Edit videos they previously submitted",
+  },
+  [PERMISSIONS.VIDEOS_DELETE_OWN]: {
+    label: "Delete Own Videos",
+    description: "Remove videos they previously submitted",
+  },
+  [PERMISSIONS.VIDEOS_APPROVE]: {
+    label: "Approve Videos",
+    description: "Review and approve/reject submitted videos",
   },
   [PERMISSIONS.COUPONS_CLAIM]: {
     label: "Claim Coupons",
@@ -134,6 +155,17 @@ const DOMAIN_GROUPS: DomainGroup[] = [
     ],
   },
   {
+    label: "Videos",
+    icon: <Video className="h-4 w-4" />,
+    permissions: [
+      PERMISSIONS.VIDEOS_SUBMIT,
+      PERMISSIONS.VIDEOS_CREATE,
+      PERMISSIONS.VIDEOS_UPDATE_OWN,
+      PERMISSIONS.VIDEOS_DELETE_OWN,
+      PERMISSIONS.VIDEOS_APPROVE,
+    ],
+  },
+  {
     label: "Coupons & Directory",
     icon: <Ticket className="h-4 w-4" />,
     permissions: [
@@ -155,8 +187,8 @@ const DOMAIN_GROUPS: DomainGroup[] = [
   },
 ];
 
-const CONTACT_DOMAINS = ["Events", "Blog", "Client Portal"];
-const USER_DOMAINS = ["Events", "Blog", "Coupons & Directory"];
+const CONTACT_DOMAINS = ["Events", "Blog", "Videos", "Client Portal"];
+const USER_DOMAINS = ["Events", "Blog", "Videos", "Coupons & Directory"];
 
 function PermissionToggle({
   permission,

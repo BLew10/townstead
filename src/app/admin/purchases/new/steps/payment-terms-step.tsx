@@ -628,7 +628,7 @@ export const PaymentTermsStep = forwardRef<
                         <Select
                           value={String(field.value ?? 1)}
                           onValueChange={(v) =>
-                            field.onChange(parseInt(v, 10))
+                            v != null && field.onChange(parseInt(v, 10))
                           }
                         >
                           <FormControl>
@@ -661,7 +661,7 @@ export const PaymentTermsStep = forwardRef<
                         <Select
                           value={String(field.value ?? startYear)}
                           onValueChange={(v) =>
-                            field.onChange(parseInt(v, 10))
+                            v != null && field.onChange(parseInt(v, 10))
                           }
                         >
                           <FormControl>
@@ -702,7 +702,7 @@ export const PaymentTermsStep = forwardRef<
                         <Select
                           value={String(field.value ?? 12)}
                           onValueChange={(v) =>
-                            field.onChange(parseInt(v, 10))
+                            v != null && field.onChange(parseInt(v, 10))
                           }
                         >
                           <FormControl>
@@ -735,7 +735,7 @@ export const PaymentTermsStep = forwardRef<
                         <Select
                           value={String(field.value ?? endYear)}
                           onValueChange={(v) =>
-                            field.onChange(parseInt(v, 10))
+                            v != null && field.onChange(parseInt(v, 10))
                           }
                         >
                           <FormControl>

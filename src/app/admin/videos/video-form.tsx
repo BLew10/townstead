@@ -157,7 +157,7 @@ export function VideoForm({
             <Label>Business Contact</Label>
             <Select
               value={businessContactId}
-              onValueChange={setBusinessContactId}
+              onValueChange={(v) => v != null && setBusinessContactId(v)}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a contact">
@@ -180,7 +180,7 @@ export function VideoForm({
 
           <div className="space-y-2">
             <Label>Category</Label>
-            <Select value={categoryId} onValueChange={setCategoryId}>
+            <Select value={categoryId} onValueChange={(v) => v != null && setCategoryId(v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a category">
                   {categories.find((c) => c._id === categoryId)?.name ??

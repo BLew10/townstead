@@ -90,7 +90,7 @@ export function validateFile(
 ): ValidationResult {
   const preset = IMAGE_PRESETS[presetKey];
 
-  if (!preset.allowedTypes.includes(file.type)) {
+  if (!(preset.allowedTypes as readonly string[]).includes(file.type)) {
     return {
       valid: false,
       error: `Invalid file type. Accepted formats: ${preset.formatLabel}.`,

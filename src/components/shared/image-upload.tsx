@@ -81,7 +81,7 @@ export function ImageUpload({
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
 
-  const config = IMAGE_PRESETS[preset];
+  const config = IMAGE_PRESETS[preset] as import("@/lib/image-validation").ImagePreset;
   const maxSizeMB = Math.round(MAX_FILE_SIZE_BYTES / (1024 * 1024));
   const hasCrop = !!config.aspectRatio;
 

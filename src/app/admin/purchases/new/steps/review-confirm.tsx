@@ -203,7 +203,7 @@ export function ReviewConfirm({
 
             <div className="flex justify-between items-center pt-2 mt-1 border-t font-medium">
               <span>Net</span>
-              <span>{fmt(baseNet)}</span>
+              <span>{fmt(scheduleBase)}</span>
             </div>
           </div>
         </Section>

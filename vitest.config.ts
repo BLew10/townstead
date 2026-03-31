@@ -5,11 +5,6 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: {
     alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
-    },
-  },
-  resolve: {
-    alias: {
       "@": path.resolve(__dirname, "src"),
     },
   },

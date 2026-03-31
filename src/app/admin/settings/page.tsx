@@ -89,7 +89,8 @@ export default function SettingsPage() {
   const upsert = useMutation(api.settings.mutations.upsertOrgSettings);
 
   const form = useForm<OrgSettingsFormValues>({
-    resolver: zodResolver(orgSettingsSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(orgSettingsSchema) as any,
     defaultValues,
   });
 
@@ -184,7 +185,7 @@ export default function SettingsPage() {
             </label>
             <Select
               value={String(defaultYear)}
-              onValueChange={(val) => setDefaultYear(parseInt(val, 10))}
+              onValueChange={(val) => val != null && setDefaultYear(parseInt(val, 10))}
             >
               <SelectTrigger id="default-year" className="w-32">
                 <SelectValue />

@@ -85,7 +85,7 @@ export function SelectEditionYear({
           <Label>Year</Label>
           <Select
             value={String(year)}
-            onValueChange={(v) => onYearChange(parseInt(v, 10))}
+            onValueChange={(v) => v != null && onYearChange(parseInt(v, 10))}
           >
             <SelectTrigger>
               <SelectValue>{year}</SelectValue>

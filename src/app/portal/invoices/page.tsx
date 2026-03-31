@@ -85,24 +85,32 @@ export default function PortalInvoicesPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" asChild>
-                        <Link
-                          href={`/admin/purchases/${invoice._id}/invoice`}
-                          target="_blank"
-                        >
-                          <Eye className="mr-1 h-3.5 w-3.5" />
-                          View
-                        </Link>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        render={
+                          <Link
+                            href={`/admin/purchases/${invoice._id}/invoice`}
+                            target="_blank"
+                          />
+                        }
+                      >
+                        <Eye className="mr-1 h-3.5 w-3.5" />
+                        View
                       </Button>
-                      <Button size="sm" variant="ghost" asChild>
-                        <a
-                          href={`/api/pdf/invoice/${invoice._id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <Download className="mr-1 h-3.5 w-3.5" />
-                          PDF
-                        </a>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        render={
+                          <a
+                            href={`/api/pdf/invoice/${invoice._id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          />
+                        }
+                      >
+                        <Download className="mr-1 h-3.5 w-3.5" />
+                        PDF
                       </Button>
                     </div>
                   </TableCell>

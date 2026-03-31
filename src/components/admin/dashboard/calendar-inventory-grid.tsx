@@ -78,7 +78,7 @@ export function CalendarInventoryGrid({ slots }: { slots: SlotData[] }) {
       {/* Day-type slots: 12-month grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 print:hidden">
         {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
-          const monthSlots = daySlotsByMonth.get(month) ?? new Map();
+          const monthSlots = daySlotsByMonth.get(month) ?? new Map<number, SlotData[]>();
           return (
             <div key={month} className="rounded-md border">
               <div className="border-b bg-muted/50 px-3 py-1.5">

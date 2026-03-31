@@ -308,7 +308,7 @@ function DayTypeGrid({
   });
 
   return (
-    <TooltipProvider delayDuration={200}>
+    <TooltipProvider delay={200}>
       <div className="rounded-lg border p-2">
         <div className="grid grid-cols-7 text-center mb-1">
           {weekDays.map((day, i) => (
@@ -450,7 +450,7 @@ function NonDayTypeGrid({
   const takenSlots: TakenSlots = (availability?.takenSlots as TakenSlots) ?? {};
 
   return (
-    <TooltipProvider delayDuration={200}>
+    <TooltipProvider delay={200}>
       <div
         className="grid gap-1"
         style={{
