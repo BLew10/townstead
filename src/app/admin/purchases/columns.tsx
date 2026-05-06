@@ -202,6 +202,11 @@ export function purchaseColumns({
     {
       id: "contactName",
       accessorFn: (row) => `${row.company || row.contactName} ${row.contactName}`,
+      sortingFn: (rowA, rowB) => {
+        const a = (rowA.original.company || rowA.original.contactName).toLowerCase();
+        const b = (rowB.original.company || rowB.original.contactName).toLowerCase();
+        return a.localeCompare(b);
+      },
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Contact" />
       ),
