@@ -44,6 +44,7 @@ export const grantPermission = mutation({
       const existingContactGrant = await ctx.db
         .query("orgPermissions")
         .withIndex("by_contactId", (q) => q.eq("contactId", args.contactId))
+        .filter((q) => q.eq(q.field("orgId"), orgId))
         .first();
       if (existingContactGrant) {
         throw new Error("This contact already has a linked account");
@@ -119,8 +120,12 @@ export const linkContact = mutation({
     const existingContactGrant = await ctx.db
       .query("orgPermissions")
       .withIndex("by_contactId", (q) => q.eq("contactId", args.contactId))
+      .filter((q) => q.eq(q.field("orgId"), orgId))
       .first();
     if (existingContactGrant) {
+      if (existingContactGrant.userId === args.userId) {
+        return existingContactGrant._id;
+      }
       throw new Error("This contact already has a linked client account");
     }
 
@@ -131,6 +136,9 @@ export const linkContact = mutation({
       )
       .first();
     if (existingUserGrant) {
+      if (existingUserGrant.contactId === args.contactId) {
+        return existingUserGrant._id;
+      }
       throw new Error("This user ID is already linked to another contact");
     }
 

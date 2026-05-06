@@ -111,16 +111,23 @@ export function columns({
 }): ColumnDef<Contact>[] {
   return [
     {
-      accessorKey: "company",
+      id: "company",
+      accessorFn: (row) => {
+        const contactName = [row.firstName, row.lastName]
+          .filter(Boolean)
+          .join(" ");
+        return `${row.company || contactName} ${contactName}`;
+      },
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Company" />
       ),
       cell: ({ row }) => {
+        const contactName = [row.original.firstName, row.original.lastName]
+          .filter(Boolean)
+          .join(" ");
         const label =
           row.original.company ||
-          [row.original.firstName, row.original.lastName]
-            .filter(Boolean)
-            .join(" ") ||
+          contactName ||
           "—";
         const initial = label.charAt(0).toUpperCase();
         const colors = [
@@ -140,7 +147,14 @@ export function columns({
             <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${colors[colorIdx]}`}>
               {initial}
             </span>
-            <span className="font-medium text-primary">{label}</span>
+            <span>
+              <span className="block font-medium text-primary">{label}</span>
+              {row.original.company && contactName && (
+                <span className="block text-xs text-muted-foreground">
+                  {contactName}
+                </span>
+              )}
+            </span>
           </Link>
         );
       },

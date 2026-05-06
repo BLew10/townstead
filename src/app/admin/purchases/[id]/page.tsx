@@ -297,7 +297,7 @@ export default function PurchaseDetailPage() {
 
         <TabsContent value="placements">
           <div className="pt-4">
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -363,7 +363,7 @@ export default function PurchaseDetailPage() {
 
         <TabsContent value="history">
           <div className="pt-4">
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>

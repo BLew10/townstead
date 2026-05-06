@@ -37,11 +37,16 @@ export function SelectContact({ value, onChange }: SelectContactProps) {
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <h3 className="text-lg font-medium">Select Contact</h3>
-        <p className="text-sm text-muted-foreground">
-          Choose the customer or advertiser for this purchase.
-        </p>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
+          <User className="h-5 w-5 text-blue-500" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold">Select Contact</h3>
+          <p className="text-sm text-muted-foreground">
+            Choose the customer or advertiser for this purchase.
+          </p>
+        </div>
       </div>
 
       <Input

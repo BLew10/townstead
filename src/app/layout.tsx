@@ -43,7 +43,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} ${plusJakartaSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col overflow-x-hidden">
-        <ClerkProvider>
+        <ClerkProvider
+          signInFallbackRedirectUrl="/auth/redirect"
+          signUpFallbackRedirectUrl="/auth/redirect"
+        >
           <ConvexClientProvider>
             <TooltipProvider>{children}</TooltipProvider>
             <Toaster richColors position="top-right" />

@@ -272,7 +272,9 @@ export default function NewBlogPostPage() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue>
+                      {{ draft: "Draft", pending: "Pending Review", published: "Published" }[status] ?? "Draft"}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="draft">Draft</SelectItem>

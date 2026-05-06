@@ -132,8 +132,11 @@ export function CategoryForm({
                     disabled={!!editing}
                   >
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a type" />
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a type">
+                          {CATEGORY_TYPES.find((t) => t.value === field.value)?.label ??
+                            "Select a type"}
+                        </SelectValue>
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>

@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
+import { PortalNoAccess } from "@/components/portal/no-access";
 import { FileText, Download, Eye, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
@@ -35,6 +36,8 @@ export default function PortalInvoicesPage() {
             <Skeleton key={i} className="h-12" />
           ))}
         </div>
+      ) : invoices === null ? (
+        <PortalNoAccess />
       ) : invoices.length === 0 ? (
         <EmptyState
           icon={FileText}
@@ -42,7 +45,7 @@ export default function PortalInvoicesPage() {
           description="No invoice records found."
         />
       ) : (
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>

@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import Link from "next/link";
 import {
   Select,
   SelectContent,
@@ -35,6 +36,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Shield, ChevronRight } from "lucide-react";
 import { useDefaultYear } from "@/hooks/use-default-year";
 
 const currentYear = new Date().getFullYear();
@@ -168,11 +170,30 @@ export default function SettingsPage() {
         </p>
       </div>
 
+      <Link href="/admin/settings/permissions" className="block group">
+        <Card className="border-l-3 border-l-indigo-500 transition-colors group-hover:bg-muted/50">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Shield className="h-5 w-5 text-indigo-500" />
+                <div>
+                  <CardTitle>Permissions</CardTitle>
+                  <CardDescription>
+                    Configure default permissions for contacts and public users.
+                  </CardDescription>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </div>
+          </CardHeader>
+        </Card>
+      </Link>
+
       <Card className="border-l-3 border-l-blue-500">
         <CardHeader>
           <CardTitle>Display Preferences</CardTitle>
           <CardDescription>
-            Controls the default year filter across all admin pages.
+            Controls the default edition year filter across all admin pages.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -181,7 +202,7 @@ export default function SettingsPage() {
               htmlFor="default-year"
               className="text-sm font-medium whitespace-nowrap"
             >
-              Default Year
+              Default Edition Year
             </label>
             <Select
               value={String(defaultYear)}

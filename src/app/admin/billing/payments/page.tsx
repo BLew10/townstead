@@ -62,11 +62,13 @@ export default function BillingPaymentsPage() {
             if (year) setDefaultYear(year);
           }}
         >
-          <SelectTrigger className="w-36">
-            <SelectValue placeholder="All Years" />
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="All Edition Years">
+              {selectedYear ? selectedYear.toString() : "All Edition Years"}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Years</SelectItem>
+            <SelectItem value="all">All Edition Years</SelectItem>
             {yearOptions.map((year) => (
               <SelectItem key={year} value={year.toString()}>
                 {year}

@@ -17,11 +17,17 @@ export function usePortalAuth() {
     grant?.contactId ? { id: grant.contactId } : "skip"
   );
 
+  const permissions = useQuery(
+    api.portal.queries.getMyPermissions,
+    clerkLoaded && user ? {} : "skip"
+  );
+
   return {
     contactId: grant?.contactId ?? null,
     contact: contact ?? null,
     grantId: grant?._id ?? null,
     isLoading: !clerkLoaded || grant === undefined,
     isLinked: !!grant && grant.role === "contact" && grant.isActive,
+    permissions: permissions ?? [],
   };
 }

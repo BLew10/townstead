@@ -19,8 +19,24 @@ import {
 import { ReviewConfirm } from "./steps/review-confirm";
 import type { PaymentTermsFormValues } from "@/lib/validators";
 import { dollarsToCents } from "@/lib/utils";
+import { useStableNow } from "@/hooks/use-stable-now";
 import type { Id } from "../../../../../convex/_generated/dataModel";
-import { User } from "lucide-react";
+import {
+  User,
+  Calendar,
+  ShoppingCart,
+  DollarSign,
+  ClipboardCheck,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
+const STEP_CARD_STYLES = [
+  "border-l-blue-500",
+  "border-l-violet-500",
+  "border-l-emerald-500",
+  "border-l-amber-500",
+  "border-l-teal-500",
+];
 
 function paymentTermsToCents(terms: PaymentTermsFormValues) {
   return {
@@ -101,6 +117,7 @@ export default function NewPurchasePage() {
   const prefillContactId = searchParams.get("contactId");
   const createPurchase = useMutation(api.purchases.mutations.create);
   const paymentTermsRef = useRef<PaymentTermsStepRef>(null);
+  const now = useStableNow();
 
   const prefillContact = useQuery(
     api.contacts.queries.getById,
@@ -121,6 +138,11 @@ export default function NewPurchasePage() {
     slotAssignments: [],
     paymentTerms: defaultPaymentTerms,
   });
+
+  const existingPurchase = useQuery(
+    api.purchases.queries.getByContactAndYear,
+    formState.contactId ? { contactId: formState.contactId, year: formState.year, now } : "skip"
+  );
 
   useEffect(() => {
     if (prefillContact && !prefilled) {
@@ -146,6 +168,8 @@ export default function NewPurchasePage() {
         if (formState.contactId === null) return "Select a contact to continue.";
         return null;
       case 1:
+        if (existingPurchase)
+          return "This contact already has a purchase for this year. Edit the existing purchase instead.";
         if (formState.calendarEditionIds.length === 0)
           return "Select at least one calendar edition.";
         if (formState.year < 2000) return "Enter a valid year.";
@@ -293,22 +317,23 @@ export default function NewPurchasePage() {
       />
 
       {(formState.contactId || formState.year) && (
-        <div className="flex items-center gap-4 rounded-lg border bg-muted/50 px-4 py-2.5 text-sm">
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/50 px-4 py-2.5 text-sm">
           {formState.contactId && formState.contactLabel && (
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="text-muted-foreground">Contact:</span>
-              <span className="font-medium">{formState.contactLabel}</span>
-            </div>
-          )}
-          {formState.contactId && formState.year && (
-            <span className="text-muted-foreground/40">|</span>
+            <Badge variant="outline" className="gap-1.5 border-blue-500/30 bg-blue-500/5 text-blue-700 dark:text-blue-400">
+              <User className="h-3.5 w-3.5" />
+              {formState.contactLabel}
+            </Badge>
           )}
           {formState.year && (
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Year:</span>
-              <span className="font-medium">{formState.year}</span>
-            </div>
+            <Badge variant="outline" className="gap-1.5 border-violet-500/30 bg-violet-500/5 text-violet-700 dark:text-violet-400">
+              <Calendar className="h-3.5 w-3.5" />
+              {formState.year}
+            </Badge>
+          )}
+          {formState.editionNames.length > 0 && (
+            <Badge variant="outline" className="gap-1.5 border-violet-500/30 bg-violet-500/5 text-violet-700 dark:text-violet-400">
+              {formState.editionNames.join(", ")}
+            </Badge>
           )}
         </div>
       )}
@@ -323,68 +348,71 @@ export default function NewPurchasePage() {
         canAdvance={validationMessage === null}
         validationMessage={validationMessage}
       >
-        {currentStep === 0 && (
-          <SelectContact
-            value={formState.contactId}
-            onChange={(contactId, contactLabel) =>
-              setFormState((prev) => ({ ...prev, contactId, contactLabel }))
-            }
-          />
-        )}
+        <div className={`rounded-lg border border-l-4 ${STEP_CARD_STYLES[currentStep]} bg-card p-6 shadow-sm`}>
+          {currentStep === 0 && (
+            <SelectContact
+              value={formState.contactId}
+              onChange={(contactId, contactLabel) =>
+                setFormState((prev) => ({ ...prev, contactId, contactLabel }))
+              }
+            />
+          )}
 
-        {currentStep === 1 && (
-          <SelectEditionYear
-            editionIds={formState.calendarEditionIds}
-            year={formState.year}
-            onEditionsChange={(ids, names) =>
-              setFormState((prev) => ({
-                ...prev,
-                calendarEditionIds: ids,
-                editionNames: names,
-              }))
-            }
-            onYearChange={(year) =>
-              setFormState((prev) => ({ ...prev, year }))
-            }
-          />
-        )}
+          {currentStep === 1 && (
+            <SelectEditionYear
+              editionIds={formState.calendarEditionIds}
+              year={formState.year}
+              contactId={formState.contactId}
+              onEditionsChange={(ids, names) =>
+                setFormState((prev) => ({
+                  ...prev,
+                  calendarEditionIds: ids,
+                  editionNames: names,
+                }))
+              }
+              onYearChange={(year) =>
+                setFormState((prev) => ({ ...prev, year }))
+              }
+            />
+          )}
 
-        {currentStep === 2 && (
-          <SelectAdTypes
-            calendarEditionIds={formState.calendarEditionIds}
-            editionNames={formState.editionNames}
-            year={formState.year}
-            selections={formState.adSelections}
-            slotAssignments={formState.slotAssignments}
-            onChange={(adSelections) =>
-              setFormState((prev) => ({ ...prev, adSelections }))
-            }
-            onSlotsChange={(slotAssignments) =>
-              setFormState((prev) => ({ ...prev, slotAssignments }))
-            }
-          />
-        )}
+          {currentStep === 2 && (
+            <SelectAdTypes
+              calendarEditionIds={formState.calendarEditionIds}
+              editionNames={formState.editionNames}
+              year={formState.year}
+              selections={formState.adSelections}
+              slotAssignments={formState.slotAssignments}
+              onChange={(adSelections) =>
+                setFormState((prev) => ({ ...prev, adSelections }))
+              }
+              onSlotsChange={(slotAssignments) =>
+                setFormState((prev) => ({ ...prev, slotAssignments }))
+              }
+            />
+          )}
 
-        {currentStep === 3 && (
-          <PaymentTermsStep
-            ref={paymentTermsRef}
-            values={formState.paymentTerms}
-            onChange={handlePaymentTermsChange}
-            suggestedTotal={suggestedTotal}
-          />
-        )}
+          {currentStep === 3 && (
+            <PaymentTermsStep
+              ref={paymentTermsRef}
+              values={formState.paymentTerms}
+              onChange={handlePaymentTermsChange}
+              suggestedTotal={suggestedTotal}
+            />
+          )}
 
-        {currentStep === 4 && (
-          <ReviewConfirm
-            contactLabel={formState.contactLabel}
-            calendarEditionIds={formState.calendarEditionIds}
-            editionNames={formState.editionNames}
-            year={formState.year}
-            adSelections={formState.adSelections}
-            slotAssignments={formState.slotAssignments}
-            paymentTerms={formState.paymentTerms}
-          />
-        )}
+          {currentStep === 4 && (
+            <ReviewConfirm
+              contactLabel={formState.contactLabel}
+              calendarEditionIds={formState.calendarEditionIds}
+              editionNames={formState.editionNames}
+              year={formState.year}
+              adSelections={formState.adSelections}
+              slotAssignments={formState.slotAssignments}
+              paymentTerms={formState.paymentTerms}
+            />
+          )}
+        </div>
       </StepForm>
     </div>
   );

@@ -10,7 +10,6 @@ import { useStableNow } from "@/hooks/use-stable-now";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StepForm, type Step } from "@/components/shared/step-form";
-import { SelectContact } from "../../new/steps/select-contact";
 import { SelectEditionYear } from "../../new/steps/select-edition-year";
 import {
   SelectAdTypes,
@@ -27,7 +26,7 @@ import { dollarsToCents, centsToDollars } from "@/lib/utils";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Lock, User } from "lucide-react";
 import Link from "next/link";
 
 function paymentTermsToCents(terms: PaymentTermsFormValues) {
@@ -171,6 +170,7 @@ export default function EditPurchasePage() {
         slotAssignments,
         paymentTerms,
       });
+      setCurrentStep(1);
       setInitialized(true);
     }
   }, [detail, initialized]);
@@ -214,7 +214,7 @@ export default function EditPurchasePage() {
   }, [currentStep]);
 
   const handleBack = useCallback(() => {
-    setCurrentStep((prev) => Math.max(prev - 1, 0));
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
   }, []);
 
   const handleSubmit = useCallback(async () => {
@@ -328,20 +328,35 @@ export default function EditPurchasePage() {
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
         canAdvance={canAdvance()}
+        minStep={1}
       >
         {currentStep === 0 && (
-          <SelectContact
-            value={formState.contactId}
-            onChange={(contactId, contactLabel) =>
-              setFormState((prev) => ({ ...prev, contactId, contactLabel }))
-            }
-          />
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
+                <User className="h-5 w-5 text-blue-500" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Contact</h3>
+                <p className="text-sm text-muted-foreground">
+                  The contact for this purchase cannot be changed.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-4 py-3">
+              <Lock className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">{formState.contactLabel}</span>
+            </div>
+          </div>
         )}
 
         {currentStep === 1 && (
           <SelectEditionYear
             editionIds={formState.calendarEditionIds}
             year={formState.year}
+            contactId={formState.contactId}
+            excludePurchaseId={id}
+            yearLocked
             onEditionsChange={(ids, names) =>
               setFormState((prev) => ({
                 ...prev,

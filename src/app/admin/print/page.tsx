@@ -169,7 +169,8 @@ export default function AdminPrintInventoryPage() {
                 }
               }}
             >
-              <SelectTrigger className="w-28">
+              <SelectTrigger className="w-36">
+                <span className="text-muted-foreground text-xs mr-1">Edition Year</span>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

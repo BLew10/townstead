@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
+import { PortalNoAccess } from "@/components/portal/no-access";
 import { ImageUpload } from "@/components/shared/image-upload";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ImageIcon, CheckCircle, XCircle, Clock } from "lucide-react";
@@ -54,6 +55,10 @@ export default function PortalAssetsPage() {
     [contactId, generateUploadUrl, uploadAsset]
   );
 
+  if (assets === null) {
+    return <PortalNoAccess />;
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight">Assets</h1>
@@ -86,7 +91,7 @@ export default function PortalAssetsPage() {
           description="Upload ad artwork above to get started."
         />
       ) : (
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>

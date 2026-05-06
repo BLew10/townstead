@@ -170,8 +170,12 @@ export function RecordPaymentSheet({
                   <FormLabel>Payment Method</FormLabel>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select method..." />
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select method...">
+                          {{ check: "Check", credit_card: "Credit Card", cash: "Cash", other: "Other" }[
+                            field.value
+                          ] ?? "Select method..."}
+                        </SelectValue>
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>

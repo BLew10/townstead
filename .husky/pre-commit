@@ -1,1 +1,2 @@
+npm run audit:security
 npm run test:once

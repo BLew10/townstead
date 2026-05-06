@@ -38,18 +38,19 @@ export const getForUser = query({
 export const getForContact = query({
   args: { contactId: v.id("contacts") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-    const orgId = identity.orgId as string | undefined;
-    if (!orgId) return null;
+    let orgId: string;
+    try {
+      const auth = await requireAuth(ctx);
+      orgId = auth.orgId;
+    } catch {
+      return null;
+    }
 
-    const grant = await ctx.db
+    return await ctx.db
       .query("orgPermissions")
       .withIndex("by_contactId", (q) => q.eq("contactId", args.contactId))
+      .filter((q) => q.eq(q.field("orgId"), orgId))
       .first();
-
-    if (grant && grant.orgId !== orgId) return null;
-    return grant;
   },
 });
 

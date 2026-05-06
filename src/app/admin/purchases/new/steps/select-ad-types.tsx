@@ -15,7 +15,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Check, X } from "lucide-react";
+import { Check, X, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
 import type { SlotAssignment } from "./assign-slots";
@@ -211,27 +211,32 @@ export function SelectAdTypes({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <h3 className="text-lg font-medium">Purchase Details</h3>
-        <p className="text-sm text-muted-foreground">
-          Set quantities, charges, and assign ad placements for each calendar
-          edition.
-        </p>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
+          <ShoppingCart className="h-5 w-5 text-emerald-500" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold">Purchase Details</h3>
+          <p className="text-sm text-muted-foreground">
+            Set quantities, charges, and assign ad placements for each calendar
+            edition.
+          </p>
+        </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="overflow-x-auto rounded-lg border border-emerald-500/20 shadow-sm">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-muted/50">
-              <th className="sticky left-0 z-10 bg-muted/50 px-4 py-3 text-left text-sm font-medium min-w-[180px]">
+            <tr className="bg-emerald-500/10">
+              <th className="sticky left-0 z-10 bg-emerald-500/10 px-4 py-3 text-left text-sm font-medium min-w-[180px]">
                 Advertisement Type
               </th>
               {calendarEditionIds.map((editionId, idx) => (
                 <th
                   key={editionId}
-                  className="min-w-[300px] border-l px-4 py-3 text-sm font-medium"
+                  className="min-w-[300px] border-l border-emerald-500/20 px-4 py-3 text-sm font-medium"
                 >
-                  <div className="text-primary">{editionNames[idx] || "Edition"}</div>
+                  <div className="text-emerald-800 dark:text-emerald-300">{editionNames[idx] || "Edition"}</div>
                 </th>
               ))}
             </tr>
@@ -277,7 +282,9 @@ export function SelectAdTypes({
                           <Input
                             type="number"
                             min={0}
-                            value={quantity}
+                            value={quantity || ""}
+                            placeholder="0"
+                            onFocus={(e) => e.target.select()}
                             onChange={(e) =>
                               updateSelection(
                                 ad._id,
@@ -285,11 +292,15 @@ export function SelectAdTypes({
                                 ad.isDayType,
                                 editionId,
                                 ad.slotsPerMonth,
-                                { quantity: parseInt(e.target.value, 10) || 0 }
+                                {
+                                  quantity:
+                                    e.target.value === ""
+                                      ? 0
+                                      : parseInt(e.target.value, 10),
+                                }
                               )
                             }
                             className="w-20"
-                            placeholder="0"
                           />
                         </div>
 
@@ -300,6 +311,7 @@ export function SelectAdTypes({
                             inputMode="decimal"
                             pattern="[0-9.]*"
                             value={charge || ""}
+                            onFocus={(e) => e.target.select()}
                             onChange={(e) => {
                               const val = parseFloat(e.target.value);
                               updateSelection(
@@ -325,7 +337,7 @@ export function SelectAdTypes({
                                     type="button"
                                     variant={
                                       fullyPlaced
-                                        ? "default"
+                                        ? "outline"
                                         : partiallyPlaced
                                           ? "secondary"
                                           : needsPlacement
@@ -335,6 +347,8 @@ export function SelectAdTypes({
                                     size="sm"
                                     className={cn(
                                       "min-w-[90px]",
+                                      fullyPlaced &&
+                                        "border-emerald-500 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400",
                                       needsPlacement && "animate-pulse"
                                     )}
                                     disabled={quantity === 0}
@@ -442,8 +456,8 @@ export function SelectAdTypes({
       </div>
 
       {selections.length > 0 && (
-        <div className="rounded-lg border bg-muted/50 p-4">
-          <p className="text-sm font-medium">
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+          <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
             Selected: {selections.length} line item(s), {totalUnits} total units
           </p>
         </div>

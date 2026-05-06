@@ -156,7 +156,7 @@ export default function StatementPage() {
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Purchases
           </h2>
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -215,7 +215,7 @@ export default function StatementPage() {
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Payment History
           </h2>
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow>

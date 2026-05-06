@@ -32,6 +32,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   ArrowLeft,
+  ChevronRight,
   Pencil,
   ShoppingCart,
   CreditCard,
@@ -54,6 +55,7 @@ import { useMutation } from "convex/react";
 import { useOrg } from "@/hooks/use-org";
 import { useStableNow } from "@/hooks/use-stable-now";
 import { formatDate, formatCurrency } from "@/lib/utils";
+import { toast } from "sonner";
 import { PERMISSIONS, DEFAULT_CONTACT_PERMISSIONS } from "../../../../../convex/permissions";
 
 function DetailField({
@@ -178,7 +180,11 @@ export default function ContactDetailPage() {
   }, []);
 
   useEffect(() => {
-    if (contact?.email && !clientGrant && !portalInvite) {
+    if (
+      contact?.email &&
+      clientGrant === null &&
+      (portalInvite === null || portalInvite === undefined)
+    ) {
       lookupClerkUser(contact.email);
     }
   }, [contact?.email, clientGrant, portalInvite, lookupClerkUser]);
@@ -232,22 +238,13 @@ export default function ContactDetailPage() {
         title={fullName}
         description={contact.company ?? undefined}
         actions={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => router.push(`/admin/contacts/${id}/statement`)}
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              Statement
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setFormOpen(true)}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            onClick={() => setFormOpen(true)}
+          >
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
+          </Button>
         }
       />
 
@@ -331,7 +328,7 @@ export default function ContactDetailPage() {
         <TabsContent value="purchases">
           <div className="pt-4">
             {purchases && purchases.length > 0 ? (
-              <div className="rounded-md border">
+              <div className="rounded-md border overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -341,18 +338,19 @@ export default function ContactDetailPage() {
                       <TableHead>Net</TableHead>
                       <TableHead>Paid</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="w-24" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {purchases.map((purchase) => (
                       <TableRow
                         key={purchase._id}
-                        className="cursor-pointer"
+                        className="cursor-pointer hover:bg-muted/50 transition-colors group"
                         onClick={() =>
                           router.push(`/admin/purchases/${purchase._id}`)
                         }
                       >
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium text-primary underline underline-offset-2 decoration-primary/30">
                           {purchase.invoiceNumber ?? "—"}
                         </TableCell>
                         <TableCell>{purchase.editionCode}</TableCell>
@@ -372,6 +370,26 @@ export default function ContactDetailPage() {
                             <Badge variant="secondary">Unpaid</Badge>
                           )}
                         </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-primary"
+                              title="Download statement"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(`/api/pdf/purchase-statement/${purchase._id}`, "_blank");
+                              }}
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground group-hover:text-primary">
+                              View
+                              <ChevronRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -390,7 +408,7 @@ export default function ContactDetailPage() {
         <TabsContent value="payments">
           <div className="pt-4">
             {payments && payments.length > 0 ? (
-              <div className="rounded-md border">
+              <div className="rounded-md border overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -601,13 +619,15 @@ export default function ContactDetailPage() {
                           <Button
                             size="sm"
                             onClick={async () => {
+                              if (clientGrant) return;
                               try {
                                 await linkContact({
                                   userId: clerkLookup.userId!,
                                   contactId: id,
                                 });
+                                toast.success("Client account linked successfully");
                               } catch (err) {
-                                alert(
+                                toast.error(
                                   err instanceof Error
                                     ? err.message
                                     : "Failed to link"
@@ -640,7 +660,7 @@ export default function ContactDetailPage() {
         <TabsContent value="assets">
           <div className="pt-4">
             {clientAssets && clientAssets.length > 0 ? (
-              <div className="rounded-md border">
+              <div className="rounded-md border overflow-hidden">
                 <Table>
                   <TableHeader>
                     <TableRow>

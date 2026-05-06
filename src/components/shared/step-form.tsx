@@ -10,6 +10,21 @@ export interface Step {
   label: string;
 }
 
+export interface StepColor {
+  bg: string;
+  border: string;
+  text: string;
+  connector: string;
+}
+
+const DEFAULT_STEP_COLORS: StepColor[] = [
+  { bg: "bg-blue-500", border: "border-blue-500", text: "text-blue-500", connector: "bg-blue-500" },
+  { bg: "bg-violet-500", border: "border-violet-500", text: "text-violet-500", connector: "bg-violet-500" },
+  { bg: "bg-emerald-500", border: "border-emerald-500", text: "text-emerald-500", connector: "bg-emerald-500" },
+  { bg: "bg-amber-500", border: "border-amber-500", text: "text-amber-500", connector: "bg-amber-500" },
+  { bg: "bg-teal-500", border: "border-teal-500", text: "text-teal-500", connector: "bg-teal-500" },
+];
+
 interface StepFormProps {
   steps: Step[];
   currentStep: number;
@@ -19,6 +34,8 @@ interface StepFormProps {
   isSubmitting?: boolean;
   canAdvance?: boolean;
   validationMessage?: string | null;
+  stepColors?: StepColor[];
+  minStep?: number;
   children: ReactNode;
 }
 
@@ -31,10 +48,12 @@ export function StepForm({
   isSubmitting = false,
   canAdvance = true,
   validationMessage,
+  stepColors = DEFAULT_STEP_COLORS,
+  minStep = 0,
   children,
 }: StepFormProps) {
   const isLast = currentStep === steps.length - 1;
-  const isFirst = currentStep === 0;
+  const isFirst = currentStep <= minStep;
   const containerRef = useRef<HTMLDivElement>(null);
   const [attempted, setAttempted] = useState(false);
 
@@ -63,7 +82,7 @@ export function StepForm({
 
   return (
     <div ref={containerRef} className="flex flex-col gap-8">
-      <StepIndicator steps={steps} currentStep={currentStep} />
+      <StepIndicator steps={steps} currentStep={currentStep} stepColors={stepColors} />
       <div className="min-h-[300px]">{children}</div>
       <div className="border-t pt-4 space-y-2">
         {showMessage && (
@@ -105,9 +124,11 @@ export function StepForm({
 function StepIndicator({
   steps,
   currentStep,
+  stepColors,
 }: {
   steps: Step[];
   currentStep: number;
+  stepColors: StepColor[];
 }) {
   return (
     <nav aria-label="Progress">
@@ -115,6 +136,7 @@ function StepIndicator({
         {steps.map((step, idx) => {
           const isCompleted = idx < currentStep;
           const isCurrent = idx === currentStep;
+          const color = stepColors[idx % stepColors.length];
 
           return (
             <li
@@ -127,11 +149,9 @@ function StepIndicator({
               <div className="flex items-center gap-2">
                 <span
                   className={cn(
-                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium",
-                    isCompleted &&
-                      "bg-primary text-primary-foreground",
-                    isCurrent &&
-                      "border-2 border-primary bg-background text-primary",
+                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium transition-colors",
+                    isCompleted && cn(color.bg, "text-white"),
+                    isCurrent && cn("border-2 bg-background", color.border, color.text),
                     !isCompleted &&
                       !isCurrent &&
                       "border-2 border-muted-foreground/30 bg-background text-muted-foreground"
@@ -157,8 +177,8 @@ function StepIndicator({
               {idx < steps.length - 1 && (
                 <div
                   className={cn(
-                    "mx-2 hidden h-0.5 flex-1 sm:block",
-                    isCompleted ? "bg-primary" : "bg-muted-foreground/30"
+                    "mx-2 hidden h-0.5 flex-1 sm:block transition-colors",
+                    isCompleted ? color.connector : "bg-muted-foreground/30"
                   )}
                 />
               )}

@@ -101,7 +101,7 @@ export function AdvertisementForm({
               control={form.control}
               name="isDayType"
               render={({ field }) => (
-                <FormItem className="flex items-center gap-3">
+                <FormItem className="flex items-center justify-center gap-3">
                   <FormControl>
                     <Switch
                       checked={field.value}
@@ -124,8 +124,15 @@ export function AdvertisementForm({
                       min={0}
                       disabled={isDayType}
                       {...field}
+                      value={field.value || ""}
+                      placeholder="0"
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) =>
-                        field.onChange(parseInt(e.target.value, 10) || 0)
+                        field.onChange(
+                          e.target.value === ""
+                            ? 0
+                            : parseInt(e.target.value, 10)
+                        )
                       }
                     />
                   </FormControl>

@@ -17,6 +17,23 @@ vi.mock("@/components/ui/scroll-area", () => ({
   ScrollArea: ({ children }: any) => <div>{children}</div>,
 }));
 
+vi.mock("@/hooks/use-portal-auth", () => ({
+  usePortalAuth: () => ({
+    contact: { company: "Test Company" },
+    contactId: "c1",
+    grantId: "g1",
+    isLoading: false,
+    isLinked: true,
+    permissions: [
+      "portal:view",
+      "portal:assets",
+      "portal:messages",
+      "portal:payments",
+      "portal:invoices",
+    ],
+  }),
+}));
+
 import { PortalSidebar, PortalSidebarMobile } from "./sidebar";
 
 describe("PortalSidebar", () => {
@@ -32,6 +49,7 @@ describe("PortalSidebar", () => {
     expect(screen.getByText("Payments")).toBeDefined();
     expect(screen.getByText("Invoices")).toBeDefined();
     expect(screen.getByText("Assets")).toBeDefined();
+    expect(screen.getByText("My Profile")).toBeDefined();
   });
 
   it("links point to correct portal routes", () => {

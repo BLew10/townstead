@@ -177,8 +177,13 @@ export function CalendarEditionForm({
                       value={field.value ?? NONE_VALUE}
                     >
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a community" />
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a community">
+                            {field.value
+                              ? (communities?.find((c) => c._id === field.value)
+                                  ?.name ?? "Select a community")
+                              : "None"}
+                          </SelectValue>
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>

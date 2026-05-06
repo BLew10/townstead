@@ -12,6 +12,13 @@ vi.mock("@/hooks/use-portal-auth", () => ({
     grantId: "g1",
     isLoading: false,
     isLinked: true,
+    permissions: [
+      "portal:view",
+      "portal:assets",
+      "portal:messages",
+      "portal:payments",
+      "portal:invoices",
+    ],
   }),
 }));
 

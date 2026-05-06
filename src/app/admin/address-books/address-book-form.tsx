@@ -137,7 +137,11 @@ export function AddressBookForm({
                   >
                     <FormControl>
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select visibility" />
+                        <SelectValue placeholder="Select visibility">
+                          {{ "__none__": "None", private: "Private", public: "Public" }[
+                            field.value === "" ? "__none__" : field.value
+                          ] ?? "Select visibility"}
+                        </SelectValue>
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>

@@ -72,8 +72,11 @@ export default function CategoriesPage() {
                 setTypeFilter((v ?? "all") as TypeFilter)
               }
             >
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
+              <SelectTrigger className="w-[150px]">
+                <SelectValue>
+                  {CATEGORY_TYPES.find((t) => t.value === typeFilter)?.label ??
+                    "All Types"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {CATEGORY_TYPES.map((t) => (

@@ -235,6 +235,72 @@ export const getDetail = query({
   },
 });
 
+export const getByContactAndYear = query({
+  args: { contactId: v.id("contacts"), year: v.number(), now: v.number() },
+  handler: async (ctx, args) => {
+    const purchase = await ctx.db
+      .query("purchases")
+      .withIndex("by_contactId", (q) => q.eq("contactId", args.contactId))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("year"), args.year),
+          q.neq(q.field("isDeleted"), true)
+        )
+      )
+      .first();
+
+    if (!purchase) return null;
+
+    const editionCodes = await getEditionCodesSorted(
+      ctx,
+      purchase.calendarEditionIds
+    );
+
+    const terms = await ctx.db
+      .query("paymentTerms")
+      .withIndex("by_purchaseId", (q) => q.eq("purchaseId", purchase._id))
+      .first();
+
+    const scheduledPayments = await ctx.db
+      .query("scheduledPayments")
+      .withIndex("by_purchaseId", (q) => q.eq("purchaseId", purchase._id))
+      .collect();
+
+    const allAllocations: Doc<"paymentAllocations">[] = [];
+    for (const sp of scheduledPayments) {
+      const spAllocs = await ctx.db
+        .query("paymentAllocations")
+        .withIndex("by_scheduledPaymentId", (q) =>
+          q.eq("scheduledPaymentId", sp._id)
+        )
+        .collect();
+      allAllocations.push(...spAllocs);
+    }
+
+    const purchasePayments = await ctx.db
+      .query("payments")
+      .withIndex("by_purchaseId", (q) => q.eq("purchaseId", purchase._id))
+      .collect();
+
+    const net = terms
+      ? computeNet(terms, scheduledPayments, allAllocations, args.now)
+      : 0;
+    const { amountPaid } = computeAmountPaidWithPrepaid(
+      allAllocations,
+      purchasePayments
+    );
+    const isPaid = computeIsPaid(net, amountPaid);
+
+    return {
+      _id: purchase._id,
+      editionCode: editionCodes.join(", ") || "Unknown",
+      net,
+      amountPaid,
+      isPaid,
+    };
+  },
+});
+
 export const listByContact = query({
   args: { contactId: v.id("contacts"), now: v.number() },
   handler: async (ctx, args) => {

@@ -457,3 +457,75 @@ export const softDelete = mutation({
     );
   },
 });
+
+export const regenerateSchedule = mutation({
+  args: {
+    purchaseId: v.id("purchases"),
+    orgId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const purchase = await ctx.db.get(args.purchaseId);
+    if (!purchase || purchase.orgId !== args.orgId) {
+      throw new Error("Purchase not found");
+    }
+
+    const terms = await ctx.db
+      .query("paymentTerms")
+      .withIndex("by_purchaseId", (q) =>
+        q.eq("purchaseId", args.purchaseId)
+      )
+      .first();
+    if (!terms) {
+      throw new Error("No payment terms found for this purchase");
+    }
+
+    const oldScheduledPayments = await ctx.db
+      .query("scheduledPayments")
+      .withIndex("by_purchaseId", (q) =>
+        q.eq("purchaseId", args.purchaseId)
+      )
+      .collect();
+
+    for (const sp of oldScheduledPayments) {
+      const allocations = await ctx.db
+        .query("paymentAllocations")
+        .withIndex("by_scheduledPaymentId", (q) =>
+          q.eq("scheduledPaymentId", sp._id)
+        )
+        .collect();
+      for (const alloc of allocations) {
+        await ctx.db.delete(alloc._id);
+      }
+      await ctx.db.delete(sp._id);
+    }
+
+    const scheduleBase = computeScheduleBase(terms);
+    const scheduledPaymentInputs = generateScheduledPayments({
+      baseNet: scheduleBase,
+      dueDayOfMonth: terms.dueDayOfMonth ?? 1,
+      splitEqually: terms.splitEqually ?? true,
+      startMonth: terms.scheduleStartMonth ?? 1,
+      startYear: terms.scheduleStartYear ?? purchase.year,
+      endMonth: terms.scheduleEndMonth ?? 12,
+      endYear: terms.scheduleEndYear ?? purchase.year,
+      customSchedule: terms.customSchedule,
+    });
+
+    for (const sp of scheduledPaymentInputs) {
+      await ctx.db.insert("scheduledPayments", {
+        purchaseId: args.purchaseId,
+        dueDate: sp.dueDate,
+        amount: sp.amount,
+        month: sp.month,
+        year: sp.year,
+        orgId: purchase.orgId,
+      });
+    }
+
+    return {
+      deletedCount: oldScheduledPayments.length,
+      createdCount: scheduledPaymentInputs.length,
+      scheduleBase,
+    };
+  },
+});

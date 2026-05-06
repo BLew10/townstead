@@ -182,11 +182,11 @@ export function DataTable<TData, TValue>({
 
   const isFiltered = columnFilters.length > 0;
 
-  const totalRows = data.length;
   const filteredRows = table.getFilteredRowModel().rows.length;
   const selectedRows = enableRowSelection
     ? table.getFilteredSelectedRowModel().rows.length
     : 0;
+  const itemCountLabel = `${filteredRows} ${filteredRows === 1 ? "item" : "items"}`;
 
   const pageCount = table.getPageCount();
   const pageIndex = table.getState().pagination.pageIndex;
@@ -194,46 +194,54 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      {/* Toolbar: search + faceted filters */}
-      {(searchKey || filterableColumns.length > 0) && (
-        <div className="flex flex-wrap items-center gap-2">
-          {searchKey && (
-            <Input
-              placeholder={searchPlaceholder}
-              value={
-                (table.getColumn(searchKey)?.getFilterValue() as string) ?? ""
-              }
-              onChange={(e) =>
-                table.getColumn(searchKey)?.setFilterValue(e.target.value)
-              }
-              className="h-8 max-w-sm"
-            />
+      <div className="space-y-2">
+        {(searchKey || filterableColumns.length > 0) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {searchKey && (
+              <Input
+                placeholder={searchPlaceholder}
+                value={
+                  (table.getColumn(searchKey)?.getFilterValue() as string) ??
+                  ""
+                }
+                onChange={(e) =>
+                  table.getColumn(searchKey)?.setFilterValue(e.target.value)
+                }
+                className="h-8 max-w-sm"
+              />
+            )}
+            {filterableColumns.map((col) => (
+              <DataTableFacetedFilter
+                key={col.id}
+                column={col}
+                title={
+                  typeof col.columnDef.header === "string"
+                    ? col.columnDef.header
+                    : col.id.charAt(0).toUpperCase() + col.id.slice(1)
+                }
+                options={col.columnDef.meta!.filterOptions!}
+              />
+            ))}
+            {isFiltered && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8"
+                onClick={() => table.resetColumnFilters()}
+              >
+                Reset
+                <X className="ml-1 size-3.5" />
+              </Button>
+            )}
+          </div>
+        )}
+        <div className="text-sm text-muted-foreground">
+          {enableRowSelection && selectedRows > 0 && (
+            <span>{selectedRows} selected &middot; </span>
           )}
-          {filterableColumns.map((col) => (
-            <DataTableFacetedFilter
-              key={col.id}
-              column={col}
-              title={
-                typeof col.columnDef.header === "string"
-                  ? col.columnDef.header
-                  : col.id.charAt(0).toUpperCase() + col.id.slice(1)
-              }
-              options={col.columnDef.meta!.filterOptions!}
-            />
-          ))}
-          {isFiltered && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8"
-              onClick={() => table.resetColumnFilters()}
-            >
-              Reset
-              <X className="ml-1 size-3.5" />
-            </Button>
-          )}
+          <span>{itemCountLabel}</span>
         </div>
-      )}
+      </div>
 
       <div className="rounded-md border border-border/60 overflow-hidden">
         <Table>
@@ -301,25 +309,8 @@ export function DataTable<TData, TValue>({
         </Table>
       </div>
 
-      {/* Footer: item count + pagination */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="text-sm text-muted-foreground">
-          {enableRowSelection && selectedRows > 0 && (
-            <span>{selectedRows} selected &middot; </span>
-          )}
-          {filteredRows !== totalRows ? (
-            <span>
-              {filteredRows} of {totalRows}{" "}
-              {totalRows === 1 ? "item" : "items"}
-            </span>
-          ) : (
-            <span>
-              {totalRows} {totalRows === 1 ? "item" : "items"}
-            </span>
-          )}
-        </div>
-
-        {!noPagination && pageCount > 1 && (
+      {!noPagination && pageCount > 1 && (
+        <div className="flex justify-end">
           <div className="flex flex-wrap items-center gap-1">
             <Button
               variant="outline"
@@ -381,8 +372,8 @@ export function DataTable<TData, TValue>({
               <ChevronsRight className="size-4" />
             </Button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

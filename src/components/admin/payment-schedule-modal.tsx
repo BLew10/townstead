@@ -79,7 +79,7 @@ export function PaymentScheduleModal({
               </CardHeader>
               <CardContent>
                 {data.scheduledPayments.length > 0 ? (
-                  <div className="rounded-md border">
+                  <div className="rounded-md border overflow-hidden">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -143,7 +143,7 @@ export function PaymentScheduleModal({
               </CardHeader>
               <CardContent>
                 {data.payments.length > 0 ? (
-                  <div className="rounded-md border">
+                  <div className="rounded-md border overflow-hidden">
                     <Table>
                       <TableHeader>
                         <TableRow>

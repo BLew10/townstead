@@ -150,7 +150,7 @@ export default function AdminDashboardPage() {
             value={editionId ?? ""}
             onValueChange={(val) => setSelectedEditionId(val ?? "")}
           >
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-56">
               <SelectValue placeholder="Select edition...">
                 {editions.find((e) => e._id === editionId)?.name ??
                   "Select edition..."}
@@ -175,7 +175,8 @@ export default function AdminDashboardPage() {
               }
             }}
           >
-            <SelectTrigger className="w-28">
+            <SelectTrigger className="w-44">
+              <span className="text-muted-foreground text-xs mr-1 shrink-0">Edition Year</span>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

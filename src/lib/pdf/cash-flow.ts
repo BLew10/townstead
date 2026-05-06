@@ -3,68 +3,78 @@ import {
   drawText,
   drawLine,
   newLine,
-  rightAlignText,
   checkPageBreak,
   fmtCurrency,
   MARGIN,
   rgb,
 } from "./shared";
 
-const MONTHS = [
+const MONTH_NAMES = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
 
-type MonthCell = { projected: number; actual: number };
+function formatColumnKey(key: string): string {
+  const [yearStr, monthStr] = key.split("-");
+  const monthIdx = parseInt(monthStr, 10) - 1;
+  return `${MONTH_NAMES[monthIdx]} ${yearStr}`;
+}
+
+type Cell = { projected: number; actual: number };
 
 interface CashFlowRow {
   contactName: string;
   company: string;
-  months: MonthCell[];
-  yearTotal: MonthCell;
+  cells: Cell[];
+  total: Cell;
+  purchases?: unknown[];
 }
 
 interface CashFlowData {
   editionName: string;
   year: number;
+  paymentYear?: number;
+  columns: string[];
   rows: CashFlowRow[];
-  summary: { months: MonthCell[]; yearTotal: MonthCell };
+  summary: { cells: Cell[]; total: Cell };
 }
 
 export async function generateCashFlowPdf(
   data: CashFlowData
 ): Promise<Uint8Array> {
-  const ctx = await createPdfContext(true); // landscape
+  const ctx = await createPdfContext(true);
   const rightEdge = ctx.width - MARGIN;
 
-  // Title
   drawText(ctx, "CASH FLOW REPORT", MARGIN, { size: 18, bold: true });
   newLine(ctx);
-  drawText(ctx, `${data.editionName} — ${data.year}`, MARGIN, {
+  const subtitle = data.paymentYear && data.paymentYear !== data.year
+    ? `${data.editionName} — ${data.year} (Payments: ${data.paymentYear})`
+    : `${data.editionName} — ${data.year}`;
+  drawText(ctx, subtitle, MARGIN, {
     size: 12,
     color: rgb(0.4, 0.4, 0.4),
   });
   newLine(ctx, 2);
 
-  // Column layout
+  const colCount = data.columns.length;
   const contactColWidth = 120;
-  const monthCols = 12;
   const totalAvailable = rightEdge - MARGIN - contactColWidth - 60;
-  const monthColWidth = totalAvailable / monthCols;
-  const totalColX = MARGIN + contactColWidth + monthCols * monthColWidth + 10;
+  const colWidth = Math.min(totalAvailable / colCount, 55);
+  const totalColX = MARGIN + contactColWidth + colCount * colWidth + 10;
 
-  // Header row
   drawText(ctx, "Contact", MARGIN, { size: 7, bold: true });
-  for (let i = 0; i < 12; i++) {
-    const x = MARGIN + contactColWidth + i * monthColWidth;
-    drawText(ctx, MONTHS[i], x + 2, { size: 7, bold: true });
+  for (let i = 0; i < colCount; i++) {
+    const x = MARGIN + contactColWidth + i * colWidth;
+    drawText(ctx, formatColumnKey(data.columns[i]), x + 2, {
+      size: 6,
+      bold: true,
+    });
   }
-  drawText(ctx, "Year Total", totalColX, { size: 7, bold: true });
+  drawText(ctx, "Total", totalColX, { size: 7, bold: true });
   newLine(ctx, 0.5);
   drawLine(ctx, MARGIN, rightEdge);
   newLine(ctx);
 
-  // Data rows
   for (const row of data.rows) {
     checkPageBreak(ctx, 30);
 
@@ -74,10 +84,10 @@ export async function generateCashFlowPdf(
       maxWidth: contactColWidth - 5,
     });
 
-    for (let i = 0; i < 12; i++) {
-      const x = MARGIN + contactColWidth + i * monthColWidth;
-      const cell = row.months[i];
-      if (cell.projected > 0) {
+    for (let i = 0; i < colCount; i++) {
+      const x = MARGIN + contactColWidth + i * colWidth;
+      const cell = row.cells[i];
+      if (cell.projected > 0 || cell.actual > 0) {
         drawText(ctx, fmtCurrency(cell.actual), x + 2, { size: 7 });
       } else {
         drawText(ctx, "—", x + 2, {
@@ -87,25 +97,24 @@ export async function generateCashFlowPdf(
       }
     }
 
-    drawText(ctx, fmtCurrency(row.yearTotal.actual), totalColX, {
+    drawText(ctx, fmtCurrency(row.total.actual), totalColX, {
       size: 7,
       bold: true,
     });
 
     newLine(ctx, 0.5);
 
-    // Projected sub-row
-    for (let i = 0; i < 12; i++) {
-      const x = MARGIN + contactColWidth + i * monthColWidth;
-      const cell = row.months[i];
-      if (cell.projected > 0) {
+    for (let i = 0; i < colCount; i++) {
+      const x = MARGIN + contactColWidth + i * colWidth;
+      const cell = row.cells[i];
+      if (cell.projected > 0 || cell.actual > 0) {
         drawText(ctx, `of ${fmtCurrency(cell.projected)}`, x + 2, {
           size: 6,
           color: rgb(0.5, 0.5, 0.5),
         });
       }
     }
-    drawText(ctx, `of ${fmtCurrency(row.yearTotal.projected)}`, totalColX, {
+    drawText(ctx, `of ${fmtCurrency(row.total.projected)}`, totalColX, {
       size: 6,
       color: rgb(0.5, 0.5, 0.5),
     });
@@ -114,36 +123,35 @@ export async function generateCashFlowPdf(
     newLine(ctx, 0.5);
   }
 
-  // Summary row
   newLine(ctx, 0.5);
   drawLine(ctx, MARGIN, rightEdge, { thickness: 1 });
   newLine(ctx);
   drawText(ctx, "TOTALS", MARGIN, { size: 8, bold: true });
 
-  for (let i = 0; i < 12; i++) {
-    const x = MARGIN + contactColWidth + i * monthColWidth;
-    drawText(ctx, fmtCurrency(data.summary.months[i].actual), x + 2, {
+  for (let i = 0; i < colCount; i++) {
+    const x = MARGIN + contactColWidth + i * colWidth;
+    drawText(ctx, fmtCurrency(data.summary.cells[i].actual), x + 2, {
       size: 7,
       bold: true,
     });
   }
-  drawText(ctx, fmtCurrency(data.summary.yearTotal.actual), totalColX, {
+  drawText(ctx, fmtCurrency(data.summary.total.actual), totalColX, {
     size: 8,
     bold: true,
   });
   newLine(ctx, 0.5);
-  for (let i = 0; i < 12; i++) {
-    const x = MARGIN + contactColWidth + i * monthColWidth;
+  for (let i = 0; i < colCount; i++) {
+    const x = MARGIN + contactColWidth + i * colWidth;
     drawText(
       ctx,
-      `of ${fmtCurrency(data.summary.months[i].projected)}`,
+      `of ${fmtCurrency(data.summary.cells[i].projected)}`,
       x + 2,
       { size: 6, color: rgb(0.5, 0.5, 0.5) }
     );
   }
   drawText(
     ctx,
-    `of ${fmtCurrency(data.summary.yearTotal.projected)}`,
+    `of ${fmtCurrency(data.summary.total.projected)}`,
     totalColX,
     { size: 6, color: rgb(0.5, 0.5, 0.5) }
   );

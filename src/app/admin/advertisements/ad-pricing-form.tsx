@@ -183,7 +183,7 @@ export function AdPricingForm({
             </div>
 
             <div className="space-y-2">
-              <Label>Year</Label>
+              <Label>Edition Year</Label>
               <Input
                 type="number"
                 min={2000}

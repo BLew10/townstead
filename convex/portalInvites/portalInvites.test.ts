@@ -90,6 +90,53 @@ describe("portalInvites", () => {
     });
   });
 
+  describe("getByContact auth handling", () => {
+    it("returns null when unauthenticated", async () => {
+      const t = convexTest(schema, modules);
+      const contactId = await seedContact(t, "org_1");
+
+      await t.run(async (ctx) => {
+        await ctx.db.insert("portalInvites", {
+          contactId,
+          orgId: "org_1",
+          token: "auth_test_tok_123456789012345",
+          permissions: [PERMISSIONS.PORTAL_VIEW],
+          expiresAt: Date.now() + THIRTY_DAYS_MS,
+          status: "pending",
+          createdAt: Date.now(),
+        });
+      });
+
+      const result = await t.query(api.portalInvites.queries.getByContact, {
+        contactId,
+      });
+      expect(result).toBeNull();
+    });
+
+    it("returns null when identity has no orgId", async () => {
+      const t = convexTest(schema, modules);
+      const contactId = await seedContact(t, "org_1");
+
+      await t.run(async (ctx) => {
+        await ctx.db.insert("portalInvites", {
+          contactId,
+          orgId: "org_1",
+          token: "no_org_tok_12345678901234567",
+          permissions: [PERMISSIONS.PORTAL_VIEW],
+          expiresAt: Date.now() + THIRTY_DAYS_MS,
+          status: "pending",
+          createdAt: Date.now(),
+        });
+      });
+
+      const noOrg = t.withIdentity({ name: "User" });
+      const result = await noOrg.query(api.portalInvites.queries.getByContact, {
+        contactId,
+      });
+      expect(result).toBeNull();
+    });
+  });
+
   describe("create", () => {
     it("creates a pending invite and returns a token", async () => {
       const t = convexTest(schema, modules);

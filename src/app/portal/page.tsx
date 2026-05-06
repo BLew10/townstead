@@ -4,7 +4,15 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Megaphone, CreditCard, DollarSign, CalendarClock } from "lucide-react";
+import { EmptyState } from "@/components/shared/empty-state";
+import { PortalNoAccess } from "@/components/portal/no-access";
+import {
+  Megaphone,
+  CreditCard,
+  DollarSign,
+  CalendarClock,
+  LayoutDashboard,
+} from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useStableNow } from "@/hooks/use-stable-now";
 
@@ -12,7 +20,7 @@ export default function PortalDashboardPage() {
   const now = useStableNow();
   const data = useQuery(api.portal.queries.getDashboardData, { now });
 
-  if (!data) {
+  if (data === undefined) {
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
@@ -22,6 +30,28 @@ export default function PortalDashboardPage() {
           ))}
         </div>
         <Skeleton className="h-64" />
+      </div>
+    );
+  }
+
+  if (data === null) {
+    return <PortalNoAccess />;
+  }
+
+  const isEmpty =
+    data.activeAdsCount === 0 &&
+    data.totalOutstanding === 0 &&
+    data.upcomingPayments.length === 0;
+
+  if (isEmpty) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <EmptyState
+          icon={LayoutDashboard}
+          title="Welcome to your portal"
+          description="You don't have any ad purchases yet. Once your account manager creates a purchase for you, your dashboard will show active ads, balances, and upcoming payments."
+        />
       </div>
     );
   }

@@ -218,17 +218,22 @@ export const PaymentTermsStep = forwardRef<
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h3 className="text-lg font-medium">Payment Terms</h3>
-          <p className="text-sm text-muted-foreground">
-            Configure pricing, discounts, and payment schedule.
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
+            <DollarSign className="h-5 w-5 text-amber-500" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">Payment Terms</h3>
+            <p className="text-sm text-muted-foreground">
+              Configure pricing, discounts, and payment schedule.
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2">
+        <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-2">
           <span className="text-sm font-medium text-muted-foreground">
             Net:
           </span>
-          <span className="text-xl font-bold text-primary">
+          <span className="text-xl font-bold text-amber-600 dark:text-amber-400">
             {fmtDollars(liveNet)}
           </span>
         </div>
@@ -237,8 +242,8 @@ export const PaymentTermsStep = forwardRef<
       <Form {...form}>
         <div className="space-y-6">
           {/* --- Pricing --- */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium text-muted-foreground">
+          <div className="rounded-md bg-muted/30 p-4 space-y-4">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Pricing
             </h4>
             <FormField
@@ -259,8 +264,13 @@ export const PaymentTermsStep = forwardRef<
                       }
                       {...field}
                       value={field.value ?? ""}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) =>
-                        field.onChange(parseFloat(e.target.value) || 0)
+                        field.onChange(
+                          e.target.value === ""
+                            ? 0
+                            : parseFloat(e.target.value)
+                        )
                       }
                     />
                   </FormControl>
@@ -282,6 +292,7 @@ export const PaymentTermsStep = forwardRef<
                         min={0}
                         {...field}
                         value={field.value ?? ""}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) =>
                           field.onChange(
                             e.target.value
@@ -327,6 +338,7 @@ export const PaymentTermsStep = forwardRef<
                         min={0}
                         {...field}
                         value={field.value ?? ""}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) =>
                           field.onChange(
                             e.target.value
@@ -363,8 +375,8 @@ export const PaymentTermsStep = forwardRef<
           <Separator />
 
           {/* --- Additional Sales & Trade --- */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium text-muted-foreground">
+          <div className="rounded-md bg-muted/30 p-4 space-y-4">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Additional Sales & Trade
             </h4>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -381,6 +393,7 @@ export const PaymentTermsStep = forwardRef<
                         min={0}
                         {...field}
                         value={field.value ?? ""}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) =>
                           field.onChange(
                             e.target.value
@@ -426,6 +439,7 @@ export const PaymentTermsStep = forwardRef<
                         min={0}
                         {...field}
                         value={field.value ?? ""}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) =>
                           field.onChange(
                             e.target.value
@@ -470,6 +484,7 @@ export const PaymentTermsStep = forwardRef<
                       min={0}
                       {...field}
                       value={field.value ?? ""}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) =>
                         field.onChange(
                           e.target.value
@@ -488,8 +503,8 @@ export const PaymentTermsStep = forwardRef<
           <Separator />
 
           {/* --- Fee Configuration --- */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium text-muted-foreground">
+          <div className="rounded-md bg-muted/30 p-4 space-y-4">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Fee Configuration
             </h4>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -534,6 +549,7 @@ export const PaymentTermsStep = forwardRef<
                         min={0}
                         {...field}
                         value={field.value ?? ""}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) =>
                           field.onChange(
                             e.target.value
@@ -590,6 +606,7 @@ export const PaymentTermsStep = forwardRef<
                         min={0}
                         {...field}
                         value={field.value ?? ""}
+                        onFocus={(e) => e.target.select()}
                         onChange={(e) =>
                           field.onChange(
                             e.target.value
@@ -609,8 +626,8 @@ export const PaymentTermsStep = forwardRef<
           <Separator />
 
           {/* --- Payment Schedule --- */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium text-muted-foreground">
+          <div className="rounded-md bg-muted/30 p-4 space-y-4">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Payment Schedule
             </h4>
 
@@ -778,8 +795,13 @@ export const PaymentTermsStep = forwardRef<
                       className="w-24"
                       {...field}
                       value={field.value ?? 1}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) =>
-                        field.onChange(parseInt(e.target.value, 10) || 1)
+                        field.onChange(
+                          e.target.value === ""
+                            ? 1
+                            : parseInt(e.target.value, 10)
+                        )
                       }
                     />
                   </FormControl>
@@ -925,6 +947,7 @@ export const PaymentTermsStep = forwardRef<
                                         placeholder="0.00"
                                         className="pl-8"
                                         value={customAmt || ""}
+                                        onFocus={(e) => e.target.select()}
                                         onChange={(e) =>
                                           updateCustomAmount(
                                             month,
@@ -953,8 +976,8 @@ export const PaymentTermsStep = forwardRef<
           <Separator />
 
           {/* --- Delivery & Messages --- */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium text-muted-foreground">
+          <div className="rounded-md bg-muted/30 p-4 space-y-4">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Delivery & Messages
             </h4>
             <FormField

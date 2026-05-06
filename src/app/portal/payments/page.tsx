@@ -21,6 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
+import { PortalNoAccess } from "@/components/portal/no-access";
 import { CreditCard } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -46,11 +47,13 @@ export default function PortalPaymentsPage() {
             v != null && setSelectedYear(v === "all" ? undefined : parseInt(v))
           }
         >
-          <SelectTrigger className="w-32">
-            <SelectValue />
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="All Edition Years">
+              {selectedYear ? selectedYear.toString() : "All Edition Years"}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Years</SelectItem>
+            <SelectItem value="all">All Edition Years</SelectItem>
             {years.map((y) => (
               <SelectItem key={y} value={y.toString()}>
                 {y}
@@ -66,6 +69,8 @@ export default function PortalPaymentsPage() {
             <Skeleton key={i} className="h-12" />
           ))}
         </div>
+      ) : payments === null ? (
+        <PortalNoAccess />
       ) : payments.length === 0 ? (
         <EmptyState
           icon={CreditCard}
@@ -73,7 +78,7 @@ export default function PortalPaymentsPage() {
           description="No payment records found."
         />
       ) : (
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>

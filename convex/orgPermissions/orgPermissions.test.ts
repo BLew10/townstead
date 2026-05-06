@@ -183,7 +183,34 @@ describe("orgPermissions", () => {
       expect(afterUnlink).toBeNull();
     });
 
-    it("rejects duplicate contact link", async () => {
+    it("is idempotent when same userId+contactId already linked", async () => {
+      const t = convexTest(schema, modules);
+
+      const contactId = await t.run(async (ctx) => {
+        return await ctx.db.insert("contacts", {
+          company: "Idem Corp",
+          firstName: "Idem",
+          lastName: "Test",
+          orgId: "org_1",
+        });
+      });
+
+      const asOrg = t.withIdentity({ name: "Admin", orgId: "org_1" });
+
+      const grantId1 = await asOrg.mutation(api.orgPermissions.mutations.linkContact, {
+        userId: "user_idem",
+        contactId,
+      });
+
+      const grantId2 = await asOrg.mutation(api.orgPermissions.mutations.linkContact, {
+        userId: "user_idem",
+        contactId,
+      });
+
+      expect(grantId1).toEqual(grantId2);
+    });
+
+    it("rejects linking contact to a different user when already linked", async () => {
       const t = convexTest(schema, modules);
 
       const contactId = await t.run(async (ctx) => {
@@ -286,6 +313,141 @@ describe("orgPermissions", () => {
         contactId,
       });
       expect(result).toBeNull();
+    });
+
+    it("returns null when unauthenticated", async () => {
+      const t = convexTest(schema, modules);
+
+      const contactId = await t.run(async (ctx) => {
+        return await ctx.db.insert("contacts", {
+          company: "Corp",
+          firstName: "A",
+          lastName: "B",
+          orgId: "org_1",
+        });
+      });
+
+      const result = await t.query(api.orgPermissions.queries.getForContact, {
+        contactId,
+      });
+      expect(result).toBeNull();
+    });
+
+    it("returns null when identity has no orgId", async () => {
+      const t = convexTest(schema, modules);
+
+      const contactId = await t.run(async (ctx) => {
+        return await ctx.db.insert("contacts", {
+          company: "Corp",
+          firstName: "A",
+          lastName: "B",
+          orgId: "org_1",
+        });
+      });
+
+      const noOrg = t.withIdentity({ name: "User" });
+      const result = await noOrg.query(api.orgPermissions.queries.getForContact, {
+        contactId,
+      });
+      expect(result).toBeNull();
+    });
+
+    it("returns grant when orgId matches", async () => {
+      const t = convexTest(schema, modules);
+
+      const contactId = await t.run(async (ctx) => {
+        const cId = await ctx.db.insert("contacts", {
+          company: "Corp",
+          firstName: "A",
+          lastName: "B",
+          orgId: "org_1",
+        });
+        await ctx.db.insert("orgPermissions", {
+          userId: "user_x",
+          orgId: "org_1",
+          role: "contact",
+          permissions: [],
+          contactId: cId,
+          isActive: true,
+        });
+        return cId;
+      });
+
+      const asOrg = t.withIdentity({ name: "Admin", orgId: "org_1" });
+      const result = await asOrg.query(api.orgPermissions.queries.getForContact, {
+        contactId,
+      });
+      expect(result).not.toBeNull();
+      expect(result!.userId).toBe("user_x");
+    });
+
+    it("finds same-org grant even when a different-org grant exists for the same contactId", async () => {
+      const t = convexTest(schema, modules);
+
+      const contactId = await t.run(async (ctx) => {
+        const cId = await ctx.db.insert("contacts", {
+          company: "Multi-Org Corp",
+          firstName: "M",
+          lastName: "O",
+          orgId: "org_1",
+        });
+        await ctx.db.insert("orgPermissions", {
+          userId: "user_other",
+          orgId: "org_other",
+          role: "contact",
+          permissions: [],
+          contactId: cId,
+          isActive: true,
+        });
+        await ctx.db.insert("orgPermissions", {
+          userId: "user_correct",
+          orgId: "org_1",
+          role: "contact",
+          permissions: [],
+          contactId: cId,
+          isActive: true,
+        });
+        return cId;
+      });
+
+      const asOrg1 = t.withIdentity({ name: "Admin", orgId: "org_1" });
+      const result = await asOrg1.query(api.orgPermissions.queries.getForContact, {
+        contactId,
+      });
+      expect(result).not.toBeNull();
+      expect(result!.userId).toBe("user_correct");
+      expect(result!.orgId).toBe("org_1");
+    });
+  });
+
+  describe("linkContact orgId scoping", () => {
+    it("allows linking when a grant exists for the same contactId in a different org", async () => {
+      const t = convexTest(schema, modules);
+
+      const contactId = await t.run(async (ctx) => {
+        const cId = await ctx.db.insert("contacts", {
+          company: "Shared Corp",
+          firstName: "S",
+          lastName: "C",
+          orgId: "org_1",
+        });
+        await ctx.db.insert("orgPermissions", {
+          userId: "user_other_org",
+          orgId: "org_other",
+          role: "contact",
+          permissions: [],
+          contactId: cId,
+          isActive: true,
+        });
+        return cId;
+      });
+
+      const asOrg1 = t.withIdentity({ name: "Admin", orgId: "org_1" });
+      const grantId = await asOrg1.mutation(api.orgPermissions.mutations.linkContact, {
+        userId: "user_org1",
+        contactId,
+      });
+      expect(grantId).toBeTruthy();
     });
   });
 

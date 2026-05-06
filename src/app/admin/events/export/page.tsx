@@ -102,7 +102,7 @@ export default function EventsExportPage() {
 
       <div className="flex flex-wrap items-end gap-6">
         <div className="space-y-2">
-          <Label htmlFor="export-year">Year</Label>
+          <Label htmlFor="export-year">Event Year</Label>
           <Input
             id="export-year"
             type="number"

@@ -71,7 +71,7 @@ function ArtworkCell({ row }: { row: { original: PurchaseRow } }) {
       setPending(true);
       try {
         await toggleArtwork({
-          id: row.original._id as any,
+          id: row.original._id as Id<"purchases">,
           hasSubmittedArtwork: value,
         });
       } catch {
@@ -125,7 +125,7 @@ function ActionsCell({ row }: { row: { original: PurchaseRow } }) {
   const handleDelete = async () => {
     setLoading(true);
     try {
-      await softDelete({ id: row.original._id as any });
+      await softDelete({ id: row.original._id as Id<"purchases"> });
       toast.success("Purchase deleted");
     } catch {
       toast.error("Failed to delete purchase");
@@ -136,7 +136,7 @@ function ActionsCell({ row }: { row: { original: PurchaseRow } }) {
   };
 
   return (
-    <>
+    <div onClick={(e) => e.stopPropagation()}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -183,7 +183,7 @@ function ActionsCell({ row }: { row: { original: PurchaseRow } }) {
         variant="destructive"
         loading={loading}
       />
-    </>
+    </div>
   );
 }
 
@@ -200,16 +200,19 @@ export function purchaseColumns({
       ),
     },
     {
-      accessorKey: "contactName",
+      id: "contact",
+      accessorFn: (row) => `${row.company || row.contactName} ${row.contactName}`,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Contact" />
       ),
       cell: ({ row }) => (
         <div>
-          <p className="font-medium">{row.original.contactName}</p>
-          {row.original.company && (
+          <p className="font-medium">
+            {row.original.company || row.original.contactName}
+          </p>
+          {row.original.company && row.original.contactName && (
             <p className="text-xs text-muted-foreground">
-              {row.original.company}
+              {row.original.contactName}
             </p>
           )}
         </div>
@@ -225,7 +228,7 @@ export function purchaseColumns({
       id: "year",
       accessorFn: (row) => String(row.year),
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Year" />
+        <DataTableColumnHeader column={column} title="Edition Year" />
       ),
       filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
       meta: {

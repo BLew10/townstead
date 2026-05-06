@@ -9,7 +9,7 @@ export function TableSkeleton({ columns = 5, rows = 10 }: TableSkeletonProps) {
   return (
     <div className="space-y-4">
       <Skeleton className="h-10 w-64" />
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-hidden">
         <div className="border-b">
           <div className="flex gap-4 p-4">
             {Array.from({ length: columns }).map((_, i) => (

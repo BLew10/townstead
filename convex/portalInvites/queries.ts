@@ -1,15 +1,19 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { requireAuth } from "../auth.helpers";
 
 export const getByContact = query({
   args: {
     contactId: v.id("contacts"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-    const orgId = identity.orgId as string;
-    if (!orgId) return null;
+    let orgId: string;
+    try {
+      const auth = await requireAuth(ctx);
+      orgId = auth.orgId;
+    } catch {
+      return null;
+    }
 
     const invites = await ctx.db
       .query("portalInvites")

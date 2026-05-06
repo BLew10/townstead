@@ -347,7 +347,7 @@ export function ContactForm({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
+      <SheetContent side="right" className="data-[side=right]:sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{editing ? "Edit" : "New"} Contact</SheetTitle>
         </SheetHeader>

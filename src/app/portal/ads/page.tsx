@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
+import { PortalNoAccess } from "@/components/portal/no-access";
 import { Megaphone } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { useStableNow } from "@/hooks/use-stable-now";
@@ -25,6 +26,10 @@ export default function PortalAdsPage() {
         </div>
       </div>
     );
+  }
+
+  if (purchases === null) {
+    return <PortalNoAccess />;
   }
 
   return (

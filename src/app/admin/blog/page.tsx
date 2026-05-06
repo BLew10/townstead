@@ -64,7 +64,10 @@ export default function AdminBlogPage() {
               }
             >
               <SelectTrigger className="w-[150px]">
-                <SelectValue />
+                <SelectValue>
+                  {STATUS_OPTIONS.find((opt) => opt.value === statusFilter)?.label ??
+                    "All Statuses"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {STATUS_OPTIONS.map((opt) => (

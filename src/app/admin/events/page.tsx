@@ -69,7 +69,11 @@ export default function EventsPage() {
               onValueChange={(v) => setStatusFilter(v as "all" | "approved" | "pending")}
             >
               <SelectTrigger className="w-[150px]">
-                <SelectValue />
+                <SelectValue>
+                  {{ all: "All Statuses", approved: "Approved", pending: "Pending" }[
+                    statusFilter
+                  ] ?? "All Statuses"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>

@@ -64,6 +64,7 @@ export default function ContactsPage() {
         searchPlaceholder="Search by company..."
         emptyTitle="No contacts"
         emptyDescription="Get started by adding your first contact."
+        initialSorting={[{ id: "company", desc: false }]}
       />
       <ContactForm
         open={formOpen}

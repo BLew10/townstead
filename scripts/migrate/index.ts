@@ -20,6 +20,7 @@ import step06 from "./06-events";
 import step07 from "./07-purchases";
 import step08 from "./08-ad-purchases";
 import step09 from "./09-scheduled-payments";
+import step09b from "./09b-repair-schedules";
 import step10 from "./10-payments";
 import step11 from "./11-payment-allocations";
 
@@ -33,6 +34,7 @@ const steps: MigrationStep[] = [
   step07,
   step08,
   step09,
+  step09b,
   step10,
   step11,
 ];

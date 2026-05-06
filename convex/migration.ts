@@ -1,6 +1,157 @@
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { allocatePayment } from "./billing/helpers";
+
+async function deleteDocs(docs: Array<{ _id: any }>, ctx: any) {
+  for (const doc of docs) {
+    await ctx.db.delete(doc._id);
+  }
+  return docs.length;
+}
+
+export const getOrgDataCounts = query({
+  args: { orgId: v.string() },
+  handler: async (ctx, args) => {
+    const coupons = await ctx.db
+      .query("coupons")
+      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .collect();
+    let couponClaims = 0;
+    for (const coupon of coupons) {
+      couponClaims += (
+        await ctx.db
+          .query("couponClaims")
+          .withIndex("by_couponId", (q) => q.eq("couponId", coupon._id))
+          .collect()
+      ).length;
+    }
+
+    return {
+      addressBooks: (
+        await ctx.db
+          .query("addressBooks")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      contacts: (
+        await ctx.db
+          .query("contacts")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      calendarEditions: (
+        await ctx.db
+          .query("calendarEditions")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      communities: (
+        await ctx.db
+          .query("communities")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      advertisements: (
+        await ctx.db
+          .query("advertisements")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      adPricing: (
+        await ctx.db
+          .query("adPricing")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      events: (
+        await ctx.db
+          .query("events")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      purchases: (
+        await ctx.db
+          .query("purchases")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      paymentTerms: (
+        await ctx.db
+          .query("paymentTerms")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      adPurchases: (
+        await ctx.db
+          .query("adPurchases")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      adSlots: (
+        await ctx.db
+          .query("adSlots")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      scheduledPayments: (
+        await ctx.db
+          .query("scheduledPayments")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      payments: (
+        await ctx.db
+          .query("payments")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      paymentAllocations: (
+        await ctx.db
+          .query("paymentAllocations")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      categories: (
+        await ctx.db
+          .query("categories")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      coupons: coupons.length,
+      couponClaims,
+      blogPosts: (
+        await ctx.db
+          .query("blogPosts")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      videos: (
+        await ctx.db
+          .query("videos")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      tenantBranding: (
+        await ctx.db
+          .query("tenantBranding")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      orgSettings: (
+        await ctx.db
+          .query("orgSettings")
+          .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+      dashboardStatsCache: (
+        await ctx.db
+          .query("dashboardStatsCache")
+          .withIndex("by_org_edition_year", (q) => q.eq("orgId", args.orgId))
+          .collect()
+      ).length,
+    };
+  },
+});
 
 export const insertAddressBook = mutation({
   args: {
@@ -9,6 +160,221 @@ export const insertAddressBook = mutation({
     orgId: v.string(),
   },
   handler: async (ctx, args) => ctx.db.insert("addressBooks", args),
+});
+
+/**
+ * Destructive migration helper: clears all org-scoped domain data so the
+ * Supabase/planner-app database can be re-imported as the source of truth.
+ *
+ * Preserves user rows and non-contact org permissions so admins do not lose
+ * access to the org after the purge.
+ */
+export const clearOrgData = mutation({
+  args: { orgId: v.string() },
+  handler: async (ctx, args) => {
+    const counts: Record<string, number> = {};
+
+    const coupons = await ctx.db
+      .query("coupons")
+      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .collect();
+    let couponClaims = 0;
+    for (const coupon of coupons) {
+      couponClaims += await deleteDocs(
+        await ctx.db
+          .query("couponClaims")
+          .withIndex("by_couponId", (q) => q.eq("couponId", coupon._id))
+          .collect(),
+        ctx
+      );
+    }
+    counts.couponClaims = couponClaims;
+
+    counts.portalInvites = await deleteDocs(
+      await ctx.db
+        .query("portalInvites")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.clientLinks = await deleteDocs(
+      await ctx.db
+        .query("clientLinks")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.clientAssets = await deleteDocs(
+      await ctx.db
+        .query("clientAssets")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+
+    const orgPermissions = await ctx.db
+      .query("orgPermissions")
+      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .collect();
+    counts.contactOrgPermissions = await deleteDocs(
+      orgPermissions.filter((p) => p.contactId !== undefined),
+      ctx
+    );
+
+    counts.paymentAllocations = await deleteDocs(
+      await ctx.db
+        .query("paymentAllocations")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.payments = await deleteDocs(
+      await ctx.db
+        .query("payments")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.scheduledPayments = await deleteDocs(
+      await ctx.db
+        .query("scheduledPayments")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.adSlots = await deleteDocs(
+      await ctx.db
+        .query("adSlots")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.adPurchases = await deleteDocs(
+      await ctx.db
+        .query("adPurchases")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.paymentTerms = await deleteDocs(
+      await ctx.db
+        .query("paymentTerms")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.purchases = await deleteDocs(
+      await ctx.db
+        .query("purchases")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+
+    counts.blogPosts = await deleteDocs(
+      await ctx.db
+        .query("blogPosts")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.videos = await deleteDocs(
+      await ctx.db
+        .query("videos")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.coupons = await deleteDocs(coupons, ctx);
+    counts.events = await deleteDocs(
+      await ctx.db
+        .query("events")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+
+    counts.adPricing = await deleteDocs(
+      await ctx.db
+        .query("adPricing")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.contacts = await deleteDocs(
+      await ctx.db
+        .query("contacts")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.addressBooks = await deleteDocs(
+      await ctx.db
+        .query("addressBooks")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.advertisements = await deleteDocs(
+      await ctx.db
+        .query("advertisements")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.categories = await deleteDocs(
+      await ctx.db
+        .query("categories")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.communities = await deleteDocs(
+      await ctx.db
+        .query("communities")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.calendarEditions = await deleteDocs(
+      await ctx.db
+        .query("calendarEditions")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+
+    counts.tenantBranding = await deleteDocs(
+      await ctx.db
+        .query("tenantBranding")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.orgPermissionDefaults = await deleteDocs(
+      await ctx.db
+        .query("orgPermissionDefaults")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.orgSettings = await deleteDocs(
+      await ctx.db
+        .query("orgSettings")
+        .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+    counts.dashboardStatsCache = await deleteDocs(
+      await ctx.db
+        .query("dashboardStatsCache")
+        .withIndex("by_org_edition_year", (q) => q.eq("orgId", args.orgId))
+        .collect(),
+      ctx
+    );
+
+    return counts;
+  },
 });
 
 export const insertContact = mutation({

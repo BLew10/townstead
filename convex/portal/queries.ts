@@ -7,10 +7,13 @@ import {
   computeIsPaid,
   computeScheduledPaymentPaid,
 } from "../billing/helpers";
+import { checkPermission } from "../auth.helpers";
+import { PERMISSIONS } from "../permissions";
 
 async function resolvePortalContact(ctx: QueryCtx): Promise<{
   contactId: Id<"contacts">;
   orgId: string;
+  userId: string;
 }> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw new Error("Not authenticated");
@@ -26,13 +29,56 @@ async function resolvePortalContact(ctx: QueryCtx): Promise<{
   if (!grant) throw new Error("No portal access");
   if (!grant.contactId) throw new Error("No linked contact");
 
-  return { contactId: grant.contactId, orgId: grant.orgId };
+  return { contactId: grant.contactId, orgId: grant.orgId, userId: identity.subject };
 }
+
+async function hasPortalPermission(
+  ctx: QueryCtx,
+  userId: string,
+  orgId: string,
+  permission: string
+): Promise<boolean> {
+  return checkPermission(ctx, userId, orgId, permission);
+}
+
+export const getMyPermissions = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const grant = await ctx.db
+      .query("orgPermissions")
+      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .filter((q) =>
+        q.and(q.eq(q.field("role"), "contact"), q.eq(q.field("isActive"), true))
+      )
+      .first();
+
+    if (!grant) return null;
+
+    if (grant.permissions.length > 0) {
+      return grant.permissions;
+    }
+
+    const defaults = await ctx.db
+      .query("orgPermissionDefaults")
+      .withIndex("by_orgId", (q) => q.eq("orgId", grant.orgId))
+      .first();
+
+    return defaults?.contactDefaults ?? [];
+  },
+});
 
 export const getDashboardData = query({
   args: { now: v.number() },
   handler: async (ctx, args) => {
-    const { contactId, orgId } = await resolvePortalContact(ctx);
+    const { contactId, orgId, userId } = await resolvePortalContact(ctx);
+
+    if (!(await hasPortalPermission(ctx, userId, orgId, PERMISSIONS.PORTAL_VIEW))) {
+      return null;
+    }
+
     const now = args.now;
 
     const purchases = await ctx.db
@@ -106,7 +152,11 @@ export const getDashboardData = query({
 export const getMyPurchases = query({
   args: { now: v.number() },
   handler: async (ctx, args) => {
-    const { contactId } = await resolvePortalContact(ctx);
+    const { contactId, orgId, userId } = await resolvePortalContact(ctx);
+
+    if (!(await hasPortalPermission(ctx, userId, orgId, PERMISSIONS.PORTAL_VIEW))) {
+      return null;
+    }
 
     const purchases = await ctx.db
       .query("purchases")
@@ -179,7 +229,11 @@ export const getMyPurchases = query({
 export const getPaymentHistory = query({
   args: { year: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    const { contactId } = await resolvePortalContact(ctx);
+    const { contactId, orgId, userId } = await resolvePortalContact(ctx);
+
+    if (!(await hasPortalPermission(ctx, userId, orgId, PERMISSIONS.PORTAL_PAYMENTS))) {
+      return null;
+    }
 
     const purchases = await ctx.db
       .query("purchases")
@@ -231,7 +285,11 @@ async function collectPayments(ctx: { db: any }, purchases: any[]) {
 export const getInvoices = query({
   args: { now: v.number() },
   handler: async (ctx, args) => {
-    const { contactId } = await resolvePortalContact(ctx);
+    const { contactId, orgId, userId } = await resolvePortalContact(ctx);
+
+    if (!(await hasPortalPermission(ctx, userId, orgId, PERMISSIONS.PORTAL_INVOICES))) {
+      return null;
+    }
 
     const purchases = await ctx.db
       .query("purchases")
@@ -292,7 +350,11 @@ export const getInvoices = query({
 export const getMyAssets = query({
   args: {},
   handler: async (ctx) => {
-    const { contactId } = await resolvePortalContact(ctx);
+    const { contactId, orgId, userId } = await resolvePortalContact(ctx);
+
+    if (!(await hasPortalPermission(ctx, userId, orgId, PERMISSIONS.PORTAL_ASSETS))) {
+      return null;
+    }
 
     return await ctx.db
       .query("clientAssets")
@@ -300,4 +362,3 @@ export const getMyAssets = query({
       .collect();
   },
 });
-

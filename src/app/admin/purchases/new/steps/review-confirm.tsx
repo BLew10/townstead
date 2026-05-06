@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { ClipboardCheck } from "lucide-react";
 import { computeScheduleBase, generateScheduledPayments } from "../../../../../../convex/billing/helpers";
 import { dollarsToCents, centsToDollars } from "@/lib/utils";
 import type { PaymentTermsFormValues } from "@/lib/validators";
@@ -90,11 +91,16 @@ export function ReviewConfirm({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <h3 className="text-lg font-medium">Review & Confirm</h3>
-        <p className="text-sm text-muted-foreground">
-          Please review all details before creating this purchase.
-        </p>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-500/10">
+          <ClipboardCheck className="h-5 w-5 text-teal-500" />
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold">Review & Confirm</h3>
+          <p className="text-sm text-muted-foreground">
+            Please review all details before creating this purchase.
+          </p>
+        </div>
       </div>
 
       <div className="rounded-lg border p-4 space-y-4">

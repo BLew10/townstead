@@ -1,5 +1,5 @@
 import { query } from "../_generated/server";
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import {
   computeNet,
@@ -7,6 +7,7 @@ import {
   computeAmountPaidWithPrepaid,
   computeIsPaid,
   computeLateFees,
+  computeScheduleBase,
   isScheduledPaymentLate,
   computeScheduledPaymentPaid,
 } from "./helpers";
@@ -288,124 +289,217 @@ export const listThisMonth = query({
 export const getCashFlowReport = query({
   args: {
     orgId: v.string(),
-    calendarEditionId: v.id("calendarEditions"),
+    calendarEditionId: v.optional(v.id("calendarEditions")),
     year: v.number(),
+    paymentYear: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const purchases = await ctx.db
+    const viewYear = args.paymentYear;
+
+    const allPurchases = await ctx.db
       .query("purchases")
       .withIndex("by_orgId_and_year", (q) =>
         q.eq("orgId", args.orgId).eq("year", args.year)
       )
       .filter((q) => q.neq(q.field("isDeleted"), true))
-      .collect()
-      .then((ps) =>
-        ps.filter((p) =>
-          p.calendarEditionIds.includes(args.calendarEditionId)
-        )
-      );
+      .collect();
 
-    type MonthCell = { projected: number; actual: number };
-    type ContactRow = {
-      contactId: string;
-      contactName: string;
-      company: string;
-      months: MonthCell[];
-      yearTotal: MonthCell;
+    const purchases = args.calendarEditionId
+      ? allPurchases.filter((p) =>
+          p.calendarEditionIds.includes(args.calendarEditionId!)
+        )
+      : allPurchases;
+
+    type Cell = { projected: number; actual: number };
+    type PurchaseDetail = {
+      purchaseId: string;
+      editionNames: string[];
+      invoiceNumber: string | undefined;
+      cells: Cell[];
+      total: Cell;
     };
 
-    const rows: ContactRow[] = [];
+    const contactInfo = new Map<
+      string,
+      { contactName: string; company: string }
+    >();
+    const allKeys = new Set<string>();
+
+    type PurchaseCellData = {
+      purchaseId: string;
+      editionNames: string[];
+      invoiceNumber: string | undefined;
+      cellMap: Map<string, Cell>;
+      contactId: string;
+    };
+
+    const purchaseDataList: PurchaseCellData[] = [];
 
     for (const purchase of purchases) {
       const contact = await ctx.db.get(purchase.contactId);
-      const scheduledPayments = await ctx.db
+      const cid = purchase.contactId.toString();
+
+      if (!contactInfo.has(cid)) {
+        contactInfo.set(cid, {
+          contactName: contact
+            ? `${contact.firstName} ${contact.lastName}`
+            : "Unknown",
+          company: contact?.company ?? "",
+        });
+      }
+
+      const editionNames: string[] = [];
+      for (const edId of purchase.calendarEditionIds) {
+        const ed = await ctx.db.get(edId);
+        if (ed) editionNames.push(ed.name);
+      }
+
+      const allSps = await ctx.db
         .query("scheduledPayments")
         .withIndex("by_purchaseId", (q) =>
           q.eq("purchaseId", purchase._id)
         )
         .collect();
+      const sps =
+        viewYear !== undefined
+          ? allSps.filter((sp) => sp.year === viewYear)
+          : allSps;
 
-      const allAllocations: Doc<"paymentAllocations">[] = [];
-      for (const sp of scheduledPayments) {
-        const spAllocs = await ctx.db
-          .query("paymentAllocations")
-          .withIndex("by_scheduledPaymentId", (q) =>
-            q.eq("scheduledPaymentId", sp._id)
-          )
-          .collect();
-        allAllocations.push(...spAllocs);
+      const allPayments = await ctx.db
+        .query("payments")
+        .withIndex("by_purchaseId", (q) =>
+          q.eq("purchaseId", purchase._id)
+        )
+        .collect();
+      const payments =
+        viewYear !== undefined
+          ? allPayments.filter((p) => {
+              const s = new Date(viewYear, 0, 1).getTime();
+              const e = new Date(viewYear, 11, 31, 23, 59, 59, 999).getTime();
+              return p.date >= s && p.date <= e;
+            })
+          : allPayments;
+
+      const pCellMap = new Map<string, Cell>();
+
+      for (const sp of sps) {
+        const key = `${sp.year}-${String(sp.month).padStart(2, "0")}`;
+        allKeys.add(key);
+        const cell = pCellMap.get(key) ?? { projected: 0, actual: 0 };
+        cell.projected += sp.amount;
+        pCellMap.set(key, cell);
       }
 
-      // Build per-month data
-      const months: MonthCell[] = Array.from({ length: 12 }, () => ({
-        projected: 0,
-        actual: 0,
-      }));
-
-      for (const sp of scheduledPayments) {
-        const monthIdx = sp.month - 1;
-        if (sp.year === args.year && monthIdx >= 0 && monthIdx < 12) {
-          months[monthIdx].projected += sp.amount;
-
-          const spPaid = allAllocations
-            .filter((a) => a.scheduledPaymentId === sp._id)
-            .reduce((sum, a) => sum + a.amount, 0);
-          months[monthIdx].actual += spPaid;
-        }
+      for (const payment of payments) {
+        const d = new Date(payment.date);
+        const y = d.getFullYear();
+        const m = d.getMonth() + 1;
+        const key = `${y}-${String(m).padStart(2, "0")}`;
+        allKeys.add(key);
+        const cell = pCellMap.get(key) ?? { projected: 0, actual: 0 };
+        cell.actual += payment.amount;
+        pCellMap.set(key, cell);
       }
 
-      const yearTotal: MonthCell = {
-        projected: months.reduce((s, m) => s + m.projected, 0),
-        actual: months.reduce((s, m) => s + m.actual, 0),
+      purchaseDataList.push({
+        purchaseId: purchase._id.toString(),
+        editionNames,
+        invoiceNumber: purchase.invoiceNumber,
+        cellMap: pCellMap,
+        contactId: cid,
+      });
+    }
+
+    const columns = Array.from(allKeys).sort();
+
+    if (columns.length === 0 && viewYear !== undefined) {
+      for (let m = 1; m <= 12; m++) {
+        columns.push(`${viewYear}-${String(m).padStart(2, "0")}`);
+      }
+    } else if (columns.length === 0) {
+      for (let m = 1; m <= 12; m++) {
+        columns.push(`${args.year}-${String(m).padStart(2, "0")}`);
+      }
+    }
+
+    type ContactRow = {
+      contactId: string;
+      contactName: string;
+      company: string;
+      cells: Cell[];
+      total: Cell;
+      purchases: PurchaseDetail[];
+    };
+
+    const contactRows = new Map<string, ContactRow>();
+
+    for (const pd of purchaseDataList) {
+      const pCells: Cell[] = columns.map((key) => {
+        const c = pd.cellMap.get(key) ?? { projected: 0, actual: 0 };
+        return { ...c };
+      });
+
+      const pTotal: Cell = {
+        projected: pCells.reduce((s, c) => s + c.projected, 0),
+        actual: pCells.reduce((s, c) => s + c.actual, 0),
       };
 
-      // Merge with existing contact row if same contact has multiple purchases
-      const existingIdx = rows.findIndex(
-        (r) => r.contactId === purchase.contactId.toString()
-      );
-      if (existingIdx >= 0) {
-        for (let i = 0; i < 12; i++) {
-          rows[existingIdx].months[i].projected += months[i].projected;
-          rows[existingIdx].months[i].actual += months[i].actual;
-        }
-        rows[existingIdx].yearTotal.projected += yearTotal.projected;
-        rows[existingIdx].yearTotal.actual += yearTotal.actual;
-      } else {
-        rows.push({
-          contactId: purchase.contactId.toString(),
-          contactName: contact
-            ? `${contact.firstName} ${contact.lastName}`
-            : "Unknown",
-          company: contact?.company ?? "",
-          months,
-          yearTotal,
+      if (pTotal.projected === 0 && pTotal.actual === 0) continue;
+
+      const purchaseDetail: PurchaseDetail = {
+        purchaseId: pd.purchaseId,
+        editionNames: pd.editionNames,
+        invoiceNumber: pd.invoiceNumber,
+        cells: pCells,
+        total: pTotal,
+      };
+
+      if (!contactRows.has(pd.contactId)) {
+        const info = contactInfo.get(pd.contactId)!;
+        contactRows.set(pd.contactId, {
+          contactId: pd.contactId,
+          contactName: info.contactName,
+          company: info.company,
+          cells: columns.map(() => ({ projected: 0, actual: 0 })),
+          total: { projected: 0, actual: 0 },
+          purchases: [],
         });
       }
+
+      const row = contactRows.get(pd.contactId)!;
+      row.purchases.push(purchaseDetail);
+
+      for (let i = 0; i < columns.length; i++) {
+        row.cells[i].projected += pCells[i].projected;
+        row.cells[i].actual += pCells[i].actual;
+      }
+      row.total.projected += pTotal.projected;
+      row.total.actual += pTotal.actual;
     }
 
-    // Summary totals
-    const summaryMonths: MonthCell[] = Array.from({ length: 12 }, () => ({
-      projected: 0,
-      actual: 0,
-    }));
-    for (const row of rows) {
-      for (let i = 0; i < 12; i++) {
-        summaryMonths[i].projected += row.months[i].projected;
-        summaryMonths[i].actual += row.months[i].actual;
+    const rows = Array.from(contactRows.values());
+
+    const summaryCells: Cell[] = columns.map((_, i) => {
+      const cell: Cell = { projected: 0, actual: 0 };
+      for (const row of rows) {
+        cell.projected += row.cells[i].projected;
+        cell.actual += row.cells[i].actual;
       }
-    }
-    const summaryTotal: MonthCell = {
-      projected: summaryMonths.reduce((s, m) => s + m.projected, 0),
-      actual: summaryMonths.reduce((s, m) => s + m.actual, 0),
+      return cell;
+    });
+    const summaryTotal: Cell = {
+      projected: summaryCells.reduce((s, c) => s + c.projected, 0),
+      actual: summaryCells.reduce((s, c) => s + c.actual, 0),
     };
 
     return {
+      columns,
       rows: rows.sort((a, b) =>
         (a.company || a.contactName).localeCompare(
           b.company || b.contactName
         )
       ),
-      summary: { months: summaryMonths, yearTotal: summaryTotal },
+      summary: { cells: summaryCells, total: summaryTotal },
     };
   },
 });
@@ -856,5 +950,72 @@ export const getStatementDataByPurchase = query({
       totalAmountDue: pastDueAmount + nextPaymentAmount,
       balance: Math.max(0, net - amountPaid),
     };
+  },
+});
+
+export const auditScheduledPayments = query({
+  args: { orgId: v.string() },
+  handler: async (ctx, args) => {
+    const purchases = await ctx.db
+      .query("purchases")
+      .withIndex("by_orgId", (q) => q.eq("orgId", args.orgId))
+      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .collect();
+
+    const mismatches: Array<{
+      purchaseId: string;
+      contactName: string;
+      company: string;
+      year: number;
+      invoiceNumber: string | null;
+      scheduleBase: number;
+      scheduledSum: number;
+      scheduledCount: number;
+      delta: number;
+    }> = [];
+
+    for (const purchase of purchases) {
+      const terms = await ctx.db
+        .query("paymentTerms")
+        .withIndex("by_purchaseId", (q) =>
+          q.eq("purchaseId", purchase._id)
+        )
+        .first();
+      if (!terms) continue;
+
+      const scheduledPayments = await ctx.db
+        .query("scheduledPayments")
+        .withIndex("by_purchaseId", (q) =>
+          q.eq("purchaseId", purchase._id)
+        )
+        .collect();
+
+      const scheduleBase = computeScheduleBase(terms);
+      const scheduledSum = scheduledPayments.reduce(
+        (s, sp) => s + sp.amount,
+        0
+      );
+
+      if (Math.abs(scheduledSum - scheduleBase) > 1) {
+        const contact = await ctx.db.get(purchase.contactId);
+        mismatches.push({
+          purchaseId: purchase._id,
+          contactName: contact
+            ? `${contact.firstName} ${contact.lastName}`
+            : "Unknown",
+          company: contact?.company ?? "",
+          year: purchase.year,
+          invoiceNumber: purchase.invoiceNumber ?? null,
+          scheduleBase,
+          scheduledSum,
+          scheduledCount: scheduledPayments.length,
+          delta: scheduleBase - scheduledSum,
+        });
+      }
+    }
+
+    return mismatches.sort((a, b) =>
+      (a.company || a.contactName).localeCompare(b.company || b.contactName)
+    );
   },
 });
