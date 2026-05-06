@@ -8,15 +8,26 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ShieldAlert, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect } from "react";
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { isLoaded, orgRole, orgId } = useAuth();
+  const { isLoaded, isSignedIn, orgRole, orgId } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
 
-  if (!isLoaded) {
+  useEffect(() => {
+    if (isLoaded && !isSignedIn) {
+      const returnTo = encodeURIComponent(pathname ?? "/admin");
+      router.replace(`/auth/login?redirect_url=${returnTo}`);
+    }
+  }, [isLoaded, isSignedIn, router, pathname]);
+
+  if (!isLoaded || !isSignedIn) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Skeleton className="h-8 w-48" />
