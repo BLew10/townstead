@@ -4,6 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
+## Reference: v1 application (planner-app)
+
+The previous version of this product lives at `/Users/brandonlewis/Documents/planner-app` (Next.js + Prisma/Postgres + NextAuth, pre-Convex). It is read-only — never modify it. Use it as a reference when porting features that exist in v1 but haven't been rebuilt in Townstead. Note that v1 is single-tenant (userId-scoped) while Townstead is multi-tenant (orgId-scoped via Clerk), so all ports must add org scoping.
+
 ## Commands
 
 ```bash

@@ -5,13 +5,21 @@ import { PortalHeader } from "@/components/portal/header";
 import { usePortalAuth } from "@/hooks/use-portal-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 export default function PortalLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
   const { isLoading, isLinked } = usePortalAuth();
+
+  // The invite-redeem page must render for users who aren't linked yet —
+  // redeeming is what creates the link in the first place.
+  if (pathname?.startsWith("/portal/invite/")) {
+    return <>{children}</>;
+  }
 
   if (isLoading) {
     return (

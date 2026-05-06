@@ -46,8 +46,6 @@ export default function RootLayout({
         <ClerkProvider
           signInFallbackRedirectUrl="/auth/redirect"
           signUpFallbackRedirectUrl="/auth/redirect"
-          signInForceRedirectUrl="/auth/redirect"
-          signUpForceRedirectUrl="/auth/redirect"
         >
           <ConvexClientProvider>
             <TooltipProvider>{children}</TooltipProvider>
