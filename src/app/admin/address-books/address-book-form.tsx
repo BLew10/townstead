@@ -124,11 +124,26 @@ export function AddressBookForm({
             <FormField
               control={form.control}
               name="displayLevel"
-              render={({ field }) => (
+              render={({ field }) => {
+                const selectKey =
+                  field.value == null || field.value === ""
+                    ? "__none__"
+                    : field.value === "private" || field.value === "public"
+                      ? field.value
+                      : "__none__";
+                const visibilityLabel: Record<
+                  "__none__" | "private" | "public",
+                  string
+                > = {
+                  __none__: "None",
+                  private: "Private",
+                  public: "Public",
+                };
+                return (
                 <FormItem>
                   <FormLabel>Display Level</FormLabel>
                   <Select
-                    value={field.value === "" ? "__none__" : field.value}
+                    value={selectKey}
                     onValueChange={(v) =>
                       field.onChange(
                         v == null || v === "__none__" ? "" : v,
@@ -138,9 +153,7 @@ export function AddressBookForm({
                     <FormControl>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select visibility">
-                          {{ "__none__": "None", private: "Private", public: "Public" }[
-                            field.value === "" ? "__none__" : field.value
-                          ] ?? "Select visibility"}
+                          {visibilityLabel[selectKey]}
                         </SelectValue>
                       </SelectTrigger>
                     </FormControl>
@@ -152,7 +165,8 @@ export function AddressBookForm({
                   </Select>
                   <FormMessage />
                 </FormItem>
-              )}
+                );
+              }}
             />
             <DialogFooter>
               <Button type="submit" disabled={isPending}>

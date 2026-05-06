@@ -248,7 +248,9 @@ export default function CashFlowPage() {
         <div className="flex items-center gap-4">
           <Select
             value={selectedEditionId}
-            onValueChange={(val) => setSelectedEditionId(val)}
+            onValueChange={(val) =>
+              setSelectedEditionId(val ?? ALL_EDITIONS)
+            }
           >
             <SelectTrigger className="w-48">
               <SelectValue placeholder="All Editions">
