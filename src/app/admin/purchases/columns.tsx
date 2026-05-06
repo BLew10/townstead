@@ -200,7 +200,7 @@ export function purchaseColumns({
       ),
     },
     {
-      id: "contact",
+      id: "contactName",
       accessorFn: (row) => `${row.company || row.contactName} ${row.contactName}`,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Contact" />

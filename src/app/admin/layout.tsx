@@ -47,8 +47,8 @@ export default function AdminLayout({
           You don&apos;t have permission to access the admin dashboard. Contact
           your organization administrator if you believe this is an error.
         </p>
-        <Button asChild className="mt-6">
-          <Link href="/">Go Home</Link>
+        <Button render={<Link href="/" />} className="mt-6">
+          Go Home
         </Button>
       </div>
     );

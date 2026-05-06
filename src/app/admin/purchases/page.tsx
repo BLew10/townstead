@@ -58,13 +58,13 @@ export default function PurchasesPage() {
       <DataTable
         columns={columns}
         data={purchases}
-        searchKey="contact"
+        searchKey="contactName"
         searchPlaceholder="Search by contact..."
         emptyTitle="No purchases"
         emptyDescription="Get started by creating your first purchase."
         onRowClick={(row) => router.push(`/admin/purchases/${row._id}`)}
         noPagination
-        initialSorting={[{ id: "contact", desc: false }]}
+        initialSorting={[{ id: "contactName", desc: false }]}
         initialColumnFilters={[{ id: "year", value: [String(defaultYear)] }]}
       />
     </div>
