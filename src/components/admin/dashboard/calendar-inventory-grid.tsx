@@ -136,7 +136,7 @@ export function CalendarInventoryGrid({
                             className="relative flex h-7 items-center justify-center rounded text-[10px] font-medium leading-none transition-opacity hover:opacity-80"
                             style={style}
                           >
-                            {isValid ? dayNumber : position}
+                            {isValid ? dayNumber : null}
                             <span
                               className="absolute bottom-0 right-0.5 text-[7px] font-normal opacity-70 leading-none"
                               style={{ color: fg }}
