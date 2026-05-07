@@ -3,6 +3,10 @@
 import { useRouter } from "next/navigation";
 import { getContactColor, getContrastText } from "@/lib/colors";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  MonthSlotGrid,
+  type SlotOccupant,
+} from "@/components/shared/month-slot-grid";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -23,22 +27,15 @@ interface SlotData {
   purchaseId: string;
 }
 
-function getMultiOccupantBackground(occupants: SlotData[]): string {
-  if (occupants.length === 1) {
-    return getContactColor(occupants[0].contactId.toString());
-  }
-  const pct = 100 / occupants.length;
-  const stops = occupants
-    .map((o, i) => {
-      const color = getContactColor(o.contactId.toString());
-      return `${color} ${pct * i}%, ${color} ${pct * (i + 1)}%`;
-    })
-    .join(", ");
-  return `linear-gradient(135deg, ${stops})`;
-}
-
-export function CalendarInventoryGrid({ slots }: { slots: SlotData[] }) {
+export function CalendarInventoryGrid({
+  slots,
+  year,
+}: {
+  slots: SlotData[];
+  year?: number;
+}) {
   const router = useRouter();
+  const displayYear = year ?? new Date().getFullYear();
 
   const daySlotsByMonth = new Map<number, Map<number, SlotData[]>>();
   const nonDaySlotsByMonth = new Map<number, Map<string, SlotData[]>>();
@@ -79,72 +76,34 @@ export function CalendarInventoryGrid({ slots }: { slots: SlotData[] }) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 print:hidden">
         {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
           const monthSlots = daySlotsByMonth.get(month) ?? new Map<number, SlotData[]>();
+          const occupantsBySlot: Record<number, SlotOccupant[]> = {};
+          for (const [slotNum, occList] of monthSlots) {
+            occupantsBySlot[slotNum] = occList.map((o) => ({
+              contactId: o.contactId.toString(),
+              contactName: o.contactName,
+              company: o.company,
+              advertisementName: o.advertisementName,
+              purchaseId: o.purchaseId,
+            }));
+          }
           return (
             <div key={month} className="rounded-md border">
               <div className="border-b bg-muted/50 px-3 py-1.5">
                 <h4 className="text-xs font-semibold">{MONTH_NAMES[month - 1]}</h4>
               </div>
-              <div className="grid grid-cols-5 gap-px p-1">
-                {Array.from({ length: MAX_DAY_SLOTS }, (_, j) => j + 1).map(
-                  (slotNum) => {
-                    const occupants = monthSlots.get(slotNum);
-                    if (occupants && occupants.length > 0) {
-                      const isSingle = occupants.length === 1;
-                      const bgValue = getMultiOccupantBackground(occupants);
-                      const fg = isSingle
-                        ? getContrastText(getContactColor(occupants[0].contactId.toString()))
-                        : "#ffffff";
-
-                      const style: React.CSSProperties = isSingle
-                        ? { backgroundColor: bgValue, color: fg }
-                        : { background: bgValue, color: fg };
-
-                      return (
-                        <Tooltip key={slotNum}>
-                          <TooltipTrigger
-                            onClick={() =>
-                              router.push(`/admin/purchases/${occupants[0].purchaseId}`)
-                            }
-                            className="relative flex h-7 items-center justify-center rounded text-[10px] font-medium leading-none transition-opacity hover:opacity-80"
-                            style={style}
-                          >
-                            {slotNum}
-                            {!isSingle && (
-                              <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-foreground text-background text-[8px] font-bold leading-none">
-                                {occupants.length}
-                              </span>
-                            )}
-                          </TooltipTrigger>
-                          <TooltipContent className="flex-col items-start gap-0">
-                            {occupants.map((occ, idx) => (
-                              <div key={occ._id} className={idx > 0 ? "mt-1 pt-1 border-t border-border/50 w-full" : ""}>
-                                <p className="font-medium flex items-center gap-1">
-                                  <span
-                                    className="inline-block h-2 w-2 rounded-full shrink-0"
-                                    style={{ backgroundColor: getContactColor(occ.contactId.toString()) }}
-                                  />
-                                  {occ.company || occ.contactName}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {occ.advertisementName} &middot; Slot {slotNum}
-                                </p>
-                              </div>
-                            ))}
-                          </TooltipContent>
-                        </Tooltip>
-                      );
+              <div className="p-1">
+                <MonthSlotGrid
+                  year={displayYear}
+                  month={month}
+                  slotsPerMonth={MAX_DAY_SLOTS}
+                  occupants={occupantsBySlot}
+                  mode="readonly"
+                  onCellClick={(_slotNumber, occ) => {
+                    if (occ.length > 0 && occ[0].purchaseId) {
+                      router.push(`/admin/purchases/${occ[0].purchaseId}`);
                     }
-
-                    return (
-                      <div
-                        key={slotNum}
-                        className="flex h-7 items-center justify-center rounded border border-dashed border-muted-foreground/20 text-[10px] text-muted-foreground/40"
-                      >
-                        {slotNum}
-                      </div>
-                    );
-                  }
-                )}
+                  }}
+                />
               </div>
             </div>
           );

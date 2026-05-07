@@ -325,7 +325,7 @@ export default function AdminDashboardPage() {
         />
       ) : (
         <>
-          <CalendarInventoryGrid slots={filteredSlots as any} />
+          <CalendarInventoryGrid slots={filteredSlots as any} year={selectedYear} />
           <AdvertiserLegend contacts={filteredContacts} />
         </>
       )}

@@ -7,14 +7,21 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
+type MockProps = { children?: React.ReactNode } & Record<string, unknown>;
+
 vi.mock("@/components/ui/tooltip", () => ({
-  Tooltip: ({ children }: any) => <div>{children}</div>,
-  TooltipTrigger: ({ children, onClick, ...props }: any) => (
-    <button onClick={onClick} {...props}>
-      {children}
-    </button>
-  ),
-  TooltipContent: ({ children }: any) => <div>{children}</div>,
+  Tooltip: ({ children }: MockProps) => <div>{children}</div>,
+  TooltipProvider: ({ children }: MockProps) => <div>{children}</div>,
+  TooltipTrigger: (props: MockProps) => {
+    const { children, onClick, asChild, ...rest } = props;
+    void asChild;
+    return (
+      <button onClick={onClick as React.MouseEventHandler} {...rest}>
+        {children}
+      </button>
+    );
+  },
+  TooltipContent: ({ children }: MockProps) => <div>{children}</div>,
 }));
 
 import { CalendarInventoryGrid } from "./calendar-inventory-grid";
