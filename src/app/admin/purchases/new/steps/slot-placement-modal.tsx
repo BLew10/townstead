@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
 import { useOrg } from "@/hooks/use-org";
@@ -21,14 +21,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Check } from "lucide-react";
 import { toast } from "sonner";
 import type { Id } from "../../../../../../convex/_generated/dataModel";
 import type { SlotAssignment } from "./assign-slots";
-import {
-  MonthSlotGrid,
-  type SlotOccupant,
-} from "@/components/shared/month-slot-grid";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -43,6 +39,20 @@ type OccupantInfo = {
 };
 
 type TakenSlots = Record<number, OccupantInfo[]>;
+
+function getOccupantBackground(occupants: OccupantInfo[]): string {
+  if (occupants.length === 1) {
+    return getContactColor(occupants[0].contactId);
+  }
+  const pct = 100 / occupants.length;
+  const stops = occupants
+    .map((o, i) => {
+      const color = getContactColor(o.contactId);
+      return `${color} ${pct * i}%, ${color} ${pct * (i + 1)}%`;
+    })
+    .join(", ");
+  return `linear-gradient(135deg, ${stops})`;
+}
 
 function occupantLabel(o: OccupantInfo): string {
   return o.company || o.contactName || "Unknown";
@@ -122,8 +132,7 @@ export function SlotPlacementModal({
     }
   };
 
-  const dayTypeSlots = Math.max(35, slotsPerMonth || 35);
-  const totalSlots = isDayType ? dayTypeSlots : Math.max(1, slotsPerMonth);
+  const totalSlots = isDayType ? 42 : Math.max(1, slotsPerMonth);
   const columnCount = isDayType ? 7 : Math.min(slotsPerMonth, 7);
 
   return (
@@ -187,7 +196,7 @@ export function SlotPlacementModal({
                       advertisementId={advertisementId}
                       year={year}
                       month={month}
-                      slotsPerMonth={dayTypeSlots}
+                      monthIndex={monthIndex}
                       localAssignments={localAssignments}
                       onToggle={handleSlotToggle}
                       excludePurchaseId={excludePurchaseId}
@@ -226,17 +235,17 @@ function SlotLegend({ isDayType }: { isDayType: boolean }) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground border rounded-md px-3 py-2 bg-muted/30">
       <span className="flex items-center gap-1.5">
-        <span className="inline-block h-3 w-3 rounded border border-muted-foreground/30 bg-card" />
-        Open
+        <span className="inline-block h-3 w-3 rounded border border-muted-foreground/20" />
+        Available
       </span>
       <span className="flex items-center gap-1.5">
-        <span className="inline-block h-3 w-3 rounded border-2 border-emerald-500 bg-emerald-100" />
+        <span className="inline-block h-3 w-3 rounded border-2 border-primary bg-primary/10" />
         Your selection
       </span>
       <span className="flex items-center gap-1.5">
         <span
           className="inline-block h-3 w-3 rounded"
-          style={{ backgroundColor: "hsl(210, 70%, 50%)", opacity: 0.75 }}
+          style={{ backgroundColor: "hsl(210, 70%, 50%)", opacity: 0.7 }}
         />
         {isDayType ? "Occupied (shared)" : "Occupied (unavailable)"}
       </span>
@@ -254,7 +263,7 @@ function DayTypeGrid({
   advertisementId,
   year,
   month,
-  slotsPerMonth,
+  monthIndex,
   localAssignments,
   onToggle,
   excludePurchaseId,
@@ -263,11 +272,14 @@ function DayTypeGrid({
   advertisementId: Id<"advertisements">;
   year: number;
   month: number;
-  slotsPerMonth: number;
+  monthIndex: number;
   localAssignments: SlotAssignment[];
   onToggle: (month: number, slotNumber: number) => void;
   excludePurchaseId?: Id<"purchases">;
 }) {
+  const GRID_CELLS = 42;
+  const weekDays = ["S", "M", "T", "W", "T", "F", "S"];
+
   const { orgId, isReady } = useOrg();
   const availability = useQuery(
     api.adSlots.queries.getSlotAvailability,
@@ -284,39 +296,117 @@ function DayTypeGrid({
       : "skip"
   );
 
-  const occupantsBySlot = useMemo<Record<number, SlotOccupant[]>>(() => {
-    const taken: TakenSlots = (availability?.takenSlots as TakenSlots) ?? {};
-    const out: Record<number, SlotOccupant[]> = {};
-    for (const [slotKey, list] of Object.entries(taken)) {
-      out[Number(slotKey)] = list.map((o) => ({
-        contactId: o.contactId,
-        contactName: o.contactName,
-        company: o.company,
-      }));
-    }
-    return out;
-  }, [availability?.takenSlots]);
+  const takenSlots: TakenSlots = (availability?.takenSlots as TakenSlots) ?? {};
 
-  const selectedSlots = useMemo(
-    () =>
-      new Set(
-        localAssignments
-          .filter((a) => a.month === month && typeof a.slotNumber === "number")
-          .map((a) => a.slotNumber as number),
-      ),
-    [localAssignments, month],
-  );
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const firstDay = new Date(year, monthIndex, 1).getDay();
+
+  const grid = Array.from({ length: GRID_CELLS }, (_, i) => {
+    const dayNumber = i - firstDay + 1;
+    const isValid = dayNumber > 0 && dayNumber <= daysInMonth;
+    return { position: i + 1, dayNumber: isValid ? dayNumber : null };
+  });
 
   return (
-    <MonthSlotGrid
-      year={year}
-      month={month}
-      slotsPerMonth={slotsPerMonth}
-      occupants={occupantsBySlot}
-      selectedSlots={selectedSlots}
-      mode="editor"
-      onToggle={(slotNumber) => onToggle(month, slotNumber)}
-    />
+    <TooltipProvider delay={200}>
+      <div className="rounded-lg border p-2">
+        <div className="grid grid-cols-7 text-center mb-1">
+          {weekDays.map((day, i) => (
+            <div
+              key={i}
+              className="text-xs font-medium text-muted-foreground p-0.5"
+            >
+              {day}
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-0.5">
+          {grid.map((cell) => {
+            const isSelected = localAssignments.some(
+              (a) => a.month === month && a.slotNumber === cell.position
+            );
+            const occupants = takenSlots[cell.position] ?? [];
+            const hasOccupants = occupants.length > 0;
+
+            const cellStyle: React.CSSProperties = {};
+            if (hasOccupants && !isSelected) {
+              const bg = getOccupantBackground(occupants);
+              if (occupants.length === 1) {
+                cellStyle.backgroundColor = bg;
+                cellStyle.opacity = 0.7;
+              } else {
+                cellStyle.background = bg;
+                cellStyle.opacity = 0.7;
+              }
+            }
+
+            const textColor =
+              hasOccupants && !isSelected && occupants.length === 1
+                ? getContrastText(getContactColor(occupants[0].contactId))
+                : undefined;
+
+            const cellContent = (
+              <button
+                key={cell.position}
+                type="button"
+                onClick={() => onToggle(month, cell.position)}
+                style={cellStyle}
+                className={cn(
+                  "relative aspect-square flex items-center justify-center rounded text-xs font-medium transition-colors",
+                  isSelected
+                    ? "border-2 border-primary bg-primary/10"
+                    : hasOccupants
+                      ? "border border-transparent hover:opacity-90"
+                      : "border border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/20",
+                  !cell.dayNumber && "opacity-60"
+                )}
+              >
+                {cell.dayNumber && (
+                  <span style={textColor ? { color: textColor } : undefined}>
+                    {cell.dayNumber}
+                  </span>
+                )}
+                {isSelected && (
+                  <div className="absolute top-0.5 right-0.5 rounded-full bg-primary w-1.5 h-1.5" />
+                )}
+                {hasOccupants && !isSelected && (
+                  <span className="absolute top-0 left-0.5 text-[7px] font-bold" style={textColor ? { color: textColor } : undefined}>
+                    {occupants.length}
+                  </span>
+                )}
+                <span className="absolute bottom-0 right-0.5 text-[7px] text-muted-foreground/60">
+                  {cell.position}
+                </span>
+              </button>
+            );
+
+            if (hasOccupants) {
+              return (
+                <Tooltip key={cell.position}>
+                  <TooltipTrigger asChild>{cellContent}</TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[200px]">
+                    <p className="font-medium text-xs mb-0.5">
+                      {occupants.length} advertiser{occupants.length > 1 ? "s" : ""}
+                    </p>
+                    {occupants.map((o, i) => (
+                      <p key={i} className="text-xs flex items-center gap-1">
+                        <span
+                          className="inline-block h-2 w-2 rounded-full shrink-0"
+                          style={{ backgroundColor: getContactColor(o.contactId) }}
+                        />
+                        {occupantLabel(o)}
+                      </p>
+                    ))}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+
+            return cellContent;
+          })}
+        </div>
+      </div>
+    </TooltipProvider>
   );
 }
 

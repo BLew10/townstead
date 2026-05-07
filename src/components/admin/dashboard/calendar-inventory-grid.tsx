@@ -3,17 +3,14 @@
 import { useRouter } from "next/navigation";
 import { getContactColor, getContrastText } from "@/lib/colors";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import {
-  MonthSlotGrid,
-  type SlotOccupant,
-} from "@/components/shared/month-slot-grid";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
 
-const MAX_DAY_SLOTS = 35;
+const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
+const DAY_GRID_CELLS = 42;
 
 interface SlotData {
   _id: string;
@@ -25,6 +22,20 @@ interface SlotData {
   advertisementName: string;
   isDayType: boolean;
   purchaseId: string;
+}
+
+function getMultiOccupantBackground(occupants: SlotData[]): string {
+  if (occupants.length === 1) {
+    return getContactColor(occupants[0].contactId.toString());
+  }
+  const pct = 100 / occupants.length;
+  const stops = occupants
+    .map((o, i) => {
+      const color = getContactColor(o.contactId.toString());
+      return `${color} ${pct * i}%, ${color} ${pct * (i + 1)}%`;
+    })
+    .join(", ");
+  return `linear-gradient(135deg, ${stops})`;
 }
 
 export function CalendarInventoryGrid({
@@ -76,34 +87,104 @@ export function CalendarInventoryGrid({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 print:hidden">
         {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
           const monthSlots = daySlotsByMonth.get(month) ?? new Map<number, SlotData[]>();
-          const occupantsBySlot: Record<number, SlotOccupant[]> = {};
-          for (const [slotNum, occList] of monthSlots) {
-            occupantsBySlot[slotNum] = occList.map((o) => ({
-              contactId: o.contactId.toString(),
-              contactName: o.contactName,
-              company: o.company,
-              advertisementName: o.advertisementName,
-              purchaseId: o.purchaseId,
-            }));
-          }
+          const daysInMonth = new Date(displayYear, month, 0).getDate();
+          const firstDay = new Date(displayYear, month - 1, 1).getDay();
           return (
             <div key={month} className="rounded-md border">
               <div className="border-b bg-muted/50 px-3 py-1.5">
                 <h4 className="text-xs font-semibold">{MONTH_NAMES[month - 1]}</h4>
               </div>
               <div className="p-1">
-                <MonthSlotGrid
-                  year={displayYear}
-                  month={month}
-                  slotsPerMonth={MAX_DAY_SLOTS}
-                  occupants={occupantsBySlot}
-                  mode="readonly"
-                  onCellClick={(_slotNumber, occ) => {
-                    if (occ.length > 0 && occ[0].purchaseId) {
-                      router.push(`/admin/purchases/${occ[0].purchaseId}`);
+                <div className="grid grid-cols-7 mb-0.5">
+                  {WEEKDAY_LABELS.map((d, i) => (
+                    <div
+                      key={i}
+                      className="text-center text-[9px] font-medium text-muted-foreground/70 leading-none py-0.5"
+                    >
+                      {d}
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-px">
+                  {Array.from({ length: DAY_GRID_CELLS }, (_, j) => {
+                    const position = j + 1;
+                    const dayNumber = position - firstDay;
+                    const isValid = dayNumber >= 1 && dayNumber <= daysInMonth;
+                    const occupants = monthSlots.get(position);
+
+                    if (!isValid && (!occupants || occupants.length === 0)) {
+                      return <div key={position} aria-hidden className="h-7" />;
                     }
-                  }}
-                />
+
+                    if (occupants && occupants.length > 0) {
+                      const isSingle = occupants.length === 1;
+                      const bgValue = getMultiOccupantBackground(occupants);
+                      const fg = isSingle
+                        ? getContrastText(getContactColor(occupants[0].contactId.toString()))
+                        : "#ffffff";
+
+                      const style: React.CSSProperties = isSingle
+                        ? { backgroundColor: bgValue, color: fg }
+                        : { background: bgValue, color: fg };
+
+                      return (
+                        <Tooltip key={position}>
+                          <TooltipTrigger
+                            onClick={() =>
+                              router.push(`/admin/purchases/${occupants[0].purchaseId}`)
+                            }
+                            className="relative flex h-7 items-center justify-center rounded text-[10px] font-medium leading-none transition-opacity hover:opacity-80"
+                            style={style}
+                          >
+                            {isValid ? dayNumber : position}
+                            <span
+                              className="absolute bottom-0 right-0.5 text-[7px] font-normal opacity-70 leading-none"
+                              style={{ color: fg }}
+                            >
+                              {position}
+                            </span>
+                            {!isSingle && (
+                              <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-foreground text-background text-[8px] font-bold leading-none">
+                                {occupants.length}
+                              </span>
+                            )}
+                          </TooltipTrigger>
+                          <TooltipContent className="flex-col items-start gap-0">
+                            {occupants.map((occ, idx) => (
+                              <div key={occ._id} className={idx > 0 ? "mt-1 pt-1 border-t border-border/50 w-full" : ""}>
+                                <p className="font-medium flex items-center gap-1">
+                                  <span
+                                    className="inline-block h-2 w-2 rounded-full shrink-0"
+                                    style={{ backgroundColor: getContactColor(occ.contactId.toString()) }}
+                                  />
+                                  {occ.company || occ.contactName}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {occ.advertisementName}
+                                  {isValid
+                                    ? ` · Day ${dayNumber} (slot ${position})`
+                                    : ` · Slot ${position}`}
+                                </p>
+                              </div>
+                            ))}
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={position}
+                        className="relative flex h-7 items-center justify-center rounded border border-dashed border-muted-foreground/20 text-[10px] text-muted-foreground/60 leading-none"
+                      >
+                        {dayNumber}
+                        <span className="absolute bottom-0 right-0.5 text-[7px] text-muted-foreground/40 leading-none">
+                          {position}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           );
