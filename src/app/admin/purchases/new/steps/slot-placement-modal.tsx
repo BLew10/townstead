@@ -333,10 +333,8 @@ function DayTypeGrid({
               const bg = getOccupantBackground(occupants);
               if (occupants.length === 1) {
                 cellStyle.backgroundColor = bg;
-                cellStyle.opacity = 0.7;
               } else {
                 cellStyle.background = bg;
-                cellStyle.opacity = 0.7;
               }
             }
 
@@ -352,13 +350,13 @@ function DayTypeGrid({
                 onClick={() => onToggle(month, cell.position)}
                 style={cellStyle}
                 className={cn(
-                  "relative aspect-square flex items-center justify-center rounded text-xs font-medium transition-colors",
+                  "relative aspect-square flex items-center justify-center rounded text-xs font-medium transition-opacity",
                   isSelected
-                    ? "border-2 border-primary bg-primary/10"
+                    ? "border-2 border-primary bg-primary/10 hover:opacity-90"
                     : hasOccupants
-                      ? "border border-transparent hover:opacity-90"
+                      ? "border border-transparent hover:opacity-80"
                       : "border border-muted-foreground/20 hover:border-primary/50 hover:bg-muted/20",
-                  !cell.dayNumber && "opacity-60"
+                  !cell.dayNumber && !hasOccupants && !isSelected && "opacity-60"
                 )}
               >
                 {cell.dayNumber && (
