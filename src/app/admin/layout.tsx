@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, SignOutButton } from "@clerk/nextjs";
 import { AdminSidebar } from "@/components/admin/sidebar";
 import { AdminHeader } from "@/components/admin/header";
 import { AdminBreadcrumbs } from "@/components/admin/breadcrumbs";
@@ -45,6 +45,14 @@ export default function AdminLayout({
         <p className="mt-2 max-w-md text-center text-muted-foreground">
           Please select an organization to access the admin dashboard.
         </p>
+        <div className="mt-6 flex gap-2">
+          <Button render={<Link href="/" />} variant="outline">
+            Go Home
+          </Button>
+          <SignOutButton redirectUrl="/">
+            <Button>Sign Out</Button>
+          </SignOutButton>
+        </div>
       </div>
     );
   }
@@ -58,9 +66,14 @@ export default function AdminLayout({
           You don&apos;t have permission to access the admin dashboard. Contact
           your organization administrator if you believe this is an error.
         </p>
-        <Button render={<Link href="/" />} className="mt-6">
-          Go Home
-        </Button>
+        <div className="mt-6 flex gap-2">
+          <Button render={<Link href="/" />} variant="outline">
+            Go Home
+          </Button>
+          <SignOutButton redirectUrl="/">
+            <Button>Sign Out</Button>
+          </SignOutButton>
+        </div>
       </div>
     );
   }

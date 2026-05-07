@@ -6,7 +6,8 @@ import { usePortalAuth } from "@/hooks/use-portal-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, SignOutButton } from "@clerk/nextjs";
+import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
 
 export default function PortalLayout({
@@ -70,6 +71,11 @@ export default function PortalLayout({
           If you received an invite link, use it to connect your account.
           Otherwise, contact your account administrator to request portal access.
         </p>
+        <div className="mt-6">
+          <SignOutButton redirectUrl="/">
+            <Button>Sign Out</Button>
+          </SignOutButton>
+        </div>
       </div>
     );
   }

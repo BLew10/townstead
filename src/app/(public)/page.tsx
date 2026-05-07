@@ -1,9 +1,13 @@
 import { Calendar } from "lucide-react";
 import { SiteDirectory } from "@/components/public/site-directory";
+import { HomePageAuthControls } from "@/components/public/home-page-auth-controls";
 
 export default function HomePage() {
   return (
     <div className="theme-curator flex min-h-screen flex-col bg-surface font-body text-on-surface">
+      <div className="absolute right-4 top-4 z-10">
+        <HomePageAuthControls />
+      </div>
       {/* Hero */}
       <section className="flex flex-col items-center justify-center px-4 pb-8 pt-24">
         <div className="mx-auto max-w-2xl text-center">
