@@ -367,8 +367,8 @@ function DayTypeGrid({
                 {isSelected && (
                   <div className="absolute top-0.5 right-0.5 rounded-full bg-primary w-1.5 h-1.5" />
                 )}
-                {hasOccupants && !isSelected && (
-                  <span className="absolute top-0 left-0.5 text-[7px] font-bold" style={textColor ? { color: textColor } : undefined}>
+                {hasOccupants && !isSelected && occupants.length > 1 && (
+                  <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-foreground text-background text-[8px] font-bold leading-none">
                     {occupants.length}
                   </span>
                 )}
