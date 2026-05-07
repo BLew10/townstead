@@ -7,11 +7,19 @@ import { PageHeader } from "@/components/shared/page-header";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus, Download } from "lucide-react";
 import { useState } from "react";
 import { columns } from "./columns";
 import { ContactForm } from "./contact-form";
 import type { Doc } from "../../../../convex/_generated/dataModel";
+import { downloadCsv, downloadXlsx } from "@/lib/export/spreadsheet";
+import { contactExportColumns } from "@/lib/export/columns/contacts";
 
 export default function ContactsPage() {
   const { orgId, isReady } = useOrg();
@@ -41,15 +49,46 @@ export default function ContactsPage() {
         title="Contacts"
         description="Manage your contacts and customer relationships"
         actions={
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setFormOpen(true);
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Contact
-          </Button>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={contacts.length === 0}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() =>
+                    downloadXlsx(
+                      contacts,
+                      contactExportColumns,
+                      "Contacts",
+                      "contacts.xlsx"
+                    )
+                  }
+                >
+                  Download as XLSX
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    downloadCsv(contacts, contactExportColumns, "contacts.csv")
+                  }
+                >
+                  Download as CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setFormOpen(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Contact
+            </Button>
+          </div>
         }
       />
       <DataTable

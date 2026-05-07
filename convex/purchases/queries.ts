@@ -301,6 +301,32 @@ export const getByContactAndYear = query({
   },
 });
 
+export const exportContacts = query({
+  args: { orgId: v.string(), year: v.number() },
+  handler: async (ctx, args) => {
+    const purchases = await ctx.db
+      .query("purchases")
+      .withIndex("by_orgId_and_year", (q) =>
+        q.eq("orgId", args.orgId).eq("year", args.year)
+      )
+      .filter((q) => q.neq(q.field("isDeleted"), true))
+      .collect();
+
+    const seen = new Set<string>();
+    const contacts: Doc<"contacts">[] = [];
+    for (const purchase of purchases) {
+      const key = String(purchase.contactId);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const contact = await ctx.db.get(purchase.contactId);
+      if (contact && !contact.isDeleted) contacts.push(contact);
+    }
+
+    contacts.sort((a, b) => a.company.localeCompare(b.company));
+    return contacts;
+  },
+});
+
 export const listByContact = query({
   args: { contactId: v.id("contacts"), now: v.number() },
   handler: async (ctx, args) => {

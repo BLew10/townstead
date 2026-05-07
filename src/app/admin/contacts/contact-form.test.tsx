@@ -8,9 +8,17 @@ import {
   FormLabel,
 } from "@/components/ui/form";
 import { ContactCategoryCombobox } from "./contact-form";
+import type { ContactFormValues } from "@/lib/validators";
 
 function CategoryFieldHarness() {
-  const form = useForm({ defaultValues: { categoryId: "" } });
+  const form = useForm<ContactFormValues>({
+    defaultValues: {
+      company: "",
+      firstName: "",
+      lastName: "",
+      categoryId: "",
+    },
+  });
   return (
     <Form {...form}>
       <form>

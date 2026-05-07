@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { useQuery } from "convex/react";
+import { useMemo, useState } from "react";
+import { useQuery, useConvex } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useOrg } from "@/hooks/use-org";
 import { useStableNow } from "@/hooks/use-stable-now";
@@ -10,19 +10,48 @@ import { PageHeader } from "@/components/shared/page-header";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
 import { DataTable } from "@/components/shared/data-table";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Plus, Download } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { purchaseColumns } from "./columns";
+import { downloadCsv, downloadXlsx } from "@/lib/export/spreadsheet";
+import { contactExportColumns } from "@/lib/export/columns/contacts";
 
 export default function PurchasesPage() {
   const { orgId, isReady } = useOrg();
   const now = useStableNow();
   const { defaultYear } = useDefaultYear();
   const router = useRouter();
+  const convex = useConvex();
+  const [isDownloading, setIsDownloading] = useState(false);
   const purchases = useQuery(
     api.purchases.queries.list,
     isReady ? { orgId: orgId!, now } : "skip"
   );
+
+  const handleDownload = async (format: "csv" | "xlsx") => {
+    if (!orgId) return;
+    setIsDownloading(true);
+    try {
+      const contacts = await convex.query(api.purchases.queries.exportContacts, {
+        orgId,
+        year: defaultYear,
+      });
+      const filename = `purchase-contacts-${defaultYear}.${format}`;
+      if (format === "xlsx") {
+        downloadXlsx(contacts, contactExportColumns, "Contacts", filename);
+      } else {
+        downloadCsv(contacts, contactExportColumns, filename);
+      }
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const columns = useMemo(() => {
     const years = [
@@ -49,10 +78,28 @@ export default function PurchasesPage() {
         title="Purchases"
         description="Manage ad sales and purchase records"
         actions={
-          <Button onClick={() => router.push("/admin/purchases/new")}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Purchase
-          </Button>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={isDownloading}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Contacts
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleDownload("xlsx")}>
+                  Download {defaultYear} contacts as XLSX
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleDownload("csv")}>
+                  Download {defaultYear} contacts as CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button onClick={() => router.push("/admin/purchases/new")}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Purchase
+            </Button>
+          </div>
         }
       />
       <DataTable
