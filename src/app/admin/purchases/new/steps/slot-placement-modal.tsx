@@ -367,12 +367,18 @@ function DayTypeGrid({
                 {isSelected && (
                   <div className="absolute top-0.5 right-0.5 rounded-full bg-primary w-1.5 h-1.5" />
                 )}
-                {hasOccupants && !isSelected && occupants.length > 1 && (
-                  <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-foreground text-background text-[8px] font-bold leading-none">
+                {hasOccupants && !isSelected && (
+                  <span className="absolute top-0 left-0.5 text-[7px] font-bold" style={textColor ? { color: textColor } : undefined}>
                     {occupants.length}
                   </span>
                 )}
-                <span className="absolute bottom-0 right-0.5 text-[7px] text-muted-foreground/60">
+                <span
+                  className={cn(
+                    "absolute bottom-0 right-0.5 text-[8px] font-medium leading-none",
+                    !textColor && "text-muted-foreground",
+                  )}
+                  style={textColor ? { color: textColor, opacity: 0.85 } : undefined}
+                >
                   {cell.position}
                 </span>
               </button>
@@ -382,17 +388,26 @@ function DayTypeGrid({
               return (
                 <Tooltip key={cell.position}>
                   <TooltipTrigger asChild>{cellContent}</TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-[200px]">
-                    <p className="font-medium text-xs mb-0.5">
+                  <TooltipContent
+                    side="top"
+                    className="flex max-w-[240px] flex-col items-start gap-0"
+                  >
+                    <p className="font-medium text-xs mb-1">
                       {occupants.length} advertiser{occupants.length > 1 ? "s" : ""}
                     </p>
                     {occupants.map((o, i) => (
-                      <p key={i} className="text-xs flex items-center gap-1">
+                      <p
+                        key={i}
+                        className={cn(
+                          "text-xs flex items-center gap-1.5 w-full",
+                          i > 0 && "mt-1 pt-1 border-t border-border/50",
+                        )}
+                      >
                         <span
                           className="inline-block h-2 w-2 rounded-full shrink-0"
                           style={{ backgroundColor: getContactColor(o.contactId) }}
                         />
-                        {occupantLabel(o)}
+                        <span className="truncate">{occupantLabel(o)}</span>
                       </p>
                     ))}
                   </TooltipContent>
