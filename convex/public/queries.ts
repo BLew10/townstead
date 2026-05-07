@@ -167,34 +167,9 @@ export const listEvents = query({
     if (!branding) return [];
     const orgId = branding.orgId;
 
-    const buildIndex = () => {
-      if (args.startDate !== undefined && args.endDate !== undefined) {
-        return ctx.db
-          .query("events")
-          .withIndex("by_orgId_and_date", (q) =>
-            q.eq("orgId", orgId).gte("date", args.startDate!).lte("date", args.endDate!)
-          );
-      }
-      if (args.startDate !== undefined) {
-        return ctx.db
-          .query("events")
-          .withIndex("by_orgId_and_date", (q) =>
-            q.eq("orgId", orgId).gte("date", args.startDate!)
-          );
-      }
-      if (args.endDate !== undefined) {
-        return ctx.db
-          .query("events")
-          .withIndex("by_orgId_and_date", (q) =>
-            q.eq("orgId", orgId).lte("date", args.endDate!)
-          );
-      }
-      return ctx.db
-        .query("events")
-        .withIndex("by_orgId_and_date", (q) => q.eq("orgId", orgId));
-    };
-
-    let events = await buildIndex()
+    let events = await ctx.db
+      .query("events")
+      .withIndex("by_orgId_and_date", (q) => q.eq("orgId", orgId))
       .filter((filterQ) =>
         filterQ.and(
           filterQ.neq(filterQ.field("isDeleted"), true),

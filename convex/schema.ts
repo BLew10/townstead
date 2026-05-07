@@ -250,6 +250,43 @@ export default defineSchema({
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
     isYearly: v.optional(v.boolean()),
+    scheduleType: v.optional(
+      v.union(
+        v.literal("SINGLE_DAY"),
+        v.literal("DAILY_RANGE"),
+        v.literal("MONTHLY_DAY"),
+        v.literal("MONTHLY_ORDINAL_WEEKDAY")
+      )
+    ),
+    startsOn: v.optional(v.number()),
+    endsOn: v.optional(v.number()),
+    monthlyOrdinal: v.optional(
+      v.union(
+        v.literal("EVERY"),
+        v.literal("EVERY_OTHER"),
+        v.literal("SECOND_AND_FOURTH"),
+        v.literal("FIRST_THIRD_AND_FIFTH"),
+        v.literal("FIRST"),
+        v.literal("SECOND"),
+        v.literal("THIRD"),
+        v.literal("FOURTH"),
+        v.literal("LAST")
+      )
+    ),
+    monthlyWeekday: v.optional(
+      v.union(
+        v.literal("MONDAY"),
+        v.literal("TUESDAY"),
+        v.literal("WEDNESDAY"),
+        v.literal("THURSDAY"),
+        v.literal("FRIDAY"),
+        v.literal("SATURDAY"),
+        v.literal("SUNDAY")
+      )
+    ),
+    monthlyMonthSelector: v.optional(
+      v.union(v.literal("EVERY"), v.literal("EVEN"), v.literal("ODD"))
+    ),
     communityIds: v.optional(v.array(v.id("communities"))),
     location: v.optional(v.string()),
     contactId: v.optional(v.id("contacts")),

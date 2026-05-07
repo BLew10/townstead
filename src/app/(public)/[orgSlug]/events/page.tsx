@@ -17,6 +17,7 @@ import { EventCalendar } from "@/components/public/event-calendar";
 import { useCommunityFilter } from "@/hooks/use-community-filter";
 import { CommunityBadges } from "@/components/public/community-badge";
 import type { Id } from "../../../../../convex/_generated/dataModel";
+import { expandEventOccurrences } from "@/lib/events/recurrence";
 
 export default function EventsPage({
   params,
@@ -51,11 +52,18 @@ export default function EventsPage({
 
   const filteredEvents = useMemo(() => {
     if (!events) return [];
-    let result = events;
+    let result = events.filter((e) =>
+      expandEventOccurrences(e, calendarMonth.getFullYear()).some(
+        (occurrence) =>
+          occurrence.date >= monthStart && occurrence.date <= monthEnd
+      )
+    );
 
     if (selectedDate) {
       result = result.filter((e) =>
-        isSameDay(new Date(e.date), selectedDate),
+        expandEventOccurrences(e, selectedDate.getFullYear()).some(
+          (occurrence) => isSameDay(new Date(occurrence.date), selectedDate)
+        )
       );
     }
 
@@ -69,7 +77,7 @@ export default function EventsPage({
     }
 
     return result;
-  }, [events, selectedDate, searchQuery]);
+  }, [calendarMonth, events, monthEnd, monthStart, selectedDate, searchQuery]);
 
   const calendarEvents = useMemo(
     () =>
@@ -78,6 +86,13 @@ export default function EventsPage({
         name: e.name,
         date: e.date,
         endDate: e.endDate,
+        isYearly: e.isYearly,
+        scheduleType: e.scheduleType,
+        startsOn: e.startsOn,
+        endsOn: e.endsOn,
+        monthlyOrdinal: e.monthlyOrdinal,
+        monthlyWeekday: e.monthlyWeekday,
+        monthlyMonthSelector: e.monthlyMonthSelector,
       })),
     [events],
   );

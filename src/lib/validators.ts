@@ -121,7 +121,78 @@ export const eventSchema = z.object({
   startTime: z.string().optional(),
   endTime: z.string().optional(),
   isYearly: z.boolean().optional(),
+  scheduleType: z
+    .enum([
+      "SINGLE_DAY",
+      "DAILY_RANGE",
+      "MONTHLY_DAY",
+      "MONTHLY_ORDINAL_WEEKDAY",
+    ])
+    .optional(),
+  startsOn: z.number().optional(),
+  endsOn: z.number().optional(),
+  monthlyOrdinal: z
+    .enum([
+      "EVERY",
+      "EVERY_OTHER",
+      "SECOND_AND_FOURTH",
+      "FIRST_THIRD_AND_FIFTH",
+      "FIRST",
+      "SECOND",
+      "THIRD",
+      "FOURTH",
+      "LAST",
+    ])
+    .optional(),
+  monthlyWeekday: z
+    .enum([
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "FRIDAY",
+      "SATURDAY",
+      "SUNDAY",
+    ])
+    .optional(),
+  monthlyMonthSelector: z.enum(["EVERY", "EVEN", "ODD"]).optional(),
   communityIds: z.array(z.string()).optional(),
+}).superRefine((value, ctx) => {
+  const scheduleType = value.scheduleType ?? "SINGLE_DAY";
+  if (scheduleType !== "SINGLE_DAY" && !value.endsOn && !value.endDate) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["endsOn"],
+      message: "End date is required for repeating events",
+    });
+  }
+  if (
+    (scheduleType === "MONTHLY_DAY" ||
+      scheduleType === "MONTHLY_ORDINAL_WEEKDAY") &&
+    !value.monthlyOrdinal
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["monthlyOrdinal"],
+      message: "Repeat option is required",
+    });
+  }
+  if (scheduleType === "MONTHLY_ORDINAL_WEEKDAY") {
+    if (!value.monthlyWeekday) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["monthlyWeekday"],
+        message: "Weekday is required",
+      });
+    }
+    if (!value.monthlyMonthSelector) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["monthlyMonthSelector"],
+        message: "Month selector is required",
+      });
+    }
+  }
 });
 
 export const addressBookSchema = z.object({

@@ -18,6 +18,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { DataTableColumnHeader } from "@/components/shared/data-table-column-header";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
+import { formatEventSchedule, getEffectiveScheduleType } from "@/lib/events/recurrence";
 
 type Event = Doc<"events">;
 
@@ -154,7 +155,9 @@ export function columns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Date" />
       ),
-      cell: ({ row }) => formatDate(row.original.date),
+      cell: ({ row }) =>
+        formatEventSchedule(row.original, new Date().getFullYear()) ||
+        formatDate(row.original.date),
       sortingFn: "basic",
     },
     {
@@ -181,12 +184,23 @@ export function columns({
       id: "recurring",
       header: "Recurring",
       enableSorting: false,
-      cell: ({ row }) =>
-        row.original.isYearly ? (
+      cell: ({ row }) => {
+        const scheduleType = getEffectiveScheduleType(row.original);
+        if (scheduleType === "SINGLE_DAY" && !row.original.isYearly) return null;
+        const label =
+          scheduleType === "DAILY_RANGE"
+            ? "Daily"
+            : scheduleType === "MONTHLY_DAY"
+              ? "Monthly Day"
+              : scheduleType === "MONTHLY_ORDINAL_WEEKDAY"
+                ? "Monthly Weekday"
+                : "Yearly";
+        return (
           <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-500/20 dark:text-blue-300">
-            Yearly
+            {label}
           </Badge>
-        ) : null,
+        );
+      },
     },
     {
       id: "communities",

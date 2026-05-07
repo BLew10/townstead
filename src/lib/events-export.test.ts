@@ -72,6 +72,22 @@ describe("filterEventsForExport", () => {
     expect(result.map((e) => e.name)).not.toContain("C");
   });
 
+  it("includes recurring events with occurrences in the export year", () => {
+    const result = filterEventsForExport(
+      [
+        makeEvent({
+          name: "Yearly",
+          date: jan2025,
+          isYearly: true,
+          scheduleType: "SINGLE_DAY",
+        }),
+      ],
+      2026,
+      null
+    );
+    expect(result.map((e) => e.name)).toEqual(["Yearly"]);
+  });
+
   it("filters by year and community ID", () => {
     const result = filterEventsForExport(
       events,
@@ -135,6 +151,20 @@ describe("buildEventExportMonthGroups", () => {
     expect(result[0].items[0].name).toBe("Jan Event");
     expect(result[2].items).toHaveLength(1);
     expect(result[2].items[0].name).toBe("Mar Event");
+  });
+
+  it("buckets each occurrence of repeating events", () => {
+    const events = [
+      makeEvent({
+        name: "Festival",
+        date: new Date(2026, 4, 10).getTime(),
+        startsOn: new Date(2026, 4, 10).getTime(),
+        endsOn: new Date(2026, 4, 12).getTime(),
+        scheduleType: "DAILY_RANGE",
+      }),
+    ];
+    const result = buildEventExportMonthGroups(events, 2026, null);
+    expect(result[4].items.map((item) => item.dateStr)).toHaveLength(3);
   });
 
   it("empty months have empty items array", () => {

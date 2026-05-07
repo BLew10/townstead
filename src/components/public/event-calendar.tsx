@@ -13,16 +13,45 @@ import {
   isToday,
   addMonths,
   subMonths,
+  isWithinInterval,
 } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { expandEventOccurrences } from "@/lib/events/recurrence";
 
 interface CalendarEvent {
   _id: string;
   name: string;
   date: number;
   endDate?: number;
+  isYearly?: boolean;
+  scheduleType?:
+    | "SINGLE_DAY"
+    | "DAILY_RANGE"
+    | "MONTHLY_DAY"
+    | "MONTHLY_ORDINAL_WEEKDAY";
+  startsOn?: number;
+  endsOn?: number;
+  monthlyOrdinal?:
+    | "EVERY"
+    | "EVERY_OTHER"
+    | "SECOND_AND_FOURTH"
+    | "FIRST_THIRD_AND_FIFTH"
+    | "FIRST"
+    | "SECOND"
+    | "THIRD"
+    | "FOURTH"
+    | "LAST";
+  monthlyWeekday?:
+    | "MONDAY"
+    | "TUESDAY"
+    | "WEDNESDAY"
+    | "THURSDAY"
+    | "FRIDAY"
+    | "SATURDAY"
+    | "SUNDAY";
+  monthlyMonthSelector?: "EVERY" | "EVEN" | "ODD";
 }
 
 interface EventCalendarProps {
@@ -53,16 +82,35 @@ export function EventCalendar({
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
     for (const event of events) {
-      const key = format(new Date(event.date), "yyyy-MM-dd");
-      const existing = map.get(key);
-      if (existing) {
-        existing.push(event);
-      } else {
-        map.set(key, [event]);
+      const years = new Set([
+        currentMonth.getFullYear(),
+        new Date(event.date).getFullYear(),
+      ]);
+
+      for (const year of years) {
+        for (const occurrence of expandEventOccurrences(event, year)) {
+          const occurrenceDate = new Date(occurrence.date);
+          if (
+            !isWithinInterval(occurrenceDate, {
+              start: startOfMonth(currentMonth),
+              end: endOfMonth(currentMonth),
+            })
+          ) {
+            continue;
+          }
+
+          const key = format(occurrenceDate, "yyyy-MM-dd");
+          const existing = map.get(key);
+          if (existing) {
+            existing.push(event);
+          } else {
+            map.set(key, [event]);
+          }
+        }
       }
     }
     return map;
-  }, [events]);
+  }, [currentMonth, events]);
 
   const navigate = useCallback(
     (direction: "prev" | "next") => {

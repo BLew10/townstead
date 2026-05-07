@@ -10,7 +10,8 @@ const STEP = "06-events";
 async function run(pool: pg.Pool, convex: ConvexHttpClient, orgId: string) {
   const { rows: events } = await pool.query(`
     SELECT id, name, description, date, "endDate", "startTime", "endTime",
-           "isYearly", "isDeleted"
+           "isYearly", "isDeleted", "isMultiDay", "scheduleType", "startsOn",
+           "endsOn", "monthlyOrdinal", "monthlyWeekday", "monthlyMonthSelector"
     FROM "Event"
     ORDER BY date
   `);
@@ -54,6 +55,14 @@ async function run(pool: pg.Pool, convex: ConvexHttpClient, orgId: string) {
       if (v2Id) v2CommunityIds.push(v2Id as Id<"communities">);
     }
 
+    const scheduleType =
+      row.scheduleType ?? (row.isMultiDay ? "DAILY_RANGE" : "SINGLE_DAY");
+    const startsOn = toTimestamp(row.startsOn) ?? dateTs;
+    const endsOn =
+      toTimestamp(row.endsOn) ??
+      toTimestamp(row.endDate) ??
+      (scheduleType === "SINGLE_DAY" ? undefined : dateTs);
+
     const v2Id = await convex.mutation(api.migration.insertEvent, {
       name: row.name,
       description: row.description ?? undefined,
@@ -62,6 +71,12 @@ async function run(pool: pg.Pool, convex: ConvexHttpClient, orgId: string) {
       startTime: row.startTime ?? undefined,
       endTime: row.endTime ?? undefined,
       isYearly: row.isYearly ?? undefined,
+      scheduleType,
+      startsOn,
+      endsOn,
+      monthlyOrdinal: row.monthlyOrdinal ?? undefined,
+      monthlyWeekday: row.monthlyWeekday ?? undefined,
+      monthlyMonthSelector: row.monthlyMonthSelector ?? undefined,
       communityIds: v2CommunityIds.length > 0 ? v2CommunityIds : undefined,
       orgId,
       isDeleted: row.isDeleted || undefined,

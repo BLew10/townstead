@@ -4,6 +4,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import type { Doc } from "../../../../convex/_generated/dataModel";
 import type { EventClickArg } from "@fullcalendar/core";
+import { expandEventOccurrences } from "@/lib/events/recurrence";
 
 interface EventCalendarProps {
   events: Doc<"events">[];
@@ -11,12 +12,20 @@ interface EventCalendarProps {
 }
 
 export function EventCalendar({ events, onEventClick }: EventCalendarProps) {
-  const calendarEvents = events.map((event) => ({
-    id: event._id,
-    title: event.name,
-    start: new Date(event.date),
-    end: event.endDate ? new Date(event.endDate) : undefined,
-  }));
+  const visibleYears = new Set(
+    events.map((event) => new Date(event.date).getFullYear())
+  );
+  visibleYears.add(new Date().getFullYear());
+
+  const calendarEvents = events.flatMap((event) =>
+    Array.from(visibleYears).flatMap((year) =>
+      expandEventOccurrences(event, year).map((occurrence) => ({
+        id: event._id,
+        title: event.name,
+        start: new Date(occurrence.date),
+      }))
+    )
+  );
 
   const handleEventClick = (info: EventClickArg) => {
     const matched = events.find((e) => e._id === info.event.id);
