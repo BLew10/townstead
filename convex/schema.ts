@@ -288,6 +288,10 @@ export default defineSchema({
       v.union(v.literal("EVERY"), v.literal("EVEN"), v.literal("ODD"))
     ),
     calendarEditionIds: v.optional(v.array(v.id("calendarEditions"))),
+    // Deprecated — kept as optional to allow schema push against legacy docs.
+    // Run `events.migration.migrateCommunityIdsToEditions` to backfill and
+    // clear, then this field can be removed.
+    communityIds: v.optional(v.array(v.id("communities"))),
     location: v.optional(v.string()),
     contactId: v.optional(v.id("contacts")),
     categoryId: v.optional(v.id("categories")),

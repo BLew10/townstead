@@ -19,6 +19,7 @@ import { useState, useMemo } from "react";
 import { columns } from "./columns";
 import { EventForm } from "./event-form";
 import { EventCalendar } from "./event-calendar";
+import { DownloadEventsButton } from "./download-events-button";
 import type { Doc } from "../../../../convex/_generated/dataModel";
 
 export default function EventsPage() {
@@ -99,6 +100,9 @@ export default function EventsPage() {
                 <CalendarDays className="h-4 w-4" />
               </Button>
             </div>
+            <DownloadEventsButton
+              calendarEditions={calendarEditions ?? []}
+            />
             <Button
               onClick={() => {
                 setEditing(null);
