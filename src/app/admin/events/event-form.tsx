@@ -325,6 +325,7 @@ export function EventForm({
                   </FormItem>
                 )}
               />
+              {/* Event image upload temporarily hidden — re-enable when ready.
               <div className="space-y-1">
                 <Label>Event Image</Label>
                 <ImageUpload
@@ -335,6 +336,7 @@ export function EventForm({
                   uploading={uploadingImage}
                 />
               </div>
+              */}
               <FormField
                 control={form.control}
                 name="scheduleType"
@@ -423,7 +425,13 @@ export function EventForm({
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div
+                className={
+                  requiresEndDate
+                    ? "grid grid-cols-1 sm:grid-cols-2 gap-4"
+                    : "grid grid-cols-1 gap-4"
+                }
+              >
                 <FormField
                   control={form.control}
                   name="startsOn"
@@ -437,6 +445,7 @@ export function EventForm({
                           value={field.value}
                           onChange={field.onChange}
                           placeholder="Pick a date"
+                          buttonClassName="w-full"
                           toDate={
                             requiresEndDate && form.getValues("endsOn")
                               ? new Date(form.getValues("endsOn") as number)
@@ -465,6 +474,7 @@ export function EventForm({
                             value={field.value}
                             onChange={field.onChange}
                             placeholder="Pick an end date"
+                            buttonClassName="w-full"
                             fromDate={
                               form.getValues("startsOn")
                                 ? new Date(form.getValues("startsOn") as number)
