@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "NODE_OPTIONS='--max-old-space-size=4096' next dev",
-    "build": "next build",
+    "build": "convex deploy --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL --cmd 'npm run convex:migrate && next build'",
     "start": "next start",
     "lint": "eslint",
+    "convex:migrate": "convex run events/migration:migrateCommunityIdsToEditions",
     "migrate:audit": "tsx scripts/audit-v1-data.ts",
     "migrate:run": "tsx scripts/migrate/index.ts",
     "migrate:validate": "tsx scripts/validate-migration.ts",
