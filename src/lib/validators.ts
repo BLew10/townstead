@@ -159,11 +159,30 @@ export const eventSchema = z.object({
   calendarEditionIds: z.array(z.string()).optional(),
 }).superRefine((value, ctx) => {
   const scheduleType = value.scheduleType ?? "SINGLE_DAY";
+  if (!value.startsOn) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["startsOn"],
+      message: "Date is required",
+    });
+  }
   if (scheduleType !== "SINGLE_DAY" && !value.endsOn && !value.endDate) {
     ctx.addIssue({
       code: "custom",
       path: ["endsOn"],
       message: "End date is required for repeating events",
+    });
+  }
+  if (
+    value.startsOn &&
+    value.endsOn &&
+    scheduleType !== "SINGLE_DAY" &&
+    value.endsOn < value.startsOn
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["endsOn"],
+      message: "End date must be on or after the start date",
     });
   }
   if (

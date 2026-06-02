@@ -513,20 +513,47 @@ describe("paymentSchema", () => {
 describe("eventSchema", () => {
   it("accepts valid event with required fields", () => {
     expect(() =>
-      eventSchema.parse({ name: "Town Fair", date: 1700000000000 })
+      eventSchema.parse({
+        name: "Town Fair",
+        date: 1700000000000,
+        startsOn: 1700000000000,
+      })
     ).not.toThrow();
   });
 
   it("rejects empty name", () => {
     expect(() =>
-      eventSchema.parse({ name: "", date: 1700000000000 })
+      eventSchema.parse({
+        name: "",
+        date: 1700000000000,
+        startsOn: 1700000000000,
+      })
     ).toThrow();
+  });
+
+  it("rejects missing startsOn (date is required)", () => {
+    expect(() =>
+      eventSchema.parse({ name: "Town Fair", date: 1700000000000 })
+    ).toThrow(/required/i);
+  });
+
+  it("rejects endsOn earlier than startsOn for repeating events", () => {
+    expect(() =>
+      eventSchema.parse({
+        name: "Range",
+        date: 1700000000000,
+        startsOn: 1700200000000,
+        endsOn: 1700100000000,
+        scheduleType: "DAILY_RANGE",
+      })
+    ).toThrow(/after/i);
   });
 
   it("accepts all optional fields", () => {
     const result = eventSchema.parse({
       name: "Town Fair",
       date: 1700000000000,
+      startsOn: 1700000000000,
       endDate: 1700100000000,
       description: "Annual event",
       startTime: "10:00",

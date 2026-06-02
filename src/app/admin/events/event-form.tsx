@@ -23,6 +23,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -55,27 +56,6 @@ import {
   EVENT_WEEKDAY_OPTIONS,
   type EventScheduleType,
 } from "@/lib/events/recurrence";
-
-// Convert a Unix ms timestamp → "YYYY-MM-DD" using LOCAL calendar parts.
-// We deliberately avoid toISOString() because it formats in UTC, which would
-// flip the date in any timezone west of UTC and produce off-by-one display.
-function timestampToDateString(ts: number | undefined): string {
-  if (!ts) return "";
-  const d = new Date(ts);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-// Convert "YYYY-MM-DD" → Unix ms at LOCAL midnight.
-// `new Date("2026-06-02")` parses as UTC midnight (per ISO 8601), which in
-// PST/MST/CST/EST lands on the previous local day. The 3-arg Date constructor
-// uses local time and gives the date the user actually picked.
-function dateStringToTimestamp(dateStr: string): number {
-  const [year, month, day] = dateStr.split("-").map(Number);
-  return new Date(year, month - 1, day).getTime();
-}
 
 const SCHEDULE_HELP = [
   {
@@ -453,15 +433,14 @@ export function EventForm({
                         {requiresEndDate ? "Start Date" : "Date"}
                       </FormLabel>
                       <FormControl>
-                        <Input
-                          type="date"
-                          value={timestampToDateString(field.value)}
-                          onChange={(e) =>
-                            field.onChange(
-                              e.target.value
-                                ? dateStringToTimestamp(e.target.value)
-                                : Date.now()
-                            )
+                        <DatePicker
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Pick a date"
+                          toDate={
+                            requiresEndDate && form.getValues("endsOn")
+                              ? new Date(form.getValues("endsOn") as number)
+                              : undefined
                           }
                         />
                       </FormControl>
@@ -482,15 +461,14 @@ export function EventForm({
                       <FormItem>
                         <FormLabel>End Date</FormLabel>
                         <FormControl>
-                          <Input
-                            type="date"
-                            value={timestampToDateString(field.value)}
-                            onChange={(e) =>
-                              field.onChange(
-                                e.target.value
-                                  ? dateStringToTimestamp(e.target.value)
-                                  : undefined
-                              )
+                          <DatePicker
+                            value={field.value}
+                            onChange={field.onChange}
+                            placeholder="Pick an end date"
+                            fromDate={
+                              form.getValues("startsOn")
+                                ? new Date(form.getValues("startsOn") as number)
+                                : undefined
                             }
                           />
                         </FormControl>
