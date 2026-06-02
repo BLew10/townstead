@@ -34,6 +34,7 @@ import type * as coupons_mutations from "../coupons/mutations.js";
 import type * as coupons_queries from "../coupons/queries.js";
 import type * as dashboard_mutations from "../dashboard/mutations.js";
 import type * as dashboard_queries from "../dashboard/queries.js";
+import type * as events_migration from "../events/migration.js";
 import type * as events_mutations from "../events/mutations.js";
 import type * as events_queries from "../events/queries.js";
 import type * as files from "../files.js";
@@ -98,6 +99,7 @@ declare const fullApi: ApiFromModules<{
   "coupons/queries": typeof coupons_queries;
   "dashboard/mutations": typeof dashboard_mutations;
   "dashboard/queries": typeof dashboard_queries;
+  "events/migration": typeof events_migration;
   "events/mutations": typeof events_mutations;
   "events/queries": typeof events_queries;
   files: typeof files;

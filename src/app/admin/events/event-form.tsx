@@ -28,7 +28,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -57,13 +56,25 @@ import {
   type EventScheduleType,
 } from "@/lib/events/recurrence";
 
+// Convert a Unix ms timestamp → "YYYY-MM-DD" using LOCAL calendar parts.
+// We deliberately avoid toISOString() because it formats in UTC, which would
+// flip the date in any timezone west of UTC and produce off-by-one display.
 function timestampToDateString(ts: number | undefined): string {
   if (!ts) return "";
-  return new Date(ts).toISOString().split("T")[0];
+  const d = new Date(ts);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
+// Convert "YYYY-MM-DD" → Unix ms at LOCAL midnight.
+// `new Date("2026-06-02")` parses as UTC midnight (per ISO 8601), which in
+// PST/MST/CST/EST lands on the previous local day. The 3-arg Date constructor
+// uses local time and gives the date the user actually picked.
 function dateStringToTimestamp(dateStr: string): number {
-  return new Date(dateStr).getTime();
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(year, month - 1, day).getTime();
 }
 
 const SCHEDULE_HELP = [
@@ -289,16 +300,25 @@ export function EventForm({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>{editing ? "Edit" : "New"} Event</SheetTitle>
+      <SheetContent
+        side="right"
+        className="sm:max-w-2xl overflow-y-auto border-l-4 border-l-emerald-500 bg-gradient-to-br from-background via-background to-emerald-50/40 p-0 dark:to-emerald-950/20"
+      >
+        <SheetHeader className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 px-6 py-5 text-white shadow-sm">
+          <SheetTitle className="text-xl font-semibold tracking-tight text-white">
+            {editing ? "Edit" : "New"} Event
+          </SheetTitle>
+          <p className="mt-1 text-sm text-white/80">
+            Plan a one-off date or a repeating pattern that rolls across the
+            calendar year.
+          </p>
         </SheetHeader>
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="flex flex-col gap-6 px-4"
+            className="flex flex-col gap-6 px-6 pb-6 pt-4"
           >
-            <div className="space-y-4">
+            <div className="space-y-4 rounded-lg border bg-card/80 p-5 shadow-sm">
               <FormField
                 control={form.control}
                 name="name"
@@ -645,18 +665,19 @@ export function EventForm({
             </div>
 
             {calendarEditions.length > 0 && (
-              <>
-                <Separator />
-                <div className="space-y-4">
-                  <h3 className="text-sm font-medium text-muted-foreground">
+              <div className="space-y-4 rounded-lg border border-teal-200 bg-teal-50/50 p-5 shadow-sm dark:border-teal-900/40 dark:bg-teal-950/20">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex h-2 w-2 rounded-full bg-teal-500" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-teal-900 dark:text-teal-100">
                     Calendar Editions
                   </h3>
-                  <FormField
-                    control={form.control}
-                    name="calendarEditionIds"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="space-y-2">
+                </div>
+                <FormField
+                  control={form.control}
+                  name="calendarEditionIds"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           {calendarEditions.map((edition) => {
                             const checked = (field.value ?? []).includes(
                               edition._id
@@ -682,26 +703,33 @@ export function EventForm({
                                     }
                                   }}
                                 />
-                                <Label htmlFor={`edition-${edition._id}`}>
-                                  {edition.name}
-                                </Label>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <FormDescription>
-                          Select one or more calendar editions where this event should appear.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </>
+                                <Label
+                                htmlFor={`edition-${edition._id}`}
+                                className="cursor-pointer text-sm font-medium"
+                              >
+                                {edition.name}
+                              </Label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <FormDescription>
+                        Select one or more calendar editions where this event should appear.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             )}
 
-            <SheetFooter>
-              <Button type="submit" disabled={isPending} className="w-full">
+            <SheetFooter className="border-t border-border/60 bg-background/80 px-0 pt-4">
+              <Button
+                type="submit"
+                disabled={isPending}
+                size="lg"
+                className="w-full bg-emerald-600 font-semibold hover:bg-emerald-700"
+              >
                 {isPending ? "Saving..." : "Save Event"}
               </Button>
             </SheetFooter>
