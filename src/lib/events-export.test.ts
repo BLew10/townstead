@@ -60,10 +60,10 @@ describe("filterEventsForExport", () => {
   const jan2025 = new Date(2025, 0, 15).getTime();
 
   const events = [
-    makeEvent({ name: "A", date: jun2026, communityIds: ["com_1" as Id<"communities">] }),
-    makeEvent({ name: "B", date: jan2026, communityIds: ["com_1" as Id<"communities">, "com_2" as Id<"communities">] }),
+    makeEvent({ name: "A", date: jun2026, calendarEditionIds: ["ed_1" as Id<"calendarEditions">] }),
+    makeEvent({ name: "B", date: jan2026, calendarEditionIds: ["ed_1" as Id<"calendarEditions">, "ed_2" as Id<"calendarEditions">] }),
     makeEvent({ name: "C", date: jan2025 }),
-    makeEvent({ name: "D", date: jan2026, communityIds: ["com_2" as Id<"communities">] }),
+    makeEvent({ name: "D", date: jan2026, calendarEditionIds: ["ed_2" as Id<"calendarEditions">] }),
   ];
 
   it("filters by year", () => {
@@ -88,11 +88,11 @@ describe("filterEventsForExport", () => {
     expect(result.map((e) => e.name)).toEqual(["Yearly"]);
   });
 
-  it("filters by year and community ID", () => {
+  it("filters by year and calendar edition ID", () => {
     const result = filterEventsForExport(
       events,
       2026,
-      "com_1" as Id<"communities">
+      "ed_1" as Id<"calendarEditions">
     );
     expect(result).toHaveLength(2);
     expect(result.map((e) => e.name)).toEqual(["B", "A"]);
@@ -109,22 +109,22 @@ describe("filterEventsForExport", () => {
     expect(filterEventsForExport(events, 2030, null)).toEqual([]);
   });
 
-  it("includes events without communityIds when community filter is null", () => {
+  it("includes events without calendarEditionIds when edition filter is null", () => {
     const eventsWithNone = [
-      makeEvent({ name: "NoCommunity", date: jan2026 }),
+      makeEvent({ name: "NoEdition", date: jan2026 }),
     ];
     const result = filterEventsForExport(eventsWithNone, 2026, null);
     expect(result).toHaveLength(1);
   });
 
-  it("excludes events without communityIds when community filter is set", () => {
+  it("excludes events without calendarEditionIds when edition filter is set", () => {
     const eventsWithNone = [
-      makeEvent({ name: "NoCommunity", date: jan2026 }),
+      makeEvent({ name: "NoEdition", date: jan2026 }),
     ];
     const result = filterEventsForExport(
       eventsWithNone,
       2026,
-      "com_1" as Id<"communities">
+      "ed_1" as Id<"calendarEditions">
     );
     expect(result).toHaveLength(0);
   });

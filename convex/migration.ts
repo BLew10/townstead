@@ -506,7 +506,7 @@ export const insertEvent = mutation({
     monthlyMonthSelector: v.optional(
       v.union(v.literal("EVERY"), v.literal("EVEN"), v.literal("ODD"))
     ),
-    communityIds: v.optional(v.array(v.id("communities"))),
+    calendarEditionIds: v.optional(v.array(v.id("calendarEditions"))),
     location: v.optional(v.string()),
     contactId: v.optional(v.id("contacts")),
     categoryId: v.optional(v.id("categories")),

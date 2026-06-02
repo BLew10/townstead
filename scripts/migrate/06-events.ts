@@ -46,13 +46,13 @@ async function run(pool: pg.Pool, convex: ConvexHttpClient, orgId: string) {
       continue;
     }
 
-    // Map v1 edition IDs -> v2 community IDs (03b-communities keyed communities
-    // by the same v1 edition ID, so the lookup is the same key)
+    // Map v1 edition IDs -> v2 calendarEdition IDs (events ↔ calendarEditions
+    // is a direct many-to-many in v1, mirrored 1:1 in v2)
     const v1EditionIds = editionsByEvent.get(row.id) ?? [];
-    const v2CommunityIds: Id<"communities">[] = [];
+    const v2EditionIds: Id<"calendarEditions">[] = [];
     for (const v1Id of v1EditionIds) {
-      const v2Id = idMap.get("communities", v1Id);
-      if (v2Id) v2CommunityIds.push(v2Id as Id<"communities">);
+      const v2Id = idMap.get("calendarEditions", v1Id);
+      if (v2Id) v2EditionIds.push(v2Id as Id<"calendarEditions">);
     }
 
     const scheduleType =
@@ -77,7 +77,7 @@ async function run(pool: pg.Pool, convex: ConvexHttpClient, orgId: string) {
       monthlyOrdinal: row.monthlyOrdinal ?? undefined,
       monthlyWeekday: row.monthlyWeekday ?? undefined,
       monthlyMonthSelector: row.monthlyMonthSelector ?? undefined,
-      communityIds: v2CommunityIds.length > 0 ? v2CommunityIds : undefined,
+      calendarEditionIds: v2EditionIds.length > 0 ? v2EditionIds : undefined,
       orgId,
       isDeleted: row.isDeleted || undefined,
     });

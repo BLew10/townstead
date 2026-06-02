@@ -256,7 +256,7 @@ export const seedSacramento = internalMutation({
       endTime: "9:00 PM",
       location: "Midtown Sacramento, J Street Corridor",
       categoryId: catFestivals,
-      communityIds: [midtownId],
+      calendarEditionIds: [calEdId],
       isApproved: true,
       orgId,
     });
@@ -270,7 +270,7 @@ export const seedSacramento = internalMutation({
       endTime: "10:00 PM",
       location: "Capitol Mall, Sacramento",
       categoryId: catFestivals,
-      communityIds: [downtownId, midtownId],
+      calendarEditionIds: [calEdId],
       isApproved: true,
       orgId,
     });
@@ -284,7 +284,7 @@ export const seedSacramento = internalMutation({
       endTime: "10:00 PM",
       location: "River Walk Park, West Sacramento",
       categoryId: catMusic,
-      communityIds: [downtownId],
+      calendarEditionIds: [calEdId],
       isApproved: true,
       orgId,
     });
@@ -298,7 +298,7 @@ export const seedSacramento = internalMutation({
       endTime: "1:00 PM",
       location: "20th & J Streets, Midtown",
       categoryId: catFestivals,
-      communityIds: [midtownId],
+      calendarEditionIds: [calEdId],
       isApproved: true,
       orgId,
     });
@@ -312,7 +312,7 @@ export const seedSacramento = internalMutation({
       endTime: "9:30 PM",
       location: "Capitol Park, Downtown Sacramento",
       categoryId: catMusic,
-      communityIds: [downtownId],
+      calendarEditionIds: [calEdId],
       isApproved: true,
       orgId,
     });
@@ -327,7 +327,7 @@ export const seedSacramento = internalMutation({
       endTime: "6:00 PM",
       location: "Wide Open Walls, Midtown Sacramento",
       categoryId: catFestivals,
-      communityIds: [midtownId],
+      calendarEditionIds: [calEdId],
       isApproved: true,
       orgId,
     });
@@ -341,7 +341,7 @@ export const seedSacramento = internalMutation({
       endTime: "10:00 PM",
       location: "Old Sacramento Waterfront",
       categoryId: catFestivals,
-      communityIds: [downtownId],
+      calendarEditionIds: [calEdId],
       isApproved: true,
       orgId,
     });
@@ -355,7 +355,7 @@ export const seedSacramento = internalMutation({
       endTime: "10:00 PM",
       location: "Sutter Health Park",
       categoryId: catFestivals,
-      communityIds: [downtownId, midtownId],
+      calendarEditionIds: [calEdId],
       isApproved: true,
       orgId,
     });

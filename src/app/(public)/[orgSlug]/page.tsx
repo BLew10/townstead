@@ -155,7 +155,6 @@ export default function OrgHomePage({
                 <p className="text-sm text-on-surface/60">
                   {format(new Date(event.date), "EEEE, MMMM d · h:mm a")}
                 </p>
-                <CommunityBadges communityIds={event.communityIds} communityMap={communityMap} />
               </Link>
             ))}
           </div>

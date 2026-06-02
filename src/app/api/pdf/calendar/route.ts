@@ -3,8 +3,9 @@ import { auth } from "@clerk/nextjs/server";
 import { getConvexClient } from "@/lib/convex-server";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
-import { buildEventExportMonthGroups } from "@/lib/events-export";
-import { generateEventsExportPdf } from "@/lib/pdf/events-export";
+import { generateCalendarPdf } from "@/lib/pdf/calendar-grid";
+
+export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   const { orgId } = await auth();
@@ -14,11 +15,9 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = request.nextUrl;
   const yearStr = searchParams.get("year");
-
   if (!yearStr) {
     return NextResponse.json({ error: "Missing year" }, { status: 400 });
   }
-
   const year = parseInt(yearStr, 10);
   if (!Number.isFinite(year) || year < 2000 || year > 2100) {
     return NextResponse.json({ error: "Invalid year" }, { status: 400 });
@@ -28,7 +27,7 @@ export async function GET(request: NextRequest) {
   const editionIdParam = searchParams.get("calendarEditionId");
 
   let calendarEditionId: Id<"calendarEditions"> | null = null;
-  let editionLabel: string | undefined;
+  let editionLabel = "Community Calendar";
   let editionSlug = "";
 
   if (editionIdParam) {
@@ -51,19 +50,19 @@ export async function GET(request: NextRequest) {
   }
 
   const events = await convex.query(api.events.queries.list, { orgId });
-  const months = buildEventExportMonthGroups(events, year, calendarEditionId);
 
-  const pdfBytes = await generateEventsExportPdf({
+  const pdfBuffer = await generateCalendarPdf({
     year,
+    events,
     editionLabel,
-    months,
+    calendarEditionId,
   });
 
   const filename = editionSlug
-    ? `events-${year}-${editionSlug}.pdf`
-    : `events-calendar-${year}.pdf`;
+    ? `calendar-${year}-${editionSlug}.pdf`
+    : `calendar-${year}.pdf`;
 
-  return new NextResponse(Buffer.from(pdfBytes), {
+  return new NextResponse(new Uint8Array(pdfBuffer), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${filename}"`,

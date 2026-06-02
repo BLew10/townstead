@@ -24,7 +24,7 @@ export const submitEvent = mutation({
     endTime: v.optional(v.string()),
     location: v.optional(v.string()),
     categoryId: v.optional(v.id("categories")),
-    communityIds: v.optional(v.array(v.id("communities"))),
+    calendarEditionIds: v.optional(v.array(v.id("calendarEditions"))),
   },
   handler: async (ctx, args) => {
     const { userId } = await requirePublicAuth(ctx);
@@ -46,7 +46,7 @@ export const submitEvent = mutation({
       endTime: args.endTime,
       location: args.location,
       categoryId: args.categoryId,
-      communityIds: args.communityIds,
+      calendarEditionIds: args.calendarEditionIds,
       submittedBy: userId,
       isApproved: !needsApproval,
       orgId: branding.orgId,

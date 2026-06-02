@@ -156,7 +156,7 @@ export const eventSchema = z.object({
     ])
     .optional(),
   monthlyMonthSelector: z.enum(["EVERY", "EVEN", "ODD"]).optional(),
-  communityIds: z.array(z.string()).optional(),
+  calendarEditionIds: z.array(z.string()).optional(),
 }).superRefine((value, ctx) => {
   const scheduleType = value.scheduleType ?? "SINGLE_DAY";
   if (scheduleType !== "SINGLE_DAY" && !value.endsOn && !value.endDate) {

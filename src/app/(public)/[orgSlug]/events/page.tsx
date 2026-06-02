@@ -15,7 +15,6 @@ import { Search, CalendarDays, MapPin, Clock, Filter } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EventCalendar } from "@/components/public/event-calendar";
 import { useCommunityFilter } from "@/hooks/use-community-filter";
-import { CommunityBadges } from "@/components/public/community-badge";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { expandEventOccurrences } from "@/lib/events/recurrence";
 
@@ -25,7 +24,7 @@ export default function EventsPage({
   params: Promise<{ orgSlug: string }>;
 }) {
   const { orgSlug } = use(params);
-  const { communityId, communityMap, buildHref } = useCommunityFilter(orgSlug);
+  const { communityId, buildHref } = useCommunityFilter(orgSlug);
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -282,9 +281,6 @@ export default function EventsPage({
                                   {event.location}
                                 </span>
                               )}
-                            </div>
-                            <div className="mt-2">
-                              <CommunityBadges communityIds={event.communityIds} communityMap={communityMap} />
                             </div>
                           </div>
                         </div>

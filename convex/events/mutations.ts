@@ -50,7 +50,7 @@ export const create = mutation({
     monthlyMonthSelector: v.optional(
       v.union(v.literal("EVERY"), v.literal("EVEN"), v.literal("ODD"))
     ),
-    communityIds: v.optional(v.array(v.id("communities"))),
+    calendarEditionIds: v.optional(v.array(v.id("calendarEditions"))),
     imageFileId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
@@ -109,7 +109,7 @@ export const update = mutation({
     monthlyMonthSelector: v.optional(
       v.union(v.literal("EVERY"), v.literal("EVEN"), v.literal("ODD"))
     ),
-    communityIds: v.optional(v.array(v.id("communities"))),
+    calendarEditionIds: v.optional(v.array(v.id("calendarEditions"))),
     imageFileId: v.optional(v.id("_storage")),
     isApproved: v.optional(v.boolean()),
   },

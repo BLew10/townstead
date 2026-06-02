@@ -22,14 +22,14 @@ export function formatEventTimes(event: Doc<"events">): string {
 export function filterEventsForExport(
   events: Doc<"events">[],
   year: number,
-  communityId: Id<"communities"> | null
+  calendarEditionId: Id<"calendarEditions"> | null
 ): Doc<"events">[] {
   return events
     .filter((e) => {
       if (expandEventOccurrences(e, year).length === 0) return false;
-      if (communityId) {
-        const ids = e.communityIds ?? [];
-        if (!ids.includes(communityId)) return false;
+      if (calendarEditionId) {
+        const ids = e.calendarEditionIds ?? [];
+        if (!ids.includes(calendarEditionId)) return false;
       }
       return true;
     })
@@ -43,9 +43,9 @@ export function filterEventsForExport(
 export function buildEventExportMonthGroups(
   events: Doc<"events">[],
   year: number,
-  communityId: Id<"communities"> | null
+  calendarEditionId: Id<"calendarEditions"> | null
 ): EventExportMonthGroup[] {
-  const filtered = filterEventsForExport(events, year, communityId);
+  const filtered = filterEventsForExport(events, year, calendarEditionId);
   const buckets: { event: Doc<"events">; date: number }[][] = Array.from(
     { length: 12 },
     () => []

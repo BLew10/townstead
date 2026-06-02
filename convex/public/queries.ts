@@ -123,7 +123,7 @@ export const getHomepageData = query({
       .order("desc")
       .take(10);
 
-    const slicedEvents = filterByCommunity(allEvents, args.communityId).slice(0, 5);
+    const slicedEvents = allEvents.slice(0, 5);
     const featuredEvents = await Promise.all(
       slicedEvents.map(async (e) => ({
         ...e,
@@ -177,8 +177,6 @@ export const listEvents = query({
         )
       )
       .collect();
-
-    events = filterByCommunity(events, args.communityId);
 
     if (args.categoryId) {
       events = events.filter((e) => e.categoryId === args.categoryId);

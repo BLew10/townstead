@@ -120,14 +120,14 @@ interface EventFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editing: Doc<"events"> | null;
-  communities: Doc<"communities">[];
+  calendarEditions: Doc<"calendarEditions">[];
 }
 
 export function EventForm({
   open,
   onOpenChange,
   editing,
-  communities,
+  calendarEditions,
 }: EventFormProps) {
   const { orgId } = useOrg();
   const create = useMutation(api.events.mutations.create);
@@ -158,7 +158,7 @@ export function EventForm({
       startTime: "",
       endTime: "",
       isYearly: false,
-      communityIds: [],
+      calendarEditionIds: [],
     },
   });
 
@@ -184,7 +184,7 @@ export function EventForm({
         startTime: editing.startTime ?? "",
         endTime: editing.endTime ?? "",
         isYearly: editing.isYearly ?? false,
-        communityIds: (editing.communityIds as string[]) ?? [],
+        calendarEditionIds: (editing.calendarEditionIds as string[]) ?? [],
       });
       setImageFileId(editing.imageFileId ?? undefined);
     } else {
@@ -202,7 +202,7 @@ export function EventForm({
         startTime: "",
         endTime: "",
         isYearly: false,
-        communityIds: [],
+        calendarEditionIds: [],
       });
       setImageFileId(undefined);
     }
@@ -265,9 +265,9 @@ export function EventForm({
           values.scheduleType === "MONTHLY_ORDINAL_WEEKDAY"
             ? true
             : values.isYearly || undefined,
-        communityIds:
-          values.communityIds && values.communityIds.length > 0
-            ? (values.communityIds as Id<"communities">[])
+        calendarEditionIds:
+          values.calendarEditionIds && values.calendarEditionIds.length > 0
+            ? (values.calendarEditionIds as Id<"calendarEditions">[])
             : undefined,
         imageFileId,
       };
@@ -644,51 +644,54 @@ export function EventForm({
               )}
             </div>
 
-            {communities.length > 0 && (
+            {calendarEditions.length > 0 && (
               <>
                 <Separator />
                 <div className="space-y-4">
                   <h3 className="text-sm font-medium text-muted-foreground">
-                    Communities
+                    Calendar Editions
                   </h3>
                   <FormField
                     control={form.control}
-                    name="communityIds"
+                    name="calendarEditionIds"
                     render={({ field }) => (
                       <FormItem>
                         <div className="space-y-2">
-                          {communities.map((community) => {
+                          {calendarEditions.map((edition) => {
                             const checked = (field.value ?? []).includes(
-                              community._id
+                              edition._id
                             );
                             return (
                               <div
-                                key={community._id}
+                                key={edition._id}
                                 className="flex items-center gap-2"
                               >
                                 <Checkbox
-                                  id={`community-${community._id}`}
+                                  id={`edition-${edition._id}`}
                                   checked={checked}
                                   onCheckedChange={(val) => {
                                     const current = field.value ?? [];
                                     if (val) {
-                                      field.onChange([...current, community._id]);
+                                      field.onChange([...current, edition._id]);
                                     } else {
                                       field.onChange(
                                         current.filter(
-                                          (id: string) => id !== community._id
+                                          (id: string) => id !== edition._id
                                         )
                                       );
                                     }
                                   }}
                                 />
-                                <Label htmlFor={`community-${community._id}`}>
-                                  {community.name}
+                                <Label htmlFor={`edition-${edition._id}`}>
+                                  {edition.name}
                                 </Label>
                               </div>
                             );
                           })}
                         </div>
+                        <FormDescription>
+                          Select one or more calendar editions where this event should appear.
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}

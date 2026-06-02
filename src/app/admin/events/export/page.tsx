@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TableSkeleton } from "@/components/shared/table-skeleton";
-import { Download } from "lucide-react";
+import { CalendarDays, Download } from "lucide-react";
 import { buildEventExportMonthGroups } from "@/lib/events-export";
 
 const MONTHS = [
@@ -51,34 +51,43 @@ function clampYear(n: number): number {
 export default function EventsExportPage() {
   const { orgId, isReady } = useOrg();
   const [yearInput, setYearInput] = useState(String(currentYear));
-  const [communitySelect, setCommunitySelect] = useState<string>("all");
+  const [editionSelect, setEditionSelect] = useState<string>("all");
 
   const events = useQuery(
     api.events.queries.list,
     isReady ? { orgId: orgId! } : "skip"
   );
-  const communities = useQuery(
-    api.communities.queries.list,
+  const calendarEditions = useQuery(
+    api.calendarEditions.queries.list,
     isReady ? { orgId: orgId! } : "skip"
   );
 
   const year = clampYear(parseInt(yearInput, 10));
 
-  const communityId: Id<"communities"> | null =
-    communitySelect !== "all" ? (communitySelect as Id<"communities">) : null;
+  const calendarEditionId: Id<"calendarEditions"> | null =
+    editionSelect !== "all"
+      ? (editionSelect as Id<"calendarEditions">)
+      : null;
 
   const monthGroups = useMemo(() => {
     if (!events) return null;
-    return buildEventExportMonthGroups(events, year, communityId);
-  }, [events, year, communityId]);
+    return buildEventExportMonthGroups(events, year, calendarEditionId);
+  }, [events, year, calendarEditionId]);
 
-  const handleDownloadPdf = () => {
+  const handleDownloadList = () => {
     const params = new URLSearchParams({ year: String(year) });
-    if (communityId) params.set("communityId", communityId);
+    // The list-style PDF originally accepted communityId. Until a calendar-
+    // edition variant is wired, just download the year roll-up.
     window.open(`/api/pdf/events-export?${params}`, "_blank");
   };
 
-  if (!isReady || events === undefined || communities === undefined) {
+  const handleDownloadCalendar = () => {
+    const params = new URLSearchParams({ year: String(year) });
+    if (calendarEditionId) params.set("calendarEditionId", calendarEditionId);
+    window.open(`/api/pdf/calendar?${params}`, "_blank");
+  };
+
+  if (!isReady || events === undefined || calendarEditions === undefined) {
     return (
       <div className="space-y-6">
         <PageHeader title="Export event calendar" />
@@ -91,12 +100,18 @@ export default function EventsExportPage() {
     <div className="space-y-6">
       <PageHeader
         title="Export event calendar"
-        description="Preview events by month and download a PDF for the selected year."
+        description="Preview events by month, then download a calendar grid PDF or a list-style summary."
         actions={
-          <Button type="button" onClick={handleDownloadPdf}>
-            <Download className="mr-2 h-4 w-4" />
-            Download PDF
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="outline" onClick={handleDownloadList}>
+              <Download className="mr-2 h-4 w-4" />
+              List PDF
+            </Button>
+            <Button type="button" onClick={handleDownloadCalendar}>
+              <CalendarDays className="mr-2 h-4 w-4" />
+              Calendar PDF
+            </Button>
+          </div>
         }
       />
 
@@ -115,19 +130,22 @@ export default function EventsExportPage() {
           />
         </div>
         <div className="space-y-2">
-          <Label>Community</Label>
-          <Select value={communitySelect} onValueChange={(v) => setCommunitySelect(v ?? "")}>
+          <Label>Calendar Edition</Label>
+          <Select
+            value={editionSelect}
+            onValueChange={(v) => setEditionSelect(v ?? "all")}
+          >
             <SelectTrigger className="w-56">
-              <SelectValue placeholder="All communities">
-                {communitySelect === "all"
-                  ? "All communities"
-                  : (communities.find((c) => c._id === communitySelect)?.name ??
-                    "All communities")}
+              <SelectValue placeholder="All editions">
+                {editionSelect === "all"
+                  ? "All editions"
+                  : (calendarEditions.find((c) => c._id === editionSelect)
+                      ?.name ?? "All editions")}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All communities</SelectItem>
-              {communities.map((c) => (
+              <SelectItem value="all">All editions</SelectItem>
+              {calendarEditions.map((c) => (
                 <SelectItem key={c._id} value={c._id}>
                   {c.name}
                 </SelectItem>
