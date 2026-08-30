@@ -7,9 +7,10 @@
  */
 import pg from "pg";
 import { ConvexHttpClient } from "convex/browser";
+import { api } from "../convex/_generated/api";
 import dotenv from "dotenv";
 import { resolve } from "path";
-import { readFileSync, existsSync, writeFileSync } from "fs";
+import { writeFileSync } from "fs";
 
 dotenv.config({ path: resolve(__dirname, "../.env.local") });
 
@@ -55,17 +56,6 @@ async function main() {
   const pool = new pg.Pool({ connectionString: pgUrl });
   const convex = new ConvexHttpClient(convexUrl);
 
-  // Load ID map for cross-referencing
-  const idMapPath = resolve(__dirname, "migrate/id-map-state.json");
-  if (!existsSync(idMapPath)) {
-    console.error("id-map-state.json not found. Run migration first.");
-    process.exit(1);
-  }
-  const idMapData = JSON.parse(readFileSync(idMapPath, "utf-8")) as Record<
-    string,
-    Record<string, string>
-  >;
-
   const result: ValidationResult = {
     timestamp: new Date().toISOString(),
     countComparisons: [],
@@ -94,26 +84,12 @@ async function main() {
   `);
   const v1 = v1Counts.rows[0];
 
-  // v2 counts from ID map
-  const v2Counts: Record<string, number> = {};
-  const tableMapping: Record<string, string> = {
-    contacts: "contacts",
-    purchases: "purchases",
-    payments: "payments",
-    scheduledPayments: "scheduledPayments",
-    paymentAllocations: "paymentAllocations",
-    adPurchases: "adPurchases",
-    adSlots: "adSlots",
-    calendarEditions: "calendarEditions",
-    advertisements: "advertisements",
-    addressBooks: "addressBooks",
-    events: "events",
-  };
-
-  for (const [v2Table, mapKey] of Object.entries(tableMapping)) {
-    v2Counts[v2Table] = Object.keys(idMapData[mapKey] ?? {}).length;
-  }
-
+  // v2 counts from live Convex data. Allocations are recomputed by the v2
+  // migration step instead of copied from v1 IDs, so the ID map is not a
+  // reliable count source for all migrated tables.
+  const liveV2Counts = await convex.query(api.migration.getOrgDataCounts, {
+    orgId,
+  });
   const countChecks: Array<{ label: string; v1Key: string; v2Key: string; note?: string }> = [
     { label: "Contacts", v1Key: "contacts", v2Key: "contacts", note: "v2 may be lower due to dedup" },
     { label: "Purchases", v1Key: "purchases", v2Key: "purchases" },
@@ -130,7 +106,7 @@ async function main() {
 
   for (const check of countChecks) {
     const v1Count = parseInt(v1[check.v1Key]);
-    const v2Count = v2Counts[check.v2Key] ?? 0;
+    const v2Count = liveV2Counts[check.v2Key as keyof typeof liveV2Counts] ?? 0;
     const match = v1Count === v2Count;
     const status = match ? "✅" : "⚠️";
 

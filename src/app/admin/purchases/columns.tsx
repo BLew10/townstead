@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
-import { MoreHorizontal, Eye, Trash2, DollarSign } from "lucide-react";
+import { MoreHorizontal, Eye, Pencil, Trash2, DollarSign } from "lucide-react";
 import { useMutation } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { useState, useCallback } from "react";
@@ -151,6 +151,14 @@ function ActionsCell({ row }: { row: { original: PurchaseRow } }) {
           >
             <Eye className="mr-2 h-4 w-4" />
             View
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() =>
+              router.push(`/admin/purchases/${row.original._id}/edit`)
+            }
+          >
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setPaymentOpen(true)}>
             <DollarSign className="mr-2 h-4 w-4" />
