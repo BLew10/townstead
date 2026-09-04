@@ -1,5 +1,27 @@
 import { mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
+import type { Id } from "../_generated/dataModel";
+import type { MutationCtx } from "../_generated/server";
+
+/**
+ * Send this advertiser to ourcornercalendar.com.
+ *
+ * Scheduled rather than awaited: a mutation cannot make a network request, and
+ * Joyce should be able to save a customer whether or not the website happens to
+ * be reachable. `runAfter(0, …)` runs once this mutation has committed, so the
+ * website is never told about a change that then rolled back.
+ */
+function syncToWebsite(ctx: MutationCtx, contactId: Id<"contacts">) {
+  // A deployment with no website configured — a preview, a local dev copy, the
+  // test suite — has nothing to sync to, and queueing the work anyway would
+  // mean a backlog of jobs that exist only to fail.
+  if (!process.env.WEBSITE_SUPABASE_URL) return Promise.resolve();
+
+  return ctx.scheduler.runAfter(0, internal.websiteSync.actions.pushContact, {
+    contactId,
+  });
+}
 
 const addressValidator = v.optional(
   v.object({
@@ -66,12 +88,14 @@ export const create = mutation({
     }
 
     const searchText = buildSearchText(args);
-    return await ctx.db.insert("contacts", {
+    const id = await ctx.db.insert("contacts", {
       ...args,
       searchText,
       isDeleted: false,
       updatedAt: Date.now(),
     });
+    await syncToWebsite(ctx, id);
+    return id;
   },
 });
 
@@ -111,6 +135,7 @@ export const update = mutation({
       searchText,
       updatedAt: Date.now(),
     });
+    await syncToWebsite(ctx, id);
   },
 });
 
@@ -121,6 +146,10 @@ export const softDelete = mutation({
       email: undefined,
       isDeleted: true,
     });
+    // The website's copy is hidden, not deleted. It may carry photos, hours
+    // and a description written on that side, and none of that is this sync's
+    // to throw away.
+    await syncToWebsite(ctx, args.id);
   },
 });
 

@@ -526,4 +526,17 @@ export default defineSchema({
     latePaymentsCount: v.number(),
     computedAt: v.number(),
   }).index("by_org_edition_year", ["orgId", "calendarEditionId", "year"]),
+
+  // What happened the last time each advertiser was pushed to
+  // ourcornercalendar.com. One row per contact, overwritten on each attempt --
+  // this is a "did it get there" record, not a history.
+  websiteSyncLog: defineTable({
+    contactId: v.id("contacts"),
+    ok: v.boolean(),
+    detail: v.string(),
+    websiteBusinessId: v.optional(v.string()),
+    at: v.number(),
+  })
+    .index("by_contactId", ["contactId"])
+    .index("by_ok", ["ok"]),
 });
