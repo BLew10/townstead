@@ -65,6 +65,9 @@ import type * as users_mutations from "../users/mutations.js";
 import type * as users_queries from "../users/queries.js";
 import type * as videos_mutations from "../videos/mutations.js";
 import type * as videos_queries from "../videos/queries.js";
+import type * as websiteSync_actions from "../websiteSync/actions.js";
+import type * as websiteSync_auth from "../websiteSync/auth.js";
+import type * as websiteSync_queries from "../websiteSync/queries.js";
 
 import type {
   ApiFromModules,
@@ -130,6 +133,9 @@ declare const fullApi: ApiFromModules<{
   "users/queries": typeof users_queries;
   "videos/mutations": typeof videos_mutations;
   "videos/queries": typeof videos_queries;
+  "websiteSync/actions": typeof websiteSync_actions;
+  "websiteSync/auth": typeof websiteSync_auth;
+  "websiteSync/queries": typeof websiteSync_queries;
 }>;
 
 /**
